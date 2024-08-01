@@ -12,10 +12,12 @@ function run_ECCC_climate_station_update(yearsIn,monthsIn,stationIDs,dbase_pth)
 % dbase_pth     - Optional data base path
 %
 % Zoran Nesic                   File created:               2022
-%                               Last modification:  Sep  11, 2023
+%                               Last modification:  Aug  1, 2024
 
 % Revisions
 %
+% Aug 1, 2024 (Zoran)
+%   - Added Winipeg St. Andrew stations (55463) to the list.
 % Sep 11, 2023 (Zoran)
 %   - Added Stony Mountain Manitoba weather station to the list of defaults (ID:3678)
 % Jun 15, 2023 (Zoran)
@@ -36,7 +38,7 @@ function run_ECCC_climate_station_update(yearsIn,monthsIn,stationIDs,dbase_pth)
 monthRange = monthNow-1:monthNow;
 arg_default('yearsIn',yearNow)
 arg_default('monthsIn',monthRange)
-arg_default('stationIDs',[49088 10927 925 51357 51442 3678] )
+arg_default('stationIDs',[49088 10927 925 51357 51442 3678 55463] )
 arg_default('dbase_pth',db_pth_root);
 
 for cntStations = 1:length(stationIDs)
