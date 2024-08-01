@@ -19,10 +19,16 @@ function [dataOut, cError,allData] = fr_read_TCP_LI7x00_data(addressIP,portNum,t
 %   allData             - ASCII data collected during the call to the instrument
 %
 % Zoran Nesic               File created        Jan 22, 2022
-%                           Last modification:  Jan  10, 2024
+%                           Last modification:  Jul 29, 2024
 
 % Revisions:
 %
+% Jul 29, 2024 (Zoran)
+%   - Changed from:
+%       oneLine(indSt+fieldLen+1:indSt+fieldLen+indEnd)
+%     to:
+%       oneLine(indSt+fieldLen+1:indSt+fieldLen+indEnd(1))
+%     The previous one was issuing warnings in Matlab2024a
 % Jan 10, 2024 (Zoran)
 %  - returned to pulling VolFlowRate  instead of MeasFlowRate. For 5 days
 %    we pulled MeasFlowRate which is more constant (matches set flow more closely)
@@ -159,7 +165,7 @@ function dataOut = processLine(oneLine,fieldsNew)
             if isempty(indEnd)
                 return
             end
-            oneNum = str2double(oneLine(indSt+fieldLen+1:indSt+fieldLen+indEnd));
+            oneNum = str2double(oneLine(indSt+fieldLen+1:indSt+fieldLen+indEnd(1)));
             dataOut.(deblank(fieldsNew(k,:))) = oneNum;
         end
     end
