@@ -4,5 +4,5 @@
 # Make a copy of this template file and delete the "_template" from the name
 # Then define the paths accordingly
 rootDir:
-  Database: C:/Database/
-  Outputs: C:/temp/
+  database: C:/Database/
+  outputs: C:/temp/

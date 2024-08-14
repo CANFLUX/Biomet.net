@@ -20,6 +20,7 @@ from datetime import datetime,date
 os.chdir(os.path.split(__file__)[0])
 
 template = 'config_files/csv_from_binary.yml'
+defaultDateRange = [date(datetime.now().year,1,1),datetime.now()]
 
 # Create the csv
 # args with "None" value provide option to overwrite default
@@ -28,7 +29,7 @@ def makeCSV(siteID,**kwargs):
     # Default arguments
     defaultKwargs = {
         'dateRange':None,
-        'Database':None,
+        'database':None,
         'outputPath':None,
         'tasks':[template],
         'stage':None
@@ -36,25 +37,23 @@ def makeCSV(siteID,**kwargs):
     
     # Apply defaults where not defined
     kwargs = defaultKwargs | kwargs
-    
     tasks = kwargs['tasks']
+    
     config = rCfg.set_user_configuration(tasks)
-
     # Use default if user does not provide alternative
     if kwargs['outputPath'] is None:
-        print(config)
         outputPath = config['rootDir']['Outputs']
     else: outputPath = kwargs['outputPath']
 
     # Root directory of the database
-    if kwargs['Database'] is None:
-        root = config['rootDir']['Database']
-    else: root = kwargs['Database']
+    if kwargs['database'] is None:
+        root = config['rootDir']['database']
+    else: root = kwargs['database']
 
     if kwargs['dateRange'] is not None:
         Range_index = pd.DatetimeIndex(kwargs['dateRange'])
     else:
-        Range_index = pd.DatetimeIndex([date(datetime.now().year,1,1),datetime.now()])
+        Range_index = pd.DatetimeIndex(defaultDateRange)
 
     print(f'Initializing tasks for {siteID} over:', f"{Range_index.strftime(date_format='%Y-%m-%d %H:%M').values}") 
     
@@ -166,10 +165,17 @@ if __name__ == '__main__':
         "--dateRange", 
         nargs='+', # 1 or more values expected => creates a list
         type=str,
-        default=[(pd.Timestamp.now()-pd.Timedelta(days=30)).strftime('%Y%m%d'),
-                pd.Timestamp.now().strftime('%Y%m%d')],
+        default=[defaultDateRange],
         )
         
+    CLI.add_argument(
+        "--database", 
+        nargs='+', # 1 or more values expected => creates a list
+        type=str,
+        default=None
+        )
+        
+
     CLI.add_argument(
         "--tasks", 
         nargs='+',
@@ -183,8 +189,24 @@ if __name__ == '__main__':
         type=str,
         default=None,
         )
+    
+    CLI.add_argument(
+        "--stage", 
+        nargs='?',
+        type=str,
+        default=None,
+        )
 
     # Parse the args and make the call
     args = CLI.parse_args()
 
-    makeCSV(args.siteID,args.dateRange,args.tasks,args.outputPath)
+
+    kwargs = {
+        'dateRange':args.dateRange,
+        'database':args.database,
+        'outputPath':args.outputPath,
+        'tasks':args.tasks,
+        'stage':args.stage
+        }
+    
+    makeCSV(args.siteID,**kwargs)

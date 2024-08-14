@@ -43,10 +43,14 @@ function [structIn,dbFileNames, dbFieldNames,errCode] = db_struct2database(struc
 %
 %
 % (c) Zoran Nesic               File created:       Sep 28, 2023
-%                               Last modification:  May  9, 2024
+%                               Last modification:  Aug 11, 2024
 
 % Revisions:
 % 
+% Aug 11, 2024 (Zoran)
+%   - Fixed bug: clean_tv file should have been treated the same way as sample_tv 
+%     and other time traces but it wasn't. That caused an error when updateing folders
+%     that contained this file.
 % May 9, 2024 (Zoran)
 %   - Bug fix. This line was wrong because it worked only for 30-minute tables: 
 %       currentTv = fr_round_time(datetime(currentYear,1,1,0,30,0):fr_timestep(timeUnit):datetime(currentYear+1,1,1,0,0,0))';
@@ -374,7 +378,9 @@ function errCode = saveAll(statsNew,fileNamesIn,fieldNamesIn,currentTv,inputTv,m
                             if ~isempty(newDataInd)
                                 dataOut(newDataInd) = dataIn;
                             end                    
-                            if contains(fileName,'RecalcTime')  || contains(fileName,'sample_tv')
+                            if contains(fileName,'RecalcTime') ...
+                                      || contains(fileName,'sample_tv')...
+                                      || contains(fileName,'clean_tv')
                                 save_bor(fileName,8,dataOut);
                             else
                                 save_bor(fileName,1,dataOut);
@@ -388,7 +394,8 @@ function errCode = saveAll(statsNew,fileNamesIn,fieldNamesIn,currentTv,inputTv,m
         
                         if contains(fileName,'RecalcTime') ...
                                 || contains(fileName,'TimeVector') ...
-                                || contains(fileName,'sample_tv')
+                                || contains(fileName,'sample_tv') ...
+                                || contains(fileName,'clean_tv')
                             oldTrace = read_bor(fileName,8);
                         else                    
                             oldTrace = read_bor(fileName);
@@ -404,7 +411,8 @@ function errCode = saveAll(statsNew,fileNamesIn,fieldNamesIn,currentTv,inputTv,m
                         % Save the new combined trace
                         if contains(fileName,'RecalcTime') ...
                                 || contains(fileName,'TimeVector') ...
-                                || contains(fileName,'sample_tv')
+                                || contains(fileName,'sample_tv')...
+                                || contains(fileName,'clean_tv')
                             save_bor(fileName,8,dataOut);
                         else
                             save_bor(fileName,1,dataOut);
@@ -441,7 +449,8 @@ function errCode = saveAll(statsNew,fileNamesIn,fieldNamesIn,currentTv,inputTv,m
                && ~strcmpi(allFiles(cntAllFiles).name,'TimeVector') ...
                && ~contains(allFiles(cntAllFiles).name,'.mat','IgnoreCase',true) ...
                && ~contains(allFiles(cntAllFiles).name,'.DS_Store') ...
-               && ~strcmpi(allFiles(cntAllFiles).name,'clean_tv')
+               && ~contains(allFiles(cntAllFiles).name,'clean_tv')
+                
                 foundFile = false;                      % Default: the file does not exist in fileNamesIn  
                 % search for fileName in fileNamesIn
                 for cntAllFields = 1:length(fileNamesIn)
@@ -459,7 +468,8 @@ function errCode = saveAll(statsNew,fileNamesIn,fieldNamesIn,currentTv,inputTv,m
                     % Start by loading the file up                  
                     if contains(fileName,'RecalcTime') ...
                             || contains(fileName,'TimeVector') ...
-                            || contains(fileName,'sample_tv')
+                            || contains(fileName,'sample_tv') ...
+                            || contains(fileName,'clean_tv')
                         oldTrace = read_bor(fileName,8);
                     else
                         oldTrace = read_bor(fileName);
@@ -472,7 +482,8 @@ function errCode = saveAll(statsNew,fileNamesIn,fieldNamesIn,currentTv,inputTv,m
                     % Save the new combined trace
                     if contains(fileName,'RecalcTime') ...
                             || contains(fileName,'TimeVector') ...
-                            || contains(fileName,'sample_tv')
+                            || contains(fileName,'sample_tv') ...
+                            || contains(fileName,'clean_tv')
                         save_bor(fileName,8,dataOut);
                     else
                         save_bor(fileName,1,dataOut);

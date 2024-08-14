@@ -1,7 +1,7 @@
 function [Agg_Out,Start_tv,Start_dt,Map_to_Group,Map_from_Group] = Resample(x,tv_in,interval,stats,missing);
     arg_default('interval','day')
-    arg_default('missing',0)
     arg_default('stats',{'mean','std','count'})
+    arg_default('missing',0)
     if missing == 1
         nan_procedure = 'includenan';
     else

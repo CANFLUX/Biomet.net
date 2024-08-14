@@ -5,12 +5,15 @@ function [Status1,Message1,MessageID1] = ClimateStation_movefile(fid)
 %                           safely handle files with the same names.
 %                  
 %
-% (c) Zoran Nesic       File created:   Oct 6, 2014
-%                       Last modified:  Nov 2, 2023
+% (c) Zoran Nesic       File created:   Oct  6, 2014
+%                       Last modified:  Aug  3, 2024
 
 
 % Revisions
 %
+% Aug 3, 2024 (Zoran)
+%   - finally remembered to change the source folder-name for the
+%   ubcraw.dat file. They've been on the T: drive for a while now.
 % Nov 18, 2023 (Zoran)
 %   - Added an optional fid input parameter.
 % Nov 2, 2023 (Zoran)
@@ -29,7 +32,9 @@ arg_default('fid',1)
 fprintf(fid,'========== Started:%s (%s) =========\n',mfilename,datestr(now));
 try
     fileName = 'UBRAW.dat';
-    filePath = 'D:\Sites\Sync\Sync\ClimateStation_to_UBC';
+    
+    %filePath = 'D:\Sites\Sync\Sync\ClimateStation_to_UBC'; % Changed Aug 3, 2024
+    filePath = 'T:\Research_Groups\BioMet\ClimateStation';
     destinationPath = 'D:\SITES\ubc\CSI_NET';
     fileExt = datestr(now,30);
     fileExt = fileExt(1:8);

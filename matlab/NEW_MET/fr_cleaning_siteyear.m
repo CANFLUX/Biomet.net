@@ -32,6 +32,9 @@ function data_cleaned = fr_cleaning_siteyear(Year,SiteId,stage,db_ini)
 %
 % Revisions:
 %
+% Aug 6, 2024 (Zoran)
+%   - Added saving the cleaning stats to Derived_Variables folder under
+%     SiteId_FirstStage_stats.mat
 % May 10, 2024 (Zoran)
 %   - Removed some legacy code used to find Database path
 %   - Syntax cleanup
@@ -107,6 +110,15 @@ if stage == 1
     else
         data_cleaned = data_depend;
     end
+
+    % Save cleaning stats under Derived_variables. First remove
+    % data fields to save space.    
+    data_1st_stage_stats = rmfield(data_cleaned,'data');
+    data_1st_stage_stats = rmfield(data_1st_stage_stats,'data_old');
+    data_1st_stage_stats = rmfield(data_1st_stage_stats,'timeVector');
+    data_1st_stage_stats = rmfield(data_1st_stage_stats,'DOY');
+    pth_stats = fullfile(pth_proc,'Derived_Variables',[SiteId '_FirstStage_stats']);
+    save(pth_stats,"data_1st_stage_stats");    
 end
 
 %------------------------------------------------------------------

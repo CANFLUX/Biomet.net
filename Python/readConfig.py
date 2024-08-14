@@ -7,9 +7,10 @@ import sys
 import yaml # Note: you need to install the "pyyaml" package, e.g., pip install pyyaml
 import argparse
 
-os.chdir(os.path.split(__file__)[0])
 
 def set_user_configuration(user_defined=[]):
+    wd = os.getcwd()
+    os.chdir(os.path.split(__file__)[0])
     # Parse the config settings
     with open('config_files/config.yml') as yml:
         config = yaml.safe_load(yml)
@@ -32,6 +33,7 @@ def set_user_configuration(user_defined=[]):
                 config['tasks'].update(yaml.safe_load(yml))
         else:
             sys.exit(f"Missing {req}")
+    os.chdir(wd)
     return(config)
 
 # If called from command line ...

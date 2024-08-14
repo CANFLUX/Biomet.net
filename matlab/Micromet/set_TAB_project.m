@@ -9,10 +9,14 @@ function structProject = set_TAB_project(projectPath,flagSetUserData)
 %       we finalize the format of structProject.
 %
 % Zoran Nesic           File created:       May 15, 2024
-%                       Last modification:  May 22, 2024
+%                       Last modification:  Aug  8, 2024
 
 % Revisions
 %
+% Aug 8, 2024 (Zoran)
+%   - Fixed a bug where if projectPath was a string and not a char the 
+%     biomet_database_default.m creation would fail. Made sure that the projectPath
+%     is a char.
 % May 22, 2024 (Zoran)
 %   - Added automatic creation of:
 %       - biomet_database_default.m
@@ -23,7 +27,7 @@ arg_default('flagSetUserData',0);
 
 % Make sure the file separators are set properly for 
 % Windows and macOS
-projectPath = fullfile(projectPath);
+projectPath = char(fullfile(projectPath));
 
 % projectPath must exist
 if ~exist(projectPath,'dir')
