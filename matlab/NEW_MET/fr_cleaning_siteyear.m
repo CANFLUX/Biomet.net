@@ -32,6 +32,10 @@ function data_cleaned = fr_cleaning_siteyear(Year,SiteId,stage,db_ini)
 %
 % Revisions:
 %
+% Aug 14, 2024 (Zoran)
+%   - Added year string to SiteId_yyyy_FirstStage_stats.mat otherwise only
+%     the last year's data that's been cleaned would be kept.
+%   - added testing if single point interpolation is required (globalVars.other.singlePointInterpolation='on')
 % Aug 6, 2024 (Zoran)
 %   - Added saving the cleaning stats to Derived_Variables folder under
 %     SiteId_FirstStage_stats.mat
@@ -101,8 +105,17 @@ if stage == 1
     % clean dependents
     data_depend = clean_all_dependents(data_auto,[],ct);
     
-    % Clean traces 
-    data_depend   = clean_traces( data_depend );
+    % Clean traces
+    % Use the optional globalVars.other.singlePointInterpolation to control 
+    % the single missing point interpolation.
+    if     isfield(data_depend(1).ini,'globalVars') ...
+        && isfield(data_depend(1).ini.globalVars,'other') ...
+        && isfield(data_depend(1).ini.globalVars.other,'singlePointInterpolation')
+        interp_flag = data_depend(1).ini.globalVars.other.singlePointInterpolation;
+    else
+        interp_flag = 'no_interp';
+    end
+    data_depend   = clean_traces( data_depend,interp_flag );
     
     if ~isempty(mat)
         %   data_out = compare_trace_str(trace_str,old_structure,lc_path)
@@ -117,7 +130,7 @@ if stage == 1
     data_1st_stage_stats = rmfield(data_1st_stage_stats,'data_old');
     data_1st_stage_stats = rmfield(data_1st_stage_stats,'timeVector');
     data_1st_stage_stats = rmfield(data_1st_stage_stats,'DOY');
-    pth_stats = fullfile(pth_proc,'Derived_Variables',[SiteId '_FirstStage_stats']);
+    pth_stats = fullfile(pth_proc,'Derived_Variables',[SiteId '_' yy_str '_FirstStage_stats']);
     save(pth_stats,"data_1st_stage_stats");    
 end
 

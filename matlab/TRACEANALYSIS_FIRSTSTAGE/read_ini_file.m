@@ -34,6 +34,9 @@ function trace_str_out = read_ini_file(fid,yearIn,fromRootIniFile)
 
 % Revisions
 %
+% Aug 14, 2024 (Zoran)
+%   - Saved globalVars.other under the field .ini.globalVars.other. That way the globalVars can be used in
+%     other parts of the program if needed. One example would be globalVars.other.singlePointInterpolation = 'on'.
 % June 7/8, 2024 (Zoran)
 %   - Removed the warning message saying that the first stage ini file should be second stage.
 %     This warning/error was introduced when "Evaluate" option was added to the first stage.
@@ -558,6 +561,10 @@ if ~flagRecursiveCall
                     end
                 end                    
             end
+        end
+        % if globalVars.other exist, store them under the ini.globalVars.other field
+        if exist('globalVars','var') && isfield(globalVars,'other')
+            trace_str(cntTrace).ini.globalVars.other = globalVars.other;
         end
     end
     
