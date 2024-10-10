@@ -20,12 +20,16 @@ function [EngUnits, Header,tv,outStruct] = fr_read_EddyPro_file(fileName,assign_
 %
 %
 % (c) Zoran Nesic                   File created:       Aug 25, 2022
-%                                   Last modification:  Sep  2, 2024
+%                                   Last modification:  Sep 10, 2024
 %
 
 % Revisions (last one first):
 %
-% Sep 2, 2024
+% Sep 10, 2024 (Zoran)
+%   - New feature: using optionsFileRead.flagFileType user can specify the EddyPro file 
+%     type directly (options = {'biomet','fulloutput','summary'}). Otherwise program will
+%     try to "guess" the file type based on the data file name. 
+% Sep 2, 2024 (Zoran)
 %   - Added a new input parameter: optionsFileRead 
 % Aug 25, 2024 (Zoran)
 %   - For full_output files, changed from:
@@ -51,7 +55,19 @@ function [EngUnits, Header,tv,outStruct] = fr_read_EddyPro_file(fileName,assign_
 %   - added spliting flag variables into multiple variables.
 %
 
-    if contains(fileName,'_biomet_','IgnoreCase',true)
+    arg_default('assign_in',[]);
+    arg_default('varName','Stats');
+    arg_default('optionsFileRead',[])
+
+    % flagFileType can be given either explicitly using optionsFileRead.flagFileType
+    % or it can be "guessed" based on the file name (former is preferred).
+    % flagFileType = {'biomet','fulloutput','summary'}
+    if ~isempty(optionsFileRead) && isfield(optionsFileRead,'flagFileType')
+        flagFileType = optionsFileRead.flagFileType;
+        if ~any(strcmpi({'biomet','fulloutput','summary'},flagFileType))
+            error('Wrong flagFileType in optionsFileRead (%s)',flagFileType);
+        end
+    elseif contains(fileName,'_biomet_','IgnoreCase',true)
         flagFileType = 'biomet';
     elseif contains(fileName,'_full_output_','IgnoreCase',true)
         flagFileType = 'fulloutput';
@@ -62,9 +78,7 @@ function [EngUnits, Header,tv,outStruct] = fr_read_EddyPro_file(fileName,assign_
     end
 
     try
-        arg_default('assign_in',[]);
-        arg_default('varName','Stats');
-        arg_default('optionsFileRead',[])
+
         
         if strcmpi(flagFileType,'fulloutput')
             timeInputFormat = {[],'HH:mm'}; 
