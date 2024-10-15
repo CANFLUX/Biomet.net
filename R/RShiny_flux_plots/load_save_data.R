@@ -1,8 +1,35 @@
-# Load ini file
-#setwd(args[2])
-source("/Users/saraknox/Code/local_data_cleaning/Projects/EcoFlux/Database/Calculation_Procedures/RShiny_flux_plots_ini/EcoFlux_ini.R")
+# Load libraries
+library(ggplot2)
+library(dplyr)
+library(shiny)
+library(patchwork)
+library(plotly)
+library(gapminder)
+library(shinycssloaders)
+library(readxl)
+library(stringi)
+library(shinythemes)
+library(cowplot)
+library(imager) # had to download quartz to be able to run this library properly (https://www.xquartz.org) & may need to use install.packages("igraph", type="binary")
+library(naniar)
+library(GGally)
+library(shinydashboard)
+library(tidyr)
+library(tibble)
+library(epitools)
+library(lubridate)
+library(hms)
+library(tidyr)
+library(forecast)
+library(reshape2)
+library(stringr)
+library(data.table)
+library(ggpmisc)
+library(ggrepel)
+# reactiveConsole(T) # allows the csv file to be used properly
+# “install.packages(“igraph”, type=“binary”) - uncomment if receiving a “there is no package called ‘igraph’” error when loading imager
 
-setwd(main_dir)
+
 # List all directories and subdirectories
 dir_list <- list.dirs(main_dir,full.names = TRUE,  
                       recursive = TRUE)

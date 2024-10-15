@@ -17,37 +17,6 @@
 # Revisit WD
 
 # 1. SET UP  -----
-# Load libraries
-library(ggplot2)
-library(dplyr)
-library(shiny)
-library(patchwork)
-library(plotly)
-library(gapminder)
-library(shinycssloaders)
-library(readxl)
-library(stringi)
-library(shinythemes)
-library(cowplot)
-library(imager) # had to download quartz to be able to run this library properly (https://www.xquartz.org) & may need to use install.packages("igraph", type="binary")
-library(naniar)
-library(GGally)
-library(shinydashboard)
-library(tidyr)
-library(tibble)
-library(epitools)
-library(lubridate)
-library(hms)
-library(tidyr)
-library(forecast)
-library(reshape2)
-library(stringr)
-library(data.table)
-library(ggpmisc)
-library(ggrepel)
-# reactiveConsole(T) # allows the csv file to be used properly
-# “install.packages(“igraph”, type=“binary”) - uncomment if receiving a “there is no package called ‘igraph’” error when loading imager
-
 # Load data from tmp folder
 load("data_tmp/all_data.RData")
 
