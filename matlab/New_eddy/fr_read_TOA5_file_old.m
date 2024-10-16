@@ -1,4 +1,4 @@
-function [EngUnits,Header,tv,dataOut] = fr_read_TOA5_file(fileName,time_str_flag,headerlines,defaultNaN,assign_in,strbuffsize,numOfLinesToRead,varName) %#ok<*STOUT>
+function [EngUnits,Header,tv,dataOut] = fr_read_TOA5_file_old(fileName,time_str_flag,headerlines,defaultNaN,assign_in,strbuffsize,numOfLinesToRead,varName) %#ok<*STOUT>
 % [EngUnits,Header,tv] = fr_read_TOA5_file(fileName,time_string_flag,headerlines,defaultNaN,asign_flag)
 %
 % Read CSI TOA5 files (ascii output tables from table based loggers)
