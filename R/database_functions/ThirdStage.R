@@ -321,11 +321,27 @@ Run_REddyProc <- function() {
   # Rename column names to variable names in REddyProc
   colnames(data_REddyProc)<-c(names(REddyConfig$vars_in),"DateTime","Year","DoY","Hour")
   
-  # Limit to default REddyProc season-years bounding the site-years requested
-  start_time <- paste(as.character(min(config$years)-1),"-12-01 00:00:00",sep='')
-  end_time <- paste(as.character(max(config$years)+1),"-03-01 00:00:00",sep='')
-  data_REddyProc <- data_REddyProc %>% filter(
-    DateTime > as.POSIXct(start_time, tz = "UTC") & DateTime < as.POSIXct(end_time, tz = "UTC"))
+  if (!('season' %in% colnames(data_REddyProc))){
+    # Limit to default REddyProc season-years bounding the site-years requested
+    # Create Season Year Variable and filter out any SeasonYear with < 700 obs.
+    # Exit if no data remain
+    start_time <- paste(as.character(min(config$years)-1),"-12-01 00:00:00",sep='')
+    end_time <- paste(as.character(max(config$years)+1),"-03-01 00:00:00",sep='')
+    data_REddyProc <- data_REddyProc %>% filter(
+      DateTime > as.POSIXct(start_time, tz = "UTC") & DateTime < as.POSIXct(end_time, tz = "UTC"))
+    data_REddyProc$SeasonYear = (year(data_REddyProc$DateTime)+floor(month(data_REddyProc$DateTime)/12))
+    bySeasonYear <- data_REddyProc %>%
+    group_by(SeasonYear) %>%
+    summarise(across(names(REddyConfig$vars_in), ~ sum(!is.na(.)), .names = "countFlag_{col}"))
+    # # REddyProc Will Crash if given any season with less than 160 observations
+    seasonFilter <- bySeasonYear %>%  filter(if_any(starts_with("countFlag_"), ~ . < 700))
+    data_REddyProc <- data_REddyProc %>%  filter(!(SeasonYear %in% seasonFilter$SeasonYear))
+    if((dim(data_REddyProc)[1]==0)){
+      print('Insufficient data available for specified site-years to run REddyProc')
+      return(input_data)
+    }
+    browser()
+  }
 
   # Joined to ReddProc Output after processing
   time_cols <- input_data[c("DateTime","Year","DoY","Hour")] %>% filter(
@@ -344,7 +360,6 @@ Run_REddyProc <- function() {
   EProc$sSetLocationInfo(LatDeg = config$Metadata$lat, 
                          LongDeg = config$Metadata$long,
                          TimeZoneHour = config$Metadata$TimeZoneHour)
-  
   if (REddyConfig$Ustar_filtering$run_defaults){
     EProc$sEstimateUstarScenarios()
   } else {
@@ -473,6 +488,7 @@ write_traces <- function(data,update_names,unlink=FALSE){
     cols_out <- colnames(data)
     cols_out <- cols_out[! cols_out %in% c("Year","DoY","Hour")]
   
+    update_names = update_names[names(update_names)!='DateTime']
     # Drop incoming data from input data (simplifies join procedures)
     input_data <- input_data[,!(names(input_data) %in% names(update_names))]
 

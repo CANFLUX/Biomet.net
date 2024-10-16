@@ -29,7 +29,7 @@ RandomForestModel <- function(df,fill_name,log_file_path,retrain_every_n_months=
   use_existing_model = FALSE
   model_name = file.path(log_file_path,paste(var_dep,"RF_Model.RData",sep="_"))
   if (file.exists(model_name) && !is.null(retrain_every_n_months)){
-    last_update <- as.POSIXct(file.info(model_name)$ctime, format="%Y-%m-%d %H:%M:%S")
+    last_update <- as.POSIXct(file.info(model_name)$mtime, format="%Y-%m-%d %H:%M:%S")
     current_date <- Sys.time()
     update_interval <- interval(last_update, current_date)/months(1)
     if (update_interval < retrain_every_n_months){
