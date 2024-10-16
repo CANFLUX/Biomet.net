@@ -30,11 +30,13 @@ function [EngUnits,Header,tv,dataOut] = fr_read_TOA5_file(fileName,time_str_flag
 % and all their subvariants.
 %
 % (c) Zoran Nesic (Kai Morgenstern in absence)  File created:      Jun  8, 2010
-%                                               Last modification: Jan 22, 2020
+%                                               Last modification: Oct 15, 2024
 %
 
 % Revisions:
 %
+% Oct 15, 2024 (Rosie & Zoran)
+%   - Bug fix: Added the required parameter dataOut.TimeVector to the output.
 % Jan 22, 2020 (Zoran)
 %   - added output parameter dataOut (a structure containing all variables)
 %   - added input parameter varName
@@ -240,8 +242,9 @@ else
     tv = NaN;
 end
 
-cmdStr = 'dataOut.tv = tv;';
-eval(cmdStr)
+dataOut.tv = tv;
+dataOut.TimeVector = tv;
+
 if strcmpi(assign_in,'caller')
     assignin(assign_in,varName, dataOut);
 end
