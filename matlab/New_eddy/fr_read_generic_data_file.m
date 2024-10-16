@@ -1,4 +1,4 @@
-function [EngUnits,Header,tv,outStruct] = fr_read_generic_data_file(fileName,assign_in,varName, dateColumnNum, timeInputFormat,colToKeep,structType,inputFileType,modifyVarNames,VariableNamesLine)
+function [EngUnits,Header,tv,outStruct] = fr_read_generic_data_file(fileName,assign_in,varName, dateColumnNum, timeInputFormat,colToKeep,structType,inputFileType,modifyVarNames,VariableNamesLine,rowsToRead,isTimeDuration)
 %  fr_read_generic_data_file - reads csv and xlsx data files for Biomet/Micromet projects 
 %
 % Note: This function should replace a set of similar functions written for
@@ -40,14 +40,24 @@ function [EngUnits,Header,tv,outStruct] = fr_read_generic_data_file(fileName,ass
 %                         1 - let Matlab modify col names to proper Matlab variable names
 %   VariableNamesLine   - 0 [default] let Matlab decide where column names are
 %                         n - the row numnner where the column names are
+%   rowsToRead          - define the rows to be read from the file. Default is [VariableNamesLine+1 Inf]
+%   isTimeDuration      - converts Time column to 'duration' instead of 'datetime'. Obsolete.
 %                          
 %
 % (c) Zoran Nesic                   File created:       Dec 20, 2023
-%                                   Last modification:  May 10, 2024
+%                                   Last modification:  Aug 25, 2024
 %
 
 % Revisions (last one first):
 %
+% Aug 25, 2024 (Zoran)
+%   - used a better way to create the datetime from the Data and Time columns. Converting Date to 'datetime' 
+%     and Time to 'duration' and then adding them up works better and enables proper conversion when the table
+%     has only one data row (Matlab's defaults would not work in this case and the function would error.
+%   - Added an optional input rowsToRead. In case that some rows at the beginning need to be skipped
+%     use this parameter. rowsToRead = [4 Inf] skips the first 3 rows.
+%   - Added an option to force conversion of "Time" column to type "duration" instead of default "datetime"
+%     I don't think we'll need this - Matlab seems to know what to do.
 % May 10, 2024 (Zoran)
 %   - Fixed a bug where the program didn't handle properly a special
 %     variable name (z-d)/L. It was being converted to z_d instead of
@@ -82,22 +92,23 @@ function [EngUnits,Header,tv,outStruct] = fr_read_generic_data_file(fileName,ass
 %  Dec 21, 2023 (Zoran)
 %   - added more input parameters and comments.
 
-arg_default('timeInputFormat',{'uuuuMMddHHmm'})   % Matches time format for ORG Manitoba files.
-arg_default('dateColumnNum',1)                  % table column with dates
-arg_default('colToKeep', [1 Inf])                   % keep all table columns in EngUnits (not a good idea if there are string columns)
-arg_default('inputFileType','delimitedtext');
-arg_default('VariableNamesLine',1)
-arg_default('structType',0)
-arg_default('modifyVarNames',false);             % let readtable modify variable names
-arg_default('VariableNamesLine',0);              % indicates which row contains names of columns
-
-Header = [];  % just a place holder to keep the same output parameters 
-              % as for all the other fr_read* functions.
+    % Set the defaults
+    arg_default('assign_in','base');
+    arg_default('varName','Stats');
+    arg_default('timeInputFormat',{'uuuuMMddHHmm'})   % Matches time format for ORG Manitoba files.
+    arg_default('dateColumnNum',1)                  % table column with dates
+    arg_default('colToKeep', [1 Inf])                   % keep all table columns in EngUnits (not a good idea if there are string columns)
+    arg_default('inputFileType','delimitedtext');
+    arg_default('VariableNamesLine',1)
+    arg_default('structType',0)
+    arg_default('modifyVarNames',false);             % let readtable modify variable names
+    arg_default('VariableNamesLine',0);              % indicates which row contains names of columns
+    arg_default('rowsToRead',[])
+    arg_default('isTimeDuration',false)              % default is that variable Time is data type 'datetime', true - 'duration'
+    
+    Header = [];  % just a place holder to keep the same output parameters 
+                  % as for all the other fr_read* functions.
     try
-        % Set the defaults
-        arg_default('assign_in','base');
-        arg_default('varName','Stats');
-
         % Read the file using readtable function
         if modifyVarNames
             opts = detectImportOptions(fileName,'FileType',inputFileType,'VariableNamesLine',VariableNamesLine);
@@ -108,9 +119,19 @@ Header = [];  % just a place holder to keep the same output parameters
             %opts.VariableNamingRule = 'modify';
         end
         if length(dateColumnNum)==2
-            timeVariable = opts.VariableNames(dateColumnNum(2));
-            opts=setvartype(opts,timeVariable,'datetime');
-            opts.VariableOptions(dateColumnNum(2)).InputFormat = char(timeInputFormat{2});
+            opts.VariableTypes{dateColumnNum(1)} = 'datetime';           
+            if isTimeDuration
+                opts.VariableTypes{dateColumnNum(2)} = 'duration';
+            else
+                timeVariable = opts.VariableNames(dateColumnNum(2));
+                opts=setvartype(opts,timeVariable,'datetime');
+                opts.VariableOptions(dateColumnNum(2)).InputFormat = char(timeInputFormat{2});
+            end
+        end
+        
+        % Select which rows are data lines
+        if ~isempty(rowsToRead)
+            opts.DataLines = rowsToRead;
         end
 
         % Detect if this is HF data set (data from GHG *.data file)
@@ -145,7 +166,15 @@ Header = [];  % just a place holder to keep the same output parameters
         if ~modifyVarNames
             f_tmp = renamevars(f_tmp,f_tmp.Properties.VariableNames,renameFields(variableNames));
         end
-        tv_tmp = table2array(f_tmp(:,dateColumnNum));      % Load end-time in the format yyyymmddHHMM
+        % convert to datetime
+        if ~isTimeDuration
+            % if the table has only one column for datetime conversion is simple
+            tv_tmp = table2array(f_tmp(:,dateColumnNum));      % Load end-time in the format yyyymmddHHMM
+        else
+            % if the table has two columns the first one is type:datetime and the second one is type:'duration'
+            % add them up
+            tv_tmp = table2array(f_tmp(:,dateColumnNum(1)))+table2array(f_tmp(:,dateColumnNum(2)));
+        end
         if ~isdatetime(tv_tmp)
             tv_dt=datetime(num2str(tv_tmp),'inputformat',char(timeInputFormat{1}));
         else

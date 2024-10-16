@@ -1,0 +1,208 @@
+---
+title: "Data QCQA" 
+knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, encoding = encoding, output_file = file.path(dirname(inputFile), 'BB_data_QCQA.html')) })
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: scroll
+runtime: shiny
+---
+<!-- NOTES: 
+1) Make sure to update file name in knit above (e.g., BB2_data_QCQA.html) 
+2) Update ini file (e.g., BB2_data_QCQA.R) -->
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(shiny)
+library(dplyr)
+library(plotly)
+library(ggplot2)
+library(ggpubr)
+library(forecast)
+library(knitr)
+library(lubridate)
+library(hms)
+library(gridExtra)
+library(amerifluxr)
+library(heatmaply)
+library(data.table)
+library(ggpmisc)
+```
+
+```{r echo=FALSE}
+# Comments/Notes
+# 1) See if want to update sonic, temperature, and rad plots using multiple_plotlys
+
+# 2) NEED TO ADD 7200, 7700 temp and 7200 RH & CHECK WHICH TEMP IS USED TO SONIC (cross wind corrected or no) ADD HERE after MEETING ON THURSDAY!
+# 3) Try to track down WD_CUP at all sites
+# 4) Remove duplicate variables (e.g., see google sheets for tracking)
+# 5) Think about output directory (can change by replacing 'dirname(inputFile)' above)
+# 6) Add EBC
+```
+
+<!-- specify init file to read -->
+```{r echo=FALSE, include=FALSE}
+read_chunk('C:/Biomet.net/R/data_visualization/ini_files/BB_v2_data_QCQA.R')
+```
+
+```{r, echo=FALSE, include=FALSE}
+<<LoadData>>
+```
+
+Sonic data 
+=======================================================================
+
+Column {data-width=600}
+-----------------------------------------------------------------------
+
+### Sonic variables and diagnostics
+
+```{r}
+sonic_plots(data,vars_WS,vars_WD,vars_other_sonic,units_other_sonic,pitch_ind)
+```
+
+Column {data-width=400}
+-----------------------------------------------------------------------
+
+### mean wind speed vs. u*
+```{r}
+scatter_plot_QCQA(data,vars_WS[1],vars_other_sonic[1],
+                  "WS (m/s)","USTAR (m/s)",0)
+```
+
+### sigma_w vs. u*
+```{r}
+scatter_plot_QCQA(data,vars_other_sonic[1],
+                  wind_std,
+                  "USTAR (m/s)","W_SIGMA (m/s)",0)
+```
+
+Temp/RH 
+=======================================================================
+
+Column {data-width=600}
+-----------------------------------------------------------------------
+
+### Air and RH temperature comparison 
+```{r}
+temp_RH_plots(data,vars_temp,vars_RH)
+```
+
+Column {data-width=400}
+-----------------------------------------------------------------------
+
+### Temperature scatterplot
+```{r}
+scatter_plot_QCQA(data,vars_temp[1],vars_temp[2],"HMP Air temperature (°C)","Other Air Temperature (°C)",0)
+```
+
+### RH HMP vs. RH 7200
+
+```{r}
+scatter_plot_QCQA(data,vars_RH[1],vars_RH[2], "HMP RH (%)","LI-7200 RH (%)",0)
+```
+
+Radiation Time Series 
+=======================================================================
+
+Column {data-width=600}
+-----------------------------------------------------------------------
+
+### Radiation timeseries  
+```{r}
+radiation_plots(data,vars_radiometer,vars_NETRAD,vars_PPFD,var_potential_rad)
+```
+
+Column {data-width=400}
+-----------------------------------------------------------------------
+
+### SW_IN vs PPDF_IN
+```{r}
+scatter_plot_QCQA(data,vars_radiometer[1],vars_PPFD[1], "SW_IN (W/m2)","PPFD_IN (µmolPhoton/m2/s1)",0)
+```
+
+### SW_OUT vs PPFD_OUT
+
+```{r}
+scatter_plot_QCQA(data,vars_radiometer[2],vars_PPFD[2], "SW_OUT (W/m2)","PPFD_OUT (µmolPhoton/m2/s1)",00)
+```
+
+Radiation Diagnostics
+=======================================================================
+
+Row 
+-----------------------------------------------------------------------
+
+### Checking for offsets between SW_IN (blue) and potential radiation (red)  
+```{r}
+SWIN_vs_potential_rad(diurnal.composite)
+```
+
+### Cross between SW_IN and potential radiation
+```{r}
+p <- xcorr_rad(diurnal.composite)
+toWebGL(p[[1]])
+```
+
+Row 
+------------------------------------------------------------------------
+
+### Checking for offsets between PPFD_IN (green) and potential radiation (red)  
+```{r}
+PPFDIN_vs_potential_rad(diurnal.composite)
+```
+
+### Cross correlation analysis between PPDF_IN and potential radiation
+```{r}
+p <- xcorr_rad(diurnal.composite)
+toWebGL(p[[2]])
+```
+
+Pressure 
+=======================================================================
+
+Column {data-width=600}
+-----------------------------------------------------------------------
+
+### Pressure 
+```{r}
+# Barometric pressure 
+#plotly_loop(data,vars_pressure,"Barometric pressure (kPa)")
+```
+
+Column {data-width=400}
+-----------------------------------------------------------------------
+
+### Pressure comparison (Met PA vs EC PA)
+```{r}
+
+```
+
+Other met 
+=======================================================================
+
+Column {.sidebar}
+-----------------------------------------------------------------------
+```{r}
+selectInput('ycol', 'Variable', names(data))
+```
+
+Column {data-width=350}
+-----------------------------------------------------------------------
+
+### Additional meteorological variables
+```{r}
+multiple_plotly_plots(data,var_other,yaxlabel_other)
+```
+
+Flux time series {data-orientation=rows} 
+=======================================================================
+
+Row 
+-----------------------------------------------------------------------
+
+### Flux time series
+```{r}
+
+```
+

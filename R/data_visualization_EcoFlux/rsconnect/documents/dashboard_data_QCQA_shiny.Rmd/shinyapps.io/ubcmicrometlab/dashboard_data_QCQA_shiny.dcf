@@ -1,0 +1,13 @@
+name: dashboard_data_QCQA_shiny
+title: dashboard_data_QCQA_shiny
+username:
+account: ubcmicrometlab
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 8646706
+bundleId: 6995939
+url: https://ubcmicrometlab.shinyapps.io/dashboard_data_QCQA_shiny/
+when: 1679542385.24042
+lastSyncTime: 1679542385.24043
+asMultiple: FALSE
+asStatic: FALSE

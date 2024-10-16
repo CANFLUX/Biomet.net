@@ -126,10 +126,10 @@ if stage == 1
 
     % Save cleaning stats under Derived_variables. First remove
     % data fields to save space.    
-    data_1st_stage_stats = rmfield(data_cleaned,'data');
+    data_1st_stage_stats = rmfield(data_cleaned,'DOY');
+    data_1st_stage_stats = rmfield(data_1st_stage_stats,'data');
     data_1st_stage_stats = rmfield(data_1st_stage_stats,'data_old');
     data_1st_stage_stats = rmfield(data_1st_stage_stats,'timeVector');
-    data_1st_stage_stats = rmfield(data_1st_stage_stats,'DOY');
     pth_stats = fullfile(pth_proc,'Derived_Variables',[SiteId '_' yy_str '_FirstStage_stats']);
     save(pth_stats,"data_1st_stage_stats");    
 end

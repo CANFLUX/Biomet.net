@@ -5,7 +5,7 @@ R/database_functions/Test.R
 R/data_visualization/.Rhistory
 R/database_functions/.Rhistory
 .lintr
-
+.vscode
 # Windows default autosave extension
 *.asv
 

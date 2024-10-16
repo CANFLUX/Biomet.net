@@ -10,6 +10,7 @@ dbase_metadata:
   traces:
     dtype: float32
     precision: 4
+    
 stage:
   # All paths assumed to be relative to Database/YYYY/SiteID/ e.g., C:/Users/User/Database/YYYY/SiteID/
   # (see by "user_path_definitions_template.yml")

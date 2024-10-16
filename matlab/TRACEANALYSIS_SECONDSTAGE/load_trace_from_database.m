@@ -73,6 +73,7 @@ if length(trace_in.ini.inputFileName)==1 && ...
     (length(trace_in.ini.inputFileName)==1 && strcmpi(trace_in.ini.inputFileName,'clean_tv') || strcmpi(trace_in.ini.inputFileName,'TimeVector'))
     temp_data = read_bor(fullfile(pth, char(trace_in.ini.inputFileName)),8);			%read tv from database
     timeVector = temp_data;
+    loadError = 0; % Added 2024-07-29 (P.Moore)
 else
     if isfield(trace_in.ini,'inputFileName_dates') && ~isempty(trace_in.ini.inputFileName_dates)
         % Create a time vector first for the current year
@@ -97,7 +98,7 @@ else
                 % (this data trace could be non-existent for this year in which
                 % case program would output errors. This way only relevant
                 % files are read.
-                [temp_data_cur,timeVector] = read_db(Year,SiteID,...
+                [temp_data_cur,timeVector,loadError] = read_db(Year,SiteID,...
                     trace_in.ini.measurementType,inputFileName,warn_flag);
                 if ~exist('temp_data','var')
                     % Create a NaN array of the appropriate length.
@@ -116,7 +117,7 @@ else
             end
         end
     else
-        [temp_data,timeVector] = read_db(Year,SiteID,...
+        [temp_data,timeVector,loadError] = read_db(Year,SiteID,...
             trace_in.ini.measurementType,char(trace_in.ini.inputFileName),warn_flag);
     end
 end
@@ -162,6 +163,7 @@ trace_in.DOY        = timeVector - datenum(Year,1,0);
 trace_in.DOY        = trace_in.DOY - time_shift/24;
 trace_in.timeVector = timeVector;
 trace_in.data_old   = trace_in.data;
+trace_in.Error      = loadError; % Added 2024-07-29 (P.Moore)
 trace_out           = trace_in;
 
 

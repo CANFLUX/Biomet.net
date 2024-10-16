@@ -34,6 +34,12 @@ function trace_str_out = read_ini_file(fid,yearIn,fromRootIniFile)
 
 % Revisions
 %
+% Sep 13, 2024 (Zoran)
+%   - Added more error reporting
+% Sep 2, 2024 (Zoran)
+%   - Improved error reporting. The function now shows which ini file
+%     has an error in it.
+%   - Error messages are now in red color
 % Aug 14, 2024 (Zoran)
 %   - Saved globalVars.other under the field .ini.globalVars.other. That way the globalVars can be used in
 %     other parts of the program if needed. One example would be globalVars.other.singlePointInterpolation = 'on'.
@@ -109,6 +115,10 @@ if isempty(fromRootIniFile)
     flagRecursiveCall = false;
 else
     flagRecursiveCall = true;
+    % load globalVars if they exist.
+    if isfield(fromRootIniFile,'globalVars')
+        globalVars = fromRootIniFile.globalVars;
+    end    
 end
 
 % Legacy issue. The old ini files didn't have Timezone parameter and it was assumed that
@@ -171,11 +181,12 @@ required_second_stage_ini_fields = {'Evaluate1'};
 
 %Read each line of the ini_file given by the file ID number, 'fid', and for each trace
 %listed, store into an array of structures:
+countTraces = 0;
+countLines = 1;
+tm_line = 'There were no lines read!';  % this is the default in case fgetl below fails.
 try
     % Set some locally used variables
     tm_line=fgetl(fid);
-    countTraces = 0;
-    countLines = 1;
     while ischar(tm_line)
         temp_var = '';
         tm_line = strtrim(tm_line);             % remove leading and trailing whitespace chars
@@ -228,9 +239,12 @@ try
             fromRootIniFile.Site_name               = Site_name;
             fromRootIniFile.SiteID                  = SiteID;
             if strcmpi(iniFileType,'first')
-                % Only load these two if doing the first stage ini file
+                % Only load these if doing the first stage ini file
                 fromRootIniFile.Diff_GMT_to_local_time  = Difference_GMT_to_local_time;
                 fromRootIniFile.Timezone                = Timezone;
+                if exist('globalVars','var')
+                    fromRootIniFile.globalVars              = globalVars;
+                end
             end
             fprintf('   Reading included file: %s. \n',fopen(fidInclude));
             trace_str_inlude = read_ini_file(fidInclude,yearIn,fromRootIniFile);
@@ -387,7 +401,8 @@ try
                             %eval(['temp_var.' curr_line ';']);
                         catch ME
                             %Any error's are caught in the try-catch block:
-                            disp(['Error in trace #' num2str(countTraces) ' on line number: ' num2str(countLines) '!']);
+                            fprintf(2,'Error in trace #%d on line number: %d!\n', countTraces,countLines);
+                            fprintf(2,'In file: %s\n',iniFileName)
                             disp(ME);
                             trace_str_out='';
                             return
@@ -522,8 +537,8 @@ try
         countLines = countLines + 1;
     end
 catch ME
+    fprintf(2,'Error while processing: \n%s\n on line:\n     %d:  (%s)\nExiting read_ini_file() ...\n\n\n',iniFileName,countLines,tm_line);
     rethrow(ME);
-    %error('Error while processing: \n%s\n on line:%d:(%s)\nExiting read_ini_file() ...\n',iniFileName,countLines,tm_line);
 end
 
 %--------------------- Global variables -------------------------------------

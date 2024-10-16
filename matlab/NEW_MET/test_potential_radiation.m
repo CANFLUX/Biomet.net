@@ -9,7 +9,7 @@ function [rad_pot,T,sin_psi] = test_potential_radiation(tv,latitude,longitude)
 
 % Created June 7, 2002 by kai*
 
-tv = tv-15/1440;
+%tv = tv-15/1440;
 % Generate DOY and hour of the day
 [yy,mm,dd] = datevec(tv);
 doy = floor(tv - datenum(yy,1,1));

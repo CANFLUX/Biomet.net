@@ -13,10 +13,18 @@ function trace_str = read_data(yearIn, SiteID, ini_file)
 %                      See the function 'read_ini_file' for more information
 
 
-% last modification: Apr 29, 2024
+% last modification: Sep 13, 2024
 
 % revisions:
 %
+% Sep 13, 2024 (Zoran)
+%   - Changed this line:
+%       if isempty(lsttv) & isfield(trace_str(1).ini,'Evaluate1')
+%     to
+%       if isempty(lsttv) & endsWith(ini_file,'_SecondStage.ini','Ignorecase',true)
+%     In the past isfield(trace_str(1).ini,'Evaluate1') was synonym with "is this the
+%     second stage ini" because the FirstStage didn't have the Evaluate
+%     property. That changed so this new option is the way to do it properly.
 % Apr 30, 2024 (Zoran)
 %   - Removed the orphan input parameter "countTraces" from the call to evaluate_trace. 
 % Apr 29, 2024 (Zoran)
@@ -220,7 +228,9 @@ end
 %Verify that the clean_tv structure is loaded
 s = whos('clean*tv');
 lsttv = {s.name}';
-if isempty(lsttv) & isfield(trace_str(1).ini,'Evaluate1')
+% 
+%if isempty(lsttv) & isfield(trace_str(1).ini,'Evaluate1') chaged Sep 13, 2024
+if isempty(lsttv) & endsWith(ini_file,'_SecondStage.ini','Ignorecase',true)
     disp('Warning: Unable to find clean tv trace, output traces may not contain fields DOY or timeVector');
 end
 if isempty(lsttv)

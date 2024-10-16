@@ -11,6 +11,8 @@
 # Setup the config files for your environment accordingly before running
 
 import os
+import sys
+import json
 import argparse
 import numpy as np
 import pandas as pd
@@ -22,50 +24,48 @@ os.chdir(os.path.split(__file__)[0])
 template = 'config_files/csv_from_binary.yml'
 defaultDateRange = [date(datetime.now().year,1,1),datetime.now()]
 
+# Default arguments
+defaultArgs = {
+    'siteID':'BB',
+    'dateRange':[date(datetime.now().year,1,1).strftime("%Y-%m-%d"),datetime.now().strftime("%Y-%m-%d")],
+    'database':'None',
+    'outputPath':'None',
+    'tasks':[template],
+    'stage':'None',
+    'nameTimeStamp':True
+    }
+
 # Create the csv
 # args with "None" value provide option to overwrite default
-# def makeCSV(siteID,dateRange=None,tasks=[template],stage=None,outputPath=None):
-def makeCSV(siteID,**kwargs):
-    # Default arguments
-    defaultKwargs = {
-        'dateRange':None,
-        'database':None,
-        'outputPath':None,
-        'tasks':[template],
-        'stage':None
-        }
-    
+def makeCSV(**kwargs):
     # Apply defaults where not defined
-    kwargs = defaultKwargs | kwargs
+    kwargs = defaultArgs | kwargs
     tasks = kwargs['tasks']
+    siteID = kwargs['siteID']
     
-    config = rCfg.set_user_configuration(tasks)
+    config = rCfg.set_user_configuration({'tasks':tasks})
     # Use default if user does not provide alternative
-    if kwargs['outputPath'] is None:
-        outputPath = config['rootDir']['Outputs']
+    if kwargs['outputPath'] == 'None':
+        outputPath = config['rootDir']['outputs']
     else: outputPath = kwargs['outputPath']
 
     # Root directory of the database
-    if kwargs['database'] is None:
+    if kwargs['database'] == 'None':
         root = config['rootDir']['database']
     else: root = kwargs['database']
 
-    if kwargs['dateRange'] is not None:
-        Range_index = pd.DatetimeIndex(kwargs['dateRange'])
-    else:
-        Range_index = pd.DatetimeIndex(defaultDateRange)
+    Range_index = pd.DatetimeIndex(kwargs['dateRange'])
 
-    print(f'Initializing tasks for {siteID} over:', f"{Range_index.strftime(date_format='%Y-%m-%d %H:%M').values}") 
+    print(f'Generating requested files tasks for {siteID} over:', f"{Range_index.strftime(date_format='%Y-%m-%d %H:%M').values}") 
     
     # Years to process
     Years = range(Range_index.year.min(),Range_index.year.max()+1)
-
     results = {}
     for name,task in config['tasks'].items():
 
-        if kwargs['stage'] is not None:
+        if kwargs['stage'] != 'None':
             task['stage']=config['stage'][kwargs['stage']]
-        else:
+        elif task['stage'] in config['stage'].keys():
             task['stage']=config['stage'][task['stage']]
         # Create a dict of traces
         traces={}
@@ -74,13 +74,23 @@ def makeCSV(siteID,**kwargs):
         columns_tuple = []
         # Create a blank dataframe
         df = pd.DataFrame()
-        
         file = f"{siteID}/{task['stage']}/{config['dbase_metadata']['timestamp']['name']}"
         tv = np.concatenate(
             [np.fromfile(f"{root}{YYYY}/{file}",config['dbase_metadata']['timestamp']['dtype']) for YYYY in Years],
             axis=0)
+        
         DT = pd.to_datetime(tv-config['dbase_metadata']['timestamp']['base'],unit=config['dbase_metadata']['timestamp']['base_unit']).round('S')
-
+        differences = DT.to_series().diff()
+        expected_difference = pd.Timedelta(config['dbase_metadata']['timestamp']['resolution'])
+        anomalies = ((differences != expected_difference)&(pd.isnull(differences) == False))
+        if anomalies.sum()>1:
+            ipt = input(f'Warning: timestamp file {file} appears to be corrupted.  Attempt to coerce Y/N')
+            if ipt.lower() == 'y':
+                DT_s = DT.to_series()
+                DT_s[anomalies] = pd.NaT
+                DT = pd.DatetimeIndex(DT_s.interpolate())
+            elif ipt.lower() != 'n':
+                sys.exit()
         for time_trace,formatting in task['formatting']['time_vectors'].items():
             traces[time_trace] = DT.floor('Min').strftime(formatting['fmt'])
             # Add name-unit pairs to column header list
@@ -105,14 +115,12 @@ def makeCSV(siteID,**kwargs):
         df = pd.DataFrame(data=traces,index=DT)
         # limit to requested timeframe
         df = df.loc[((df.index>=Range_index.min())&(df.index<= Range_index.max()))]
-
         # Apply optional resampling 
         # Add units to header (preferred) or exclude (dangerous)
         if task['formatting']['units_in_header'] == True:
             df.columns = pd.MultiIndex.from_tuples(columns_tuple)
         else:
             df.columns = [c[0] for c in columns_tuple]
-
         if 'resample' in task['formatting']:
             ### Finish stuff here
             aggregation = task['formatting']['resample']['agg'].split(',')
@@ -138,7 +146,10 @@ def makeCSV(siteID,**kwargs):
 
         # Format filename and save output
         dates = Range_index.strftime('%Y%m%d%H%M')
-        fn = f"{siteID}_{name}_{dates[0]}_{dates[1]}"
+        if kwargs['nameTimeStamp'] == True:
+            fn = f"{siteID}_{name}_{dates[0]}_{dates[1]}"
+        else:
+            fn = f"{siteID}_{name}"
         if os.path.isdir(outputPath) == False:
             os.makedirs(outputPath)
         dout = f"{outputPath}/{fn}.csv"
@@ -146,7 +157,6 @@ def makeCSV(siteID,**kwargs):
 
         print(f'See output: {dout}')
         results[name]=dout
-    print('All tasks completed successfully')
     return(results)
 
 # If called from command line ...
@@ -154,59 +164,23 @@ if __name__ == '__main__':
     
     CLI=argparse.ArgumentParser()
     
-    CLI.add_argument(
-        "--siteID", 
-        nargs="?",# Use "?" to limit to one argument instead of list of arguments
-        type=str,
-        default='BB',
-        )
-
-    CLI.add_argument(
-        "--dateRange", 
-        nargs='+', # 1 or more values expected => creates a list
-        type=str,
-        default=[defaultDateRange],
-        )
+    dictArgs = []
+    for key,val in defaultArgs.items():
+        dt = type(val)
+        nargs = "?"
+        if dt == type({}):
+            dictArgs.append(key)
+            dt = type('')
+            val = '{}'
+        elif dt == type([]):
+            nargs = '+'
+            dt = type('')
         
-    CLI.add_argument(
-        "--database", 
-        nargs='+', # 1 or more values expected => creates a list
-        type=str,
-        default=None
-        )
-        
+        CLI.add_argument(f"--{key}",nargs=nargs,type=dt,default=val)
 
-    CLI.add_argument(
-        "--tasks", 
-        nargs='+',
-        type=str,
-        default=[template],
-        )
-      
-    CLI.add_argument(
-        "--outputPath", 
-        nargs='?',
-        type=str,
-        default=None,
-        )
-    
-    CLI.add_argument(
-        "--stage", 
-        nargs='?',
-        type=str,
-        default=None,
-        )
-
-    # Parse the args and make the call
+    # parse the command line
     args = CLI.parse_args()
-
-
-    kwargs = {
-        'dateRange':args.dateRange,
-        'database':args.database,
-        'outputPath':args.outputPath,
-        'tasks':args.tasks,
-        'stage':args.stage
-        }
-    
-    makeCSV(args.siteID,**kwargs)
+    kwargs = vars(args)
+    for d in dictArgs:
+        kwargs[d] = json.loads(kwargs[d])
+    makeCSV(**kwargs)

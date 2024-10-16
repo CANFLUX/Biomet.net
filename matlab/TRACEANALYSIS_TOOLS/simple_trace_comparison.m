@@ -99,9 +99,19 @@ ylabel('input2')
 rsq = corr(input1(idx), input2(idx)).^2;
 xpos = xlims(1)+0.05*(xlims(2)-xlims(1));
 ypos = ylims(1)+0.91*(ylims(2)-ylims(1));
-text(xpos,ypos,char(['slope=' num2str(roundn(fit(1),-2))]))
+slope_val = roundn(fit(1),-2);
+if slope_val==0
+    text(xpos,ypos,char(['slope=' num2str(fit(1),'%1.2E')]))
+else
+    text(xpos,ypos,char(['slope=' num2str(slope_val)]))
+end
 ypos = ylims(1)+0.8*(ylims(2)-ylims(1));
-text(xpos,ypos,char(['int.=' num2str(roundn(fit(2),-2))]))
+int_val = roundn(fit(2),-2);
+if int_val==0
+    text(xpos,ypos,char(['slope=' num2str(fit(2),'%1.2E')]))
+else
+    text(xpos,ypos,char(['int.=' num2str(int_val)]))
+end
 ypos = ylims(1)+0.69*(ylims(2)-ylims(1));
 text(xpos,ypos,char(['r^2=' num2str(roundn(rsq,-2))]))
 

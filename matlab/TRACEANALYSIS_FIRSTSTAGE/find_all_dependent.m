@@ -17,6 +17,11 @@ function [trace_str_out,count]= find_all_dependent(trace_str)
 
 % Revisions
 %
+%  July 29, 2024 (P.Moore)
+%   - With the development of #include ini files, sometimes trace_str might
+%       contain traces that don't exist in the raw database. To avoid
+%       problems with dependents, "& ~isempty(trc.data)" was added to the
+%       conditional statement.
 %  July 25, 2022 (Zoran)
 %   - Change back the upper case letters TA in TA_get_index_traceList to
 %   lower case ta_get_index_traceList.
@@ -29,7 +34,7 @@ trace_str(1).ind_depend = [];
 list_dep = [];
 for ind=1:length(trace_str)   
    trc = trace_str(ind);
-   if isfield(trc.ini,'dependent') & ~isempty(trc.ini.dependent)       %#ok<*AND2>
+   if isfield(trc.ini,'dependent') & ~isempty(trc.ini.dependent) & ~isempty(trc.data) % Added "& ~isempty(trc.data)" 2024-07-29 (P.Moore) 
       trc.ind_depend = ta_get_index_traceList(trc.ini.dependent, trace_str);     
       list_dep = [list_dep ind]; %#ok<*AGROW>
    end

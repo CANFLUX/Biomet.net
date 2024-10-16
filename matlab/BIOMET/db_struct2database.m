@@ -182,16 +182,7 @@ function [structIn,dbFileNames, dbFieldNames,errCode] = db_struct2database(struc
     end    
     
     %%
-    % - Make the function work for multiple years
-    % - the function should work on sparse data (ONLY?!)
-    %   (sparse data sets are sets that contain very few points
-    %    measured with different sampling frequencies)
-    %   That means:
-    %     - time vector should be rounded to the nearest timeUnit
-    %     - load the current content of the db folder
-    %     - find where the new data fits in the existing traces
-    %     - store the combined traces
-    
+    % Cycle through all years and process data one year at a time    
     allYears = unique(year(new_tv));
     allYears = allYears(:)';   % make sure that allYears is "horizontal" vector
     for currentYear = allYears

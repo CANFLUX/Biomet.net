@@ -1,0 +1,241 @@
+---
+title: "DSM_data_secondstage"
+author: "Sara Knox"
+output: html_document
+---
+<!-- NOTES: 
+Need an excel spreadsheet similar to 'name_mapping_DSM.xlsx' to run -->
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(shiny)
+library(dplyr)
+library(plotly)
+library(ggplot2)
+library(knitr)
+library(htmltools)
+knitr::opts_chunk$set(echo = TRUE)
+opts_knit$set(root.dir = "/Users/sara/Code/MLABcode/data_visualization") # Specify directory
+
+# Ideas for improvement
+# 1) Units for ylabel
+# 3) Interactive plots (especially for fluxes)
+```
+
+# Plot first stage data {.tabset}
+
+here you can visualize all the variables from from stage data cleaning and assess if the initial filtering looks reasonable. Note that variable in light gray is the original data and the blue dots is the clean data.
+
+## Met
+```{r create plots met,echo=FALSE,warning=FALSE,message=FALSE,results='hide',fig.show='hide'}
+# This is our external R script for a quick visualization of the first stage data
+# Could make fancier with shiny
+basepath_orig <- "/Volumes/Projects/Database"
+basepath_clean <- "/Users/sara/Library/CloudStorage/OneDrive-UBC/UBC/database"
+
+mapping_doc <- "name_mapping_DSM.xlsx"
+
+yrs <- c(2021,2022)
+site <- "DSM"
+level <- c("Met")
+
+# Load variable name mapping document
+library("readxl")
+var_name_mapping <- read_excel(paste('/Users/sara/Code/MLABcode/data_visualization/stages_check/',mapping_doc, sep = ""))
+
+colors <- c("Original" = "lightgray", "Clean" = "steelblue")
+plots <- plot.new()
+
+# Specify path for working directories from which to read variables - Assumes the same variables across years (could update this if needed)
+wd_clean <- paste0(basepath_clean,"/",yrs[1],"/",site,"/",level,"/clean",sep = "")
+wd_orig <- paste0(basepath_orig,"/",yrs[1],"/",site,"/",level,sep = "")
+
+# List all files in 'Clean' folder
+# Generalize to loop through years
+vars_clean <-  list.files(paste0(basepath_clean,"/",yrs[1],"/",site,"/",level,"/clean",sep = ""))
+k <- 0
+
+for (j in 1:(length(vars_clean))) { 
+  l <- list()
+  for (i in 1:length(yrs)) { 
+    
+    # Specify path for working directories from which to read variables - Assumes the same variables across years (could update this if needed)
+    wd_clean <- paste0(basepath_clean,"/",yrs[i],"/",site,"/",level,"/clean",sep = "")
+    wd_orig <- paste0(basepath_orig,"/",yrs[i],"/",site,"/",level,sep = "")
+    
+    # Define time vector for plotting
+    setwd(wd_clean)
+    tv <- readBin("clean_tv",double(),n = 18000)
+    datetime <- as.POSIXct((tv - 719529)*86400, origin = "1970-01-01", tz = "UTC")
+    # Round to nearest 30 min
+    datetime <- lubridate::round_date(datetime, "30 minutes") 
+    
+    # Load clean trace
+    var_clean_name <- vars_clean[j]
+    # Create empty plot
+    
+    # Skip variables that aren't in both folders
+    if (var_clean_name == "clean_tv" | grepl('ECCC$', var_clean_name)| grepl('^RBM', 
+                                                                             var_clean_name)) next
+    
+    setwd(wd_clean)
+    var_clean <- readBin(var_clean_name,numeric(),n = 18000,size = 4)
+    
+    # Replace NaN with NA
+    ind <- is.nan(var_clean) 
+    var_clean[ind] <- NA
+    
+    # Load original trace
+    ind <- which(var_name_mapping$Name_in_db_clean == var_clean_name) 
+    var_orig_name <- var_name_mapping$Orig_db_name_met[ind]
+    #var_orig_name <- paste0("var_name_mapping$Orig_db_name_",level[i],sep = "")[ind]
+    
+    print(paste0('orig name = ',var_orig_name, ' | clean name = ',var_clean_name ,sep = ''))
+    
+    setwd(wd_orig) # If getting error 'cannot change working directory', make sure you are connected to vinimet
+    var_orig <- readBin(var_orig_name,numeric(),n = 18000,size = 4)
+    
+    # Apply unit conversions
+    var_orig <- var_orig*var_name_mapping$Slope[ind] + var_orig*var_name_mapping$Offset[ind]
+    
+    # Replace NaN with NA
+    ind <- is.nan(var_orig) 
+    var_orig[ind] <- NA
+    
+    df.now <- data.frame(datetime, var_clean,var_orig)
+    l[[i]] <- df.now
+  }
+  
+  if (var_clean_name == "clean_tv" | grepl('ECCC$', var_clean_name)| grepl('^RBM', var_clean_name)) next  
+  k <- k+1
+  print(k)
+  
+  df <- do.call(rbind,l)
+  
+  p <- ggplot() + 
+    geom_point(data = df, aes(x = datetime, y = var_orig, color = "Original")) +
+    geom_point(data = df, aes(x = datetime, y = var_clean, color = "Clean")) +
+    ylab(var_clean_name) +  xlab("Date") +
+    scale_color_manual(values = colors)+
+    theme(legend.position="top",
+          legend.title=element_blank())
+  
+  plots[[k]] <- p#%>% 
+  #layout(yaxis = list(title =yaxlabel[i]))%>%
+  #toWebGL()
+  graphics.off()
+  
+}
+```
+
+```{r plot variables met,echo=FALSE,warning=FALSE,message=FALSE,results='hide',fig.keep='all'}
+plots
+```
+
+## Flux
+```{r create plots flux,echo=FALSE,warning=FALSE,message=FALSE,results='hide',fig.show='hide'}
+# This is our external R script for a quick visualization of the first stage data
+# Could make fancier with shiny
+
+yrs <- c(2021,2022)
+site <- "DSM"
+level <- c("Flux")
+
+colors <- c("Original" = "lightgray", "Clean" = "steelblue")
+plots <- plot.new()
+
+# Specify path for working directories from which to read variables - Assumes the same variables across years (could update this if needed)
+wd_clean <- paste0(basepath_clean,"/",yrs[1],"/",site,"/",level,"/clean",sep = "")
+wd_orig <- paste0(basepath_orig,"/",yrs[1],"/",site,"/",level,sep = "")
+
+# List all files in 'Clean' folder
+# Generalize to loop through years
+vars_clean <-  list.files(paste0(basepath_clean,"/",yrs[1],"/",site,"/",level,"/clean",sep = ""))
+k <- 0
+
+for (j in 1:(length(vars_clean))) { 
+  l <- list()
+  
+  for (i in 1:length(yrs)) {
+    # Specify path for working directories from which to read variables
+    wd_clean <- paste0(basepath_clean,"/",yrs[i],"/",site,"/",level,"/clean",sep = "")
+    wd_orig <- paste0(basepath_orig,"/",yrs[i],"/",site,"/",level,sep = "")
+    
+    # Define time vector for plotting
+    setwd(wd_clean)
+    tv <- readBin("clean_tv",double(),n = 18000)
+    datetime <- as.POSIXct((tv - 719529)*86400, origin = "1970-01-01", tz = "UTC")
+    # Round to nearest 30 min
+    datetime <- lubridate::round_date(datetime, "30 minutes") 
+    
+    # Load clean trace
+    var_clean_name <- vars_clean[j]
+    # Create empty plot
+    
+    # Skip variables that aren't in both folders
+    if (var_clean_name == "clean_tv") next
+    
+    setwd(wd_clean)
+    var_clean <- readBin(var_clean_name,numeric(),n = 18000,size = 4)
+    
+    # Replace -9999 with NA
+    # if (length(which(var_clean == -9999)) > 0) {
+    #   ind_rep <- which(var_clean == -9999)
+    #   var_clean[ind_rep] <- NA
+    # }
+    
+    # Replace NaN with NA
+    ind <- is.nan(var_clean) 
+    var_clean[ind] <- NA
+    
+    # Load original trace
+    ind <- which(var_name_mapping$Name_in_db_clean == var_clean_name) 
+    var_orig_name <- var_name_mapping$Orig_db_name_flux[ind]
+    #var_orig_name <- paste0("var_name_mapping$Orig_db_name_",level[i],sep = "")[ind]
+    
+    if (length(var_orig_name) == 0) next
+    
+    print(paste0('orig name = ',var_orig_name, ' | clean name = ',var_clean_name ,sep = ''))
+    
+    setwd(wd_orig) # If getting error 'cannot change working directory', make sure you are connected to vinimet
+    var_orig <- readBin(var_orig_name,numeric(),n = 18000,size = 4)
+    
+    # Replace -9999 with NA
+    if (length(which(var_orig == -9999)) > 0) {
+      ind_rep <- which(var_orig == -9999)
+      var_orig[ind_rep] <- NA
+    }
+    
+    # Apply unit conversions
+    var_orig <- var_orig*var_name_mapping$Slope[ind] + var_name_mapping$Offset[ind]
+    
+    # Replace NaN with NA
+    ind <- is.nan(var_orig) 
+    var_orig[ind] <- NA
+    
+    df.now <- data.frame(datetime, var_clean,var_orig)
+    l[[i]] <- df.now
+  }
+  
+  if (length(var_orig_name) == 0) next 
+  if (var_clean_name == "clean_tv") next
+  k <- k+1
+  print(k)
+  
+  df <- do.call(rbind,l)
+  
+  p <- ggplot() + 
+    geom_point(data = df, aes(x = datetime, y = var_orig), color = "lightgray") +
+    geom_point(data = df, aes(x = datetime, y = var_clean), color = "steelblue") +
+    ylab(var_clean_name) +  xlab("Date")
+  
+  plots[[j]] <- p#%>% 
+  #layout(yaxis = list(title =yaxlabel[i]))%>%
+  #toWebGL()
+  graphics.off()
+}
+```
+
+```{r plot variables flux,echo=FALSE,warning=FALSE,message=FALSE,results='hide',fig.keep='all'}
+plots
+```

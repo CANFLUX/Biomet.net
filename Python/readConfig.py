@@ -8,7 +8,7 @@ import yaml # Note: you need to install the "pyyaml" package, e.g., pip install 
 import argparse
 
 
-def set_user_configuration(user_defined=[]):
+def set_user_configuration(auxilary={}):
     wd = os.getcwd()
     os.chdir(os.path.split(__file__)[0])
     # Parse the config settings
@@ -25,15 +25,17 @@ def set_user_configuration(user_defined=[]):
             print("These are likely to cause issues, please create your own path definition file")
 
     # Import the user specified configurations (exit if they don't exist)
-    config['tasks'] = {}
-    if isinstance(user_defined,str):user_defined=[user_defined]
-    for req in user_defined:
-        if os.path.isfile(req):
-            with open(req) as yml:
-                config['tasks'].update(yaml.safe_load(yml))
-        else:
-            sys.exit(f"Missing {req}")
-    os.chdir(wd)
+    if auxilary != {}:
+        for key,value in auxilary.items():
+            config[key] = {}
+            if isinstance(value,str):value=[value]
+            for req in value:
+                if os.path.isfile(req):
+                    with open(req) as yml:
+                        config[key].update(yaml.safe_load(yml))
+                else:
+                    sys.exit(f"Missing {req}")
+            os.chdir(wd)
     return(config)
 
 # If called from command line ...
