@@ -1,4 +1,4 @@
-function [EngUnits,Header,tv] = fr_read_TOA5_file(fileName,time_str_flag,headerlines,defaultNaN,assign_in,strbuffsize) %#ok<*STOUT>
+function [EngUnits,Header,tv,dataOut] = fr_read_TOA5_file(fileName,time_str_flag,headerlines,defaultNaN,assign_in,strbuffsize,numOfLinesToRead,varName) %#ok<*STOUT>
 % [EngUnits,Header,tv] = fr_read_TOA5_file(fileName,time_string_flag,headerlines,defaultNaN,asign_flag)
 %
 % Read CSI TOA5 files (ascii output tables from table based loggers)
@@ -16,6 +16,11 @@ function [EngUnits,Header,tv] = fr_read_TOA5_file(fileName,time_str_flag,headerl
 %                           If empty or 0 no
 %                           assignments are made
 %   strbuffsize         - Max string length that textread will work with.
+%   numOfLinesToRead    - number of lines to read from the file (useful for
+%                         reading a short data sample (with header) from a
+%                         large file.
+%   varName             - variable name to be given to the dataOut
+%                         structure in callers space (when assign_in = 'calller')
 %
 % This function originaly appeared as fcrn_read_csi_ascii.m (Kai/Zoran).
 % It was then revised by Zoran to incorporate the best parts of other
@@ -25,11 +30,34 @@ function [EngUnits,Header,tv] = fr_read_TOA5_file(fileName,time_str_flag,headerl
 % and all their subvariants.
 %
 % (c) Zoran Nesic (Kai Morgenstern in absence)  File created:      Jun  8, 2010
-%                                               Last modification: Nov 13, 2012
+%                                               Last modification: Oct 15, 2024
 %
 
 % Revisions:
 %
+% Oct 15, 2024 (Rosie & Zoran)
+%   - Bug fix: Added the required parameter dataOut.TimeVector to the output.
+% Jan 22, 2020 (Zoran)
+%   - added output parameter dataOut (a structure containing all variables)
+%   - added input parameter varName
+% July 10, 2018 (Zoran)
+%       - added the following filter:
+%           q_read = replace_string(q_read,'"',[]);
+%       - Sometimes numeric data ends up enclosed in double quotes. This fix removes them.
+%         Hudson Hope data had these due to Iain's use of "Sample" output for
+%         GS probes.  Tested in July 2018 on the sites that were active then and
+%         the fix worked.  It might crash on some other special-case file from the
+%         past.
+% Nov 29, 2017 (Zoran)
+%   - added option to read only a given number of lines (instead of the
+%     entire file) so large CRx000 files can be read in multiple goes.
+%   - also fixed a bug when program would always catch an error here:
+%           try
+%               eval([outStr sprintf(' = textread(tempFileName,formatStr,%d,''delimiter'','','',''headerlines'',headerlines);',numOfLinesToRead) ]);  
+%     because the variable tempFileName did not exist at that point.
+%     Replaced it with:
+%           try
+%               eval([outStr sprintf(' = textread(fileName,formatStr,%d,''delimiter'','','',''headerlines'',headerlines);',numOfLinesToRead) ]);  
 % Nov 13, 2012 (Zoran/Nick)
 %   - Fix for files that contain 'LoggerID' field.  We are threating it as
 %     a string and we don't record it.
@@ -46,7 +74,7 @@ function [EngUnits,Header,tv] = fr_read_TOA5_file(fileName,time_str_flag,headerl
 %     tempdir (Windows temp directory for the user)
 % Oct 21, 2011 (Zoran)
 %   - changed the way program reads logger SN. (bug)
-%      from: Header.loggerSN = str2double(char(Header.line1(2))); (this is logger name!)
+%      from: Header.loggerSN = str2double(char(Header.line1(2))); (not the SN, this is the logger's name!)
 %      to:   Header.loggerSN = str2double(char(Header.line1(4)));
 %   - added an additional input parameter strbuffsize (max string length that can be read) so
 %     that this program matches fcrn_read_csi_ascii
@@ -57,9 +85,27 @@ arg_default('headerlines',4)
 arg_default('defaultNaN','NaN')
 arg_default('assign_in',0)
 arg_default('strbuffsize',10000)
+arg_default('numOfLinesToRead',-1)          % default: read entire file
+arg_default('varName','dataOut');
+
+EngUnits = [];
+Header = [];
+tv = [];
+dataOut = [];
 
 % Find no of variables in file
-s_read = textread(fileName,'%q',1,'headerlines',headerlines,'bufsize',strbuffsize);
+if ~exist(fileName,'file')
+    fprintf('File %s not found. (fr_read_TOA5_file.m).\n',fileName);
+    return
+end
+try
+    s_read = textread(fileName,'%q',1,'headerlines',headerlines,'bufsize',strbuffsize);
+catch
+    fprintf('Error reading file %s. (fr_read_TOA5_file.m).\n',fileName);
+    return
+end
+
+
 N = length(split_line(char(s_read)));
 
 % Read header
@@ -133,7 +179,7 @@ end
 outStr = [outStr ']'];    
 
 try
-    eval([outStr ' = textread(fileName,formatStr,-1,''delimiter'','','',''headerlines'',headerlines);']);    
+    eval([outStr sprintf(' = textread(fileName,formatStr,%d,''delimiter'','','',''headerlines'',headerlines);',numOfLinesToRead) ]);    
 catch %#ok<*CTCH>
     % load everything as a big char array
     fid=fopen(fileName,'r');
@@ -145,6 +191,12 @@ catch %#ok<*CTCH>
     q_read = replace_string(q_read,'-1.#QNAN',defaultNaN);   
     q_read = replace_string(q_read,'"INF"',defaultNaN);   
     q_read = replace_string(q_read,'"-INF"',defaultNaN);  
+    % Sometimes numeric data ends up with double quotes. This removes them.
+    % Hudson Hope data had these due to Iain's use of "Sample" output for
+    % GS probes.  Tested in July 2018 on the sites that were active then and
+    % it did work.  It might crash on some other special-case file from the
+    % past.
+    q_read = replace_string(q_read,'"',[]);                
     % the following is much slower!!
     %    q_read = regexprep(q_read,'"NAN"',defaultNaN);
 
@@ -152,18 +204,16 @@ catch %#ok<*CTCH>
     fid = fopen(tempFileName,'w');
     fwrite(fid,q_read,'uchar');
     fclose(fid);
-    eval([outStr ' = textread(tempFileName,formatStr,-1,''delimiter'','','',''headerlines'',headerlines);']);    
+    eval([outStr sprintf(' = textread(tempFileName,formatStr,%d,''delimiter'','','',''headerlines'',headerlines);',numOfLinesToRead) ]);    
 end
 
 outStr = '[';
 for i = Var1_ChanNum:N
     outStr = [outStr  char(var_names(i)) ' '];
-    if assign_in ~= 0
-        eval(['assignin(assign_in,char(var_names(i)),' char(var_names(i)) ');']);
-    end
+    cmdStr = ['dataOut.' char(var_names(i)) '= ' char(var_names(i)) ';'];
+    eval(cmdStr);
 end
 outStr = [outStr ']'];    
-
 eval(['EngUnits = ' outStr ';']);   
     
 % Export time vector if exists and is requested as an output
@@ -171,12 +221,12 @@ if time_str_flag && nargout > 2
 %   "2005-05-26 01:30:00"
     tv_char = char(TIMESTAMP);
     tv = datenum(str2num(tv_char(:,1:4)),str2num(tv_char(:,6:7)),str2num(tv_char(:,9:10)),...
-        str2num(tv_char(:,12:13)),str2num(tv_char(:,15:16)),str2num(tv_char(:,18:19))); %#ok<*ST2NM>
+        str2num(tv_char(:,12:13)),str2num(tv_char(:,15:16)),str2num(tv_char(:,18:end))); %#ok<*ST2NM>
     % Deal with missing years in time stamp that happen in strread above
     if isempty(tv)
         for i = 1:length(tv_char)
             tv_tmp = datenum(str2num(tv_char(i,1:4)),str2num(tv_char(i,6:7)),str2num(tv_char(i,9:10)),...
-                str2num(tv_char(i,12:13)),str2num(tv_char(i,15:16)),str2num(tv_char(i,18:19)));
+                str2num(tv_char(i,12:13)),str2num(tv_char(i,15:16)),str2num(tv_char(i,18:end)));
             if ~isempty(tv_tmp)
                 tv(i) = tv_tmp;
             else
@@ -192,14 +242,28 @@ else
     tv = NaN;
 end
 
-if assign_in ~= 0
-    assignin(assign_in,'tv_csi',tv);
+dataOut.tv = tv;
+dataOut.TimeVector = tv;
+
+if strcmpi(assign_in,'caller')
+    assignin(assign_in,varName, dataOut);
 end
 
 end
 
 function line_cell = split_line(line_str)
 
+%------------
+% These lines are supposed to catch
+% variables with names like P(1,2) (comma is not allowed as var name)
+% and convert them to P_1_2 by removing first all the commas
+% between brackets
+ind1=find(line_str=='(');
+ind2=find(line_str==')');
+for i=1:length(ind1)
+    ind = find(line_str(ind1(i)+1:ind2(i)-1)==',');
+    line_str(ind1(i)+ind)='_';
+end
 line_str = regexprep(line_str,'"','');
 ind = [0 strfind(line_str,',')];
 
@@ -218,7 +282,7 @@ end
 %       the findX.
 function strOut = replace_string(strIn,findX,replaceX)
     % find all occurances of findX string
-    ind=findstr(strIn,findX);
+    ind=strfind(strIn,findX);
     strOut = strIn;
     N = length(findX);
     M = length(replaceX);
