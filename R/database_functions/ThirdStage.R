@@ -8,7 +8,6 @@
 # Optional: 
 # lastYear years run will be: c(startYear:lastYear)
 
-
 # Note: this currently assumes that "pathTo/yourProject"
 # Third stage procedures assumes that pathTo/yourProject contains a matlab file:
 #  * pathTo/yourProject/Matlab/biomet_database_default.m
@@ -23,7 +22,6 @@
 # cd pathTo/yourProject
 # Rscript --vanilla C:/Biomet.net/R/database_functions/ThirdStage.R siteID startYear endYear
 
-
 ## Call from R terminal
 
 # # Giving database as an input
@@ -37,7 +35,6 @@
 
 # # Install on first run
 # install.packages(c('REddyProc','ggplot','fs','yaml','rlist','dplyr','lubridate','data.table','tidyverse','caret','ranger','zoo','reshape2','stringr'))
-
 
 # Load libraries
 library('fs')
@@ -125,9 +122,8 @@ configure <- function(siteID){
     }
   }
   print(sprintf('Third stage run initialized for %s data in %s',args[2],db_root))
-  
 
-  # Read a the global database configuration
+# Read a the global database configuration
   filename <- file.path(db_root,'Calculation_Procedures/TraceAnalysis_ini/global_config.yml')
   dbase_config = yaml.load_file(filename)
   
@@ -143,7 +139,7 @@ configure <- function(siteID){
   config$Database$db_root <- db_root
   config$fx_path <- fx_path
 
-  # Fin all site-years in database
+  # Find all site-years in database
   yearsAll = suppressWarnings(as.numeric(list.dirs(db_root, recursive = FALSE,full.names = FALSE)))
   yearsAll = yearsAll[!sapply(yearsAll, is.na)]
   level_in <- config$Database$Paths$SecondStage
@@ -153,6 +149,8 @@ configure <- function(siteID){
   siteYearsAll = siteYearsAll[sapply(siteYearsAll,file.exists)]
   siteYearsAll = gsub(tv,'',siteYearsAll)
   siteYearsAll = gsub(config$Database$Paths$SecondStage,'',siteYearsAll)
+  siteYearsAll = gsub('//','',siteYearsAll)
+
   # Determine site years to output
   if (length(args)>2){
     years <- c(args[3]:args[length(args)])
@@ -233,7 +231,6 @@ read_and_copy_traces <- function(){
   for (siteYearIn in config$siteYearsAll) {
     in_path <- file.path(siteYearIn,level_in)
     out_path <- file.path(siteYearIn,level_out)
-
     if (siteYearIn %in% config$siteYearsOut){
       dir.create(out_path, showWarnings = FALSE)
       unlink(file.path(out_path,'*'))
@@ -327,31 +324,28 @@ Run_REddyProc <- function() {
     # Exit if no data remain
     start_time <- paste(as.character(min(config$years)-1),"-12-01 00:00:00",sep='')
     end_time <- paste(as.character(max(config$years)+1),"-03-01 00:00:00",sep='')
-    data_REddyProc <- data_REddyProc %>% filter(
-      DateTime > as.POSIXct(start_time, tz = "UTC") & DateTime < as.POSIXct(end_time, tz = "UTC"))
+    data_REddyProc <- data_REddyProc %>% filter(DateTime > as.POSIXct(start_time, tz = "UTC") & DateTime < as.POSIXct(end_time, tz = "UTC"))
     data_REddyProc$SeasonYear = (year(data_REddyProc$DateTime)+floor(month(data_REddyProc$DateTime)/12))
     bySeasonYear <- data_REddyProc %>%
     group_by(SeasonYear) %>%
     summarise(across(names(REddyConfig$vars_in), ~ sum(!is.na(.)), .names = "countFlag_{col}"))
-    # # REddyProc Will Crash if given any season with less than 160 observations
+    # # REddyProc Will Crash if given any season with less than 700 observations
     seasonFilter <- bySeasonYear %>%  filter(if_any(starts_with("countFlag_"), ~ . < 700))
+    date_Drop <- data_REddyProc %>%  filter(SeasonYear %in% seasonFilter$SeasonYear)
+    date_Drop <- date_Drop %>% select(DateTime)
     data_REddyProc <- data_REddyProc %>%  filter(!(SeasonYear %in% seasonFilter$SeasonYear))
+    time_out <- input_data[c("DateTime","Year","DoY","Hour")] %>% filter(!(DateTime %in% data_REddyProc$DateTime))
     if((dim(data_REddyProc)[1]==0)){
       print('Insufficient data available for specified site-years to run REddyProc')
       return(input_data)
     }
-    browser()
   }
-
-  # Joined to ReddProc Output after processing
-  time_cols <- input_data[c("DateTime","Year","DoY","Hour")] %>% filter(
-    DateTime > as.POSIXct(start_time, tz = "UTC") & DateTime < as.POSIXct(end_time, tz = "UTC"))
+  time_cols <- input_data[c("DateTime","Year","DoY","Hour")] %>% filter(DateTime %in% data_REddyProc$DateTime)
 
   # Run REddyProc
   # Following "https://cran.r-project.org/web/packages/REddyProc/vignettes/useCase.html" This is more up to date than the Wutzler et al. paper
-  # NOTE: skipped loading in txt file since alread have data in data frame
-  # Initalize R5 reference class sEddyProc for post-processing of eddy data
-  # with the variables needed for post-processing later
+  # NOTE: skipped loading in txt file since already have data in data frame
+  # Initalize R5 reference class sEddyProc for post-processing of eddy data with the variables needed for post-processing later
   EProc <- sEddyProc$new(
     config$Metadata$siteID,
     data_REddyProc,
@@ -409,9 +403,14 @@ Run_REddyProc <- function() {
     uNames <- lapply(colnames(REddyOutput), function(x) if (startsWith(x,rep)) {sub(rep,sub,x)} else {x})
     colnames(REddyOutput) <- uNames
   }
+
+  # Add the time columns back for writing
   REddyOutput = dplyr::bind_cols(
     time_cols,REddyOutput
   )
+  if (exists("time_out")){
+  REddyOutput <- bind_rows(time_out,REddyOutput)
+  REddyOutput <- REddyOutput[order(REddyOutput$DateTime), ]}
 
   # Write all REddyProc outputs to intermediate folder
   # Update names for subset and save to main third stage folder
@@ -468,6 +467,7 @@ write_traces <- function(data,update_names,unlink=FALSE){
   db_root <- config$Database$db_root
   
   for (year in config$years){
+    print(sprintf('Writing %i',year))
     # Create new directory, or clear existing directory
     dpath <- file.path(db_root,as.character(year),siteID) 
     if (unlink == TRUE || !dir.exists(file.path(dpath,intermediate_out))) {
@@ -478,7 +478,6 @@ write_traces <- function(data,update_names,unlink=FALSE){
     # Copy tv from stage 2 to intermediate stage 3
     file.copy(file.path(dpath,level_in,tv_input),
               file.path(dpath,intermediate_out,tv_input))
-    
     ind_s <- which(data$Year == year & data$DoY == 1 & data$Hour == 0.5)
     ind_e <- which(data$Year == year+1 & data$DoY == 1 & data$Hour == 0)
     ind <- seq(ind_s,ind_e)
@@ -504,12 +503,14 @@ write_traces <- function(data,update_names,unlink=FALSE){
     # Dump all data provided to intermediate output location
     setwd(file.path(dpath,intermediate_out))
     for (col in cols_out){
+      print(sprintf('Writing %s',col))
       writeBin(as.numeric(data[ind,col]), col, size = 4)
     }
     
     # Copy/rename final outputs
     for (name in names(update_names)){
       if (file.exists(file.path(dpath,intermediate_out,update_names[name]))){
+        print(sprintf('Copying %s to %s',update_names[name],name))
         file.copy(
           file.path(dpath,intermediate_out,update_names[name]),
           file.path(dpath,level_out,name),

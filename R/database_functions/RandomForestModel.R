@@ -27,6 +27,7 @@ RandomForestModel <- function(df,fill_name,log_file_path,retrain_every_n_months=
 
   # If suitable model exists, use it instead of re-training
   use_existing_model = FALSE
+  dir.create(log_file_path, showWarnings = FALSE)
   model_name = file.path(log_file_path,paste(var_dep,"RF_Model.RData",sep="_"))
   if (file.exists(model_name) && !is.null(retrain_every_n_months)){
     last_update <- as.POSIXct(file.info(model_name)$mtime, format="%Y-%m-%d %H:%M:%S")
