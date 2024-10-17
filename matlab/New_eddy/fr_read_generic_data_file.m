@@ -45,11 +45,13 @@ function [EngUnits,Header,tv,outStruct] = fr_read_generic_data_file(fileName,ass
 %                          
 %
 % (c) Zoran Nesic                   File created:       Dec 20, 2023
-%                                   Last modification:  Aug 25, 2024
+%                                   Last modification:  Oct 17, 2024
 %
 
 % Revisions (last one first):
 %
+% Oct 17, 2024 (Zoran)
+%   - Added ability to read simple xlxs files.
 % Aug 25, 2024 (Zoran)
 %   - used a better way to create the datetime from the Data and Time columns. Converting Date to 'datetime' 
 %     and Time to 'duration' and then adding them up works better and enables proper conversion when the table
@@ -110,13 +112,26 @@ function [EngUnits,Header,tv,outStruct] = fr_read_generic_data_file(fileName,ass
                   % as for all the other fr_read* functions.
     try
         % Read the file using readtable function
-        if modifyVarNames
-            opts = detectImportOptions(fileName,'FileType',inputFileType,'VariableNamesLine',VariableNamesLine);
+        % First check if file is an excell sheet
+        try            
+            opts = detectImportOptions(fileName);
+        catch
+            % automatic detection could fail. Set opts=[] and continue
+            opts =[];
+        end
+        if isprop(opts,'Sheet')
+            % it's an Excel sheet. Ignore VariableNamesLine and inputFileType
+            % Use these settings
+            opts = detectImportOptions(fileName,'VariableNamingRule','preserve');
         else
-            opts = detectImportOptions(fileName,'FileType',inputFileType,'VariableNamingRule','preserve','VariableNamesLine',VariableNamesLine);
-            %opts.VariableNames = renameFields(opts.VariableNames);
-            % Now re-enable renaming of the variables
-            %opts.VariableNamingRule = 'modify';
+            if modifyVarNames
+                opts = detectImportOptions(fileName,'FileType',inputFileType,'VariableNamesLine',VariableNamesLine);
+            else
+                opts = detectImportOptions(fileName,'FileType',inputFileType,'VariableNamingRule','preserve','VariableNamesLine',VariableNamesLine);
+                %opts.VariableNames = renameFields(opts.VariableNames);
+                % Now re-enable renaming of the variables
+                %opts.VariableNamingRule = 'modify';
+            end
         end
         if length(dateColumnNum)==2
             opts.VariableTypes{dateColumnNum(1)} = 'datetime';           
