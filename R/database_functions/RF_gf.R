@@ -16,9 +16,17 @@
 
 RF_gf <- function(df,fill_var,predictor_vars,plot_results,datetime) {
   
-  # load libraries
-  library(tidyverse)
-  library(caret)
+  # Package names
+  packages <- c("tidyverse", "caret")
+  
+  # Install packages not yet installed
+  installed_packages <- packages %in% rownames(installed.packages())
+  if (any(installed_packages == FALSE)) {
+    install.packages(packages[!installed_packages])
+  }
+  
+  # Packages loading
+  invisible(lapply(packages, library, character.only = TRUE))
   
   # define dataset
   # df includes variable to be filled (e.g., FCH4) and predictor variables.

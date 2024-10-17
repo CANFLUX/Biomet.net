@@ -1,34 +1,20 @@
-# Load libraries
-library(ggplot2)
-library(dplyr)
-library(shiny)
-library(patchwork)
-library(plotly)
-library(gapminder)
-library(shinycssloaders)
-library(readxl)
-library(stringi)
-library(shinythemes)
-library(cowplot)
-library(imager) # had to download quartz to be able to run this library properly (https://www.xquartz.org) & may need to use install.packages("igraph", type="binary")
-library(naniar)
-library(GGally)
-library(shinydashboard)
-library(tidyr)
-library(tibble)
-library(epitools)
-library(lubridate)
-library(hms)
-library(tidyr)
-library(forecast)
-library(reshape2)
-library(stringr)
-library(data.table)
-library(ggpmisc)
-library(ggrepel)
+# Package names
+packages <- c("ggplot2", "dplyr", "shiny", "patchwork", "plotly", "gapminder", "shinycssloaders", "readxl", "stringi", "shinythemes", "cowplot",
+              "imager", "naniar", "GGally", "shinydashboard", "tidyr", "tibble", "epitools", "lubridate", "hms", "forecast", "reshape2", 
+              "stringr", "data.table", "ggpmisc", "ggrepel")
+
+# Install packages not yet installed
+installed_packages <- packages %in% rownames(installed.packages())
+if (any(installed_packages == FALSE)) {
+  install.packages(packages[!installed_packages])
+}
+
+# Packages loading
+invisible(lapply(packages, library, character.only = TRUE))
+
 # reactiveConsole(T) # allows the csv file to be used properly
 # “install.packages(“igraph”, type=“binary”) - uncomment if receiving a “there is no package called ‘igraph’” error when loading imager
-
+# for imager may need to download quartz to be able to run this library properly (https://www.xquartz.org) & may need to use install.packages("igraph", type="binary")
 
 # List all directories and subdirectories
 dir_list <- list.dirs(main_dir,full.names = TRUE,  
