@@ -24,6 +24,8 @@ function ax = ta_plot_parents(figNum,trace_str,trace_name)
 
 % Revisions:
 %
+% Oct 15, 2024 (Paul)
+%   - Modified legend.
 % Oct 10, 2024 (Paul)
 %   - Asthetic changes. For plots with many parents, the use of 1/2 screen
 %       height made the figure really bunched up. Figure size is now
@@ -91,7 +93,7 @@ function ax = ta_plot_parents(figNum,trace_str,trace_name)
     line(vAx, [minMax(1) minMax(1)],'linewidth',5)
     line(vAx, [minMax(2) minMax(2)],'linewidth',5)
     hold off
-    legend(p1,'Raw','Clean','Location','eastoutside','Interpreter','none')
+    legend(p1,'Previous stage','Current stage','Location','eastoutside','Interpreter','none')
     set(gca,'XtickLabel',{})
     ax(1) = gca; 
     title(trace_name,'Interpreter','none')
