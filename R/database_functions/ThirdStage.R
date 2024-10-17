@@ -33,24 +33,17 @@
 # args <- c("siteID",startYear,endYear)
 # source("C:/Biomet.net/R/database_functions/ThirdStage.R")
 
-# # Install on first run
-# install.packages(c('REddyProc','ggplot','fs','yaml','rlist','dplyr','lubridate','data.table','tidyverse','caret','ranger','zoo','reshape2','stringr'))
+# Package names
+packages <- c("fs", "yaml", "REddyProc", "rlist", "zoo", "dplyr", "lubridate", "data.table", "reshape2", "stringr", "tidyverse", "ranger", "caret", "ggplot2")
 
-# Load libraries
-library('fs')
-library("yaml")
-library("REddyProc")
-library("rlist")
-library("zoo")
-require("dplyr")
-require("lubridate")
-require("data.table")
-library("reshape2")
-library("stringr")
-library("tidyverse")
-library("ranger")
-library("caret")
-library("ggplot2")
+# Install packages not yet installed
+installed_packages <- packages %in% rownames(installed.packages())
+if (any(installed_packages == FALSE)) {
+  install.packages(packages[!installed_packages])
+}
+
+# Packages loading
+invisible(lapply(packages, library, character.only = TRUE))
 
 merge_nested_lists = function(...) {
 # Modified from: https://gist.github.com/joshbode/ed70291253a4b4412026

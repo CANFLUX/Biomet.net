@@ -7,20 +7,20 @@
 # df <- input data frame with columns in this order:
 # ["variable to be filled", c("predictor1", ... "predictorn"), "DateTime","DoY"]
 
-# install required libraries
-#install.packages('tidyverse') # for data wrangling 
-#install.packages('caret') # for machine learning run and tuning
-#install.packages('randomForest') # randomforest model
-#install.packages('ranger')
-
 RandomForestModel <- function(df,fill_name,log_file_path,retrain_every_n_months=NULL) {
   
-  # load libraries
-  library('tidyverse')
-  library('ranger')
-  library('caret')
-  library('ggplot2')
+  # Package names
+  packages <- c("tidyverse", "ranger", "caret", "ggplot2")
+  
+  # Install packages not yet installed
+  installed_packages <- packages %in% rownames(installed.packages())
+  if (any(installed_packages == FALSE)) {
+    install.packages(packages[!installed_packages])
+  }
 
+  # Packages loading
+  invisible(lapply(packages, library, character.only = TRUE))
+  
   # This is a pretty hacked up approach assuming a specific order, should update to be more explicit
   var_dep <- colnames(df)[1]
   predictor_vars <- colnames(df[ , -which(names(df) %in% c(var_dep,"DateTime"))])
