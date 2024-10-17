@@ -193,7 +193,7 @@ if eventdata.Axes.UserData==11
     refreshdata(sh,'caller') %--> Uses 'input1' and 'input2' to refresh
     %--> Update stats
     fit = linreg(input1, input2);
-    ah.Children(1).String = char(['r^2=' num2str(roundn(corr(input1',input2').^2,-2))]);
+    ah.Children(1).String = char(['r^2=' num2str(roundn(corr(input1(idx_nan)',input2(idx_nan)').^2,-2))]);
     ah.Children(2).String = char(['int.=' num2str(roundn(fit(2),-2))]);
     ah.Children(3).String = char(['slope=' num2str(roundn(fit(1),-2))]);
     xlims = get(ah,'XLim');
