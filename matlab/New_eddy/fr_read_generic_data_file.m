@@ -300,7 +300,7 @@ function renFields = renameFields(fieldsIn)
     % New way of renaming
     % first run complex renaming:
     renFieldsNew  = replace(fieldsIn,'u*','us');
-    renFieldsNew  = replace(renFieldsNew,'(z_d)/L','zdL');
+    renFieldsNew  = replace(renFieldsNew,'(z-d)/L','zdL');
     renFieldsNew  = replace(renFieldsNew,'T*','ts');
     renFieldsNew  = replace(renFieldsNew,'%','p');
     renFieldsNew  = replace(renFieldsNew,replaceWithUnderscore,'_');
