@@ -280,7 +280,6 @@ storage_correction <- function(){
     for (term in terms){
       flux <- names(Storage_Terms[[term]])
       storage <- unlist(unname(Storage_Terms[[term]]))
-      browser()
       # Default behavior is to apply correction 
       if (flux %in% colnames(input_data) && config$Processing$ThirdStage$Storage$Apply_Correction) {
         input_data[[term]] <- input_data[[flux]]+input_data[[storage]]
