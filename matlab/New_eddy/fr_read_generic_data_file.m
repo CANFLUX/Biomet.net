@@ -52,6 +52,7 @@ function [EngUnits,Header,tv,outStruct] = fr_read_generic_data_file(fileName,ass
 %
 % Oct 17, 2024 (Zoran)
 %   - Added ability to read simple xlxs files.
+%   - added more characters to renameFields. ("[","]",":")
 % Aug 25, 2024 (Zoran)
 %   - used a better way to create the datetime from the Data and Time columns. Converting Date to 'datetime' 
 %     and Time to 'duration' and then adding them up works better and enables proper conversion when the table
@@ -282,6 +283,36 @@ function renFields = renameFields(fieldsIn)
     renFields  = strrep(renFields,'/','_');
     renFields  = strrep(renFields,'(','_');
     renFields  = strrep(renFields,')','');
+    renFields  = strrep(renFields,'[','_');
+    renFields  = strrep(renFields,']','');    
+    renFields  = strrep(renFields,':','');
+    renFields  = strrep(renFields,'°','_');
+    renFields  = strrep(renFields,'³','3');
+    renFields  = strrep(renFields,'²','2');
+    
+    renFields  = strrep(renFields,'''','_');
+    renFields  = strrep(renFields,'?','Q');
+    % Test an alternative renaming
+    % Characters to replace with "_"
+    replaceWithUnderscore = {'[','(','-','.','/',' ','°',''''};
+    % Characters to replace with ""
+    replaceWithEmpty = {']',')',':'};
+    % New way of renaming
+    % first run complex renaming:
+    renFieldsNew  = replace(fieldsIn,'u*','us');
+    renFieldsNew  = replace(renFieldsNew,'(z-d)/L','zdL');
+    renFieldsNew  = replace(renFieldsNew,'T*','ts');
+    renFieldsNew  = replace(renFieldsNew,'%','p');
+    renFieldsNew  = replace(renFieldsNew,replaceWithUnderscore,'_');
+    renFieldsNew  = replace(renFieldsNew,replaceWithEmpty,'');
+    renFieldsNew  = replace(renFieldsNew,'³','3');
+    renFieldsNew  = replace(renFieldsNew,'²','2');
+    renFieldsNew  = replace(renFieldsNew,'?','Q');
+    if ~strcmp(renFields,renFieldsNew)
+        fprintf(2,'New variable renaming strategy not working in fr_read_generic_data_file.m\n');
+        fprintf(2,'Old name: %s\n',renFields);
+        fprintf(2,'New name: %s\n',renFieldsNew);
+    end
 end
 
 %%
