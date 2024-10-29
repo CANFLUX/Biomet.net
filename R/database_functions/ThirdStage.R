@@ -34,7 +34,7 @@
 # source("C:/Biomet.net/R/database_functions/ThirdStage.R")
 
 # Package names
-packages <- c("fs", "yaml", "REddyProc", "rlist", "zoo", "dplyr", "lubridate", "data.table", "reshape2", "stringr", "tidyverse", "ranger", "caret", "ggplot2")
+packages <- c("fs", "yaml", "REddyProc", "rlist", "zoo", "dplyr", "lubridate", "data.table", "reshape2", "stringr", "tidyverse", "slider", "ranger", "caret", "ggplot2")
 
 # Install packages not yet installed
 installed_packages <- packages %in% rownames(installed.packages())
@@ -61,7 +61,6 @@ merge_nested_lists = function(...) {
       if (any(names(obj) == '')) {
         stop("Mixed named and unnamed elements are not supported.")
       }
-
       # restack for next-level processing
       if (root != '') {
         names(obj) = paste(root, names(obj), sep='|')
@@ -274,32 +273,117 @@ Met_Gap_Filling <- function(){
   return(input_data)
 }
 
-storage_correction <- function(){
+Storage_Correction <- function(){
   Storage_Terms <- config$Processing$ThirdStage$Storage$Terms
   terms <- names(Storage_Terms)
-    for (term in terms){
-      flux <- names(Storage_Terms[[term]])
-      storage <- unlist(unname(Storage_Terms[[term]]))
-      # Default behavior is to apply correction 
-      if (flux %in% colnames(input_data) && config$Processing$ThirdStage$Storage$Apply_Correction) {
-        input_data[[term]] <- input_data[[flux]]+input_data[[storage]]
-      # If storage correction is set to false, still create the variable (eg NEE = FC) so it doesn't break anything
-      }else if (flux %in% colnames(input_data) && !config$Processing$ThirdStage$Storage$Apply_Correction) {
-        input_data[[term]] <- input_data[[flux]]
-      # Or notify user if not available
-      }else{
-        print(sprintf('%s Not present in Second Stage, excluding from storage correction',flux))
-      }
+  for (term in terms){
+    flux <- names(Storage_Terms[[term]])
+    storage <- unlist(unname(Storage_Terms[[term]]))
+    # Default behavior is to apply correction 
+    if (flux %in% colnames(input_data) && config$Processing$ThirdStage$Storage$Apply_Correction) {
+      input_data[[term]] <- input_data[[flux]]+input_data[[storage]]
+    # If storage correction is set to false, still create the variable (eg NEE = FC) so it doesn't break anything
+    }else if (flux %in% colnames(input_data) && !config$Processing$ThirdStage$Storage$Apply_Correction) {
+      input_data[[term]] <- input_data[[flux]]
+    # Or notify user if not available
+    }else{
+      print(sprintf('%s Not present in Second Stage, excluding from processing',flux))
+    }
   }
-  return(input_data)
+  update_names <- as.list(names(config$Processing$ThirdStage$Storage$Terms))
+  names(update_names)  <- paste(update_names,'_PI_SC',sep="")  
+  config$Processing$ThirdStage$Storage$Terms <- update_names
+  input_data <- write_traces(input_data[,c('DateTime',terms)],config$Processing$ThirdStage$Storage$Terms,unlink=FALSE)    
+  return(list(input_data=input_data,config=config))
+}
+
+Spike_Removal <- function(){
+  terms <- names(config$Processing$ThirdStage$Storage$Terms)
+  for (term in terms){
+    if ('northOffset' %in% names(config$Metadata)){
+      half_width <- config$Processing$ThirdStage$Flux_filtering$wakeFilter
+      filter <- config$Metadata$northOffset-180
+      # Calculation is robust to user error and does not require adjustments based on wind direction
+      na_in <- sum(is.na(input_data[[term]]))
+      input_data[[term]][(
+        (abs(input_data$WD_1_1_1-filter)<=half_width)|
+        (abs(input_data$WD_1_1_1-360-filter)<=half_width)|
+        (abs(input_data$WD_1_1_1+360-filter)<=half_width))& !is.na(input_data$WD_1_1_1)
+        ] <- NA
+      na_out <- sum(is.na(input_data[[term]]))
+      print(sprintf('%i values in %s were filtered by the wind filter',na_out-na_in,term))
+      }
+    if ('P_1_1_1' %in% colnames(input_data)){
+      na_in <- sum(is.na(input_data[[term]]))
+      input_data[[term]][input_data$P_1_1_1>0 & !is.na(input_data$P_1_1_1)] <- NA
+      na_out <- sum(is.na(input_data[[term]]))
+      print(sprintf('%i values in %s were filtered out by the rain filter',na_out-na_in,term))
+      }
+    ## MAD algorithm, Papale et al. 2006
+    D_N <- list()
+    D_N[[1]] <- input_data[input_data$SW_IN_1_1_1 < 20,]
+    D_N[[2]] <- input_data[input_data$SW_IN_1_1_1 >= 20,]
+    dn <- c('Night','Day')
+    for(i in 1:2){
+      na_in <- sum(is.na(input_data[[term]]))
+      df <- D_N[[i]]
+      comp <- na.omit(df[,c(term,'DateTime')])
+      comp$di <- c(NA,diff(comp[[term]])) - c(diff(comp[[term]]),NA)
+        
+      comp <- comp %>% mutate(
+        Md = slide_index_dbl(.x=di,
+          .i=DateTime,
+          .before=as.difftime(6,units="days"),
+          .after=as.difftime(6,units="days"),
+          .f=function(x) median(x,na.rm=TRUE),
+          .complete=FALSE)
+        )
+      
+      comp$MAD <- abs(comp$di-comp$Md)
+
+      comp <- comp %>% mutate(
+        MAD = slide_index_dbl(
+          .x=MAD,
+          .i=DateTime,
+          .before=as.difftime(6,units="days"),
+          .after=as.difftime(6,units="days"),
+          .f=function(x) median(x,na.rm=TRUE),
+          .complete=FALSE)
+        )
+      
+      z <- 4
+      comp$spike_Flag <- FALSE
+      comp$spike_Flag[(is.na((comp$di)==TRUE)|
+        comp$di < comp$Md-(z*comp$MAD/0.6745)|
+        comp$di > comp$Md+(z*comp$MAD/0.6745)
+        )] <- TRUE
+
+      comp$spike_Flag == TRUE
+      input_data[input_data$DateTime %in% comp$DateTime[comp$spike_Flag == TRUE],term] <- NA
+
+      na_out <- sum(is.na(input_data[[term]]))
+      print(sprintf('%i values in %s were filtered out by %s-time spike filter',na_out-na_in,term,dn[i]))      
+    }
+  }
+  update_names <- as.list(names(config$Processing$ThirdStage$Storage$Terms))
+  names(update_names)  <- paste(update_names,'_PI_MAD',sep="")   
+  names(update_names) <- gsub("(_PI)(.*)(_PI)", "\\1\\2", names(update_names))
+  config$Processing$ThirdStage$SpikeRemoval$Terms <- update_names
+  input_data <- write_traces(input_data[,c('DateTime',terms)],config$Processing$ThirdStage$SpikeRemoval$Terms)       
+  return(list(input_data=input_data,config=config))
 }
 
 Run_REddyProc <- function() {
   # Subset just the config info relevant to REddyProc
   REddyConfig <- config$Processing$ThirdStage$REddyProc
-  
   # Limit to only variables present in input_data (e.g., exclude FCH4 if not present)
-  REddyConfig$vars_in <- lapply(REddyConfig$vars_in, function(x) if (x %in% colnames(input_data)){x})
+  
+  REddyConfig$vars_in <- REddyConfig$vars_in[
+    REddyConfig$vars_in %in% colnames(input_data) | 
+    REddyConfig$vars_in %in% colnames(config$Processing$ThirdStage$SpikeRemoval$Terms)
+    ]
+  # REddyConfig$vars_in <- lapply(REddyConfig$vars_in, function(x) if (x %in% colnames(input_data) | x %in% colnames(input_data)){x})
+  # REddyConfig$vars_in <- lapply(REddyConfig$vars_in, function(x) if (x %in% colnames(input_data)){x})
   skip <- names(REddyConfig$vars_in[REddyConfig$vars_in=='NULL']) 
   for (var in skip){
     print(sprintf('%s Not present, REddyProc will not process',var))
@@ -315,13 +399,13 @@ Run_REddyProc <- function() {
     # Limit to default REddyProc season-years bounding the site-years requested
     # Create Season Year Variable and filter out any SeasonYear with < 700 obs.
     # Exit if no data remain
-    start_time <- paste(as.character(min(config$years)-1),"-12-01 00:00:00",sep='')
+    start_time <- paste(as.character(min(config$years)-1),"-12-01 00:30:00",sep='')
     end_time <- paste(as.character(max(config$years)+1),"-03-01 00:00:00",sep='')
     data_REddyProc <- data_REddyProc %>% filter(DateTime > as.POSIXct(start_time, tz = "UTC") & DateTime < as.POSIXct(end_time, tz = "UTC"))
     data_REddyProc$SeasonYear = (year(data_REddyProc$DateTime)+floor(month(data_REddyProc$DateTime)/12))
-    bySeasonYear <- data_REddyProc %>%
-    group_by(SeasonYear) %>%
-    summarise(across(names(REddyConfig$vars_in), ~ sum(!is.na(.)), .names = "countFlag_{col}"))
+    data_REddyProc[month(data_REddyProc$DateTime)==12 & day(data_REddyProc$DateTime)==1 & data_REddyProc$Hour==0,'SeasonYear'] = data_REddyProc[month(data_REddyProc$DateTime)==12 & day(data_REddyProc$DateTime)==1 & data_REddyProc$Hour==0,'SeasonYear'] - 1
+    bySeasonYear <- data_REddyProc %>% group_by(SeasonYear) %>%
+      summarise(across(names(REddyConfig$vars_in), ~ sum(!is.na(.)), .names = "countFlag_{col}"))
     # # REddyProc Will Crash if given any season with less than 700 observations
     seasonFilter <- bySeasonYear %>%  filter(if_any(starts_with("countFlag_"), ~ . < 700))
     date_Drop <- data_REddyProc %>%  filter(SeasonYear %in% seasonFilter$SeasonYear)
@@ -406,9 +490,8 @@ Run_REddyProc <- function() {
   REddyOutput <- REddyOutput[order(REddyOutput$DateTime), ]}
 
   # Write all REddyProc outputs to intermediate folder
-  # Update names for subset and save to main third stage folder
   update_names <- config$Processing$ThirdStage$AmeriFlux_Names
-  input_data <- write_traces(REddyOutput,update_names,unlink = TRUE)
+  input_data <- write_traces(REddyOutput,update_names)
 
   return(input_data)
 }
@@ -430,12 +513,12 @@ RF_GapFilling <- function(){
         log_path = file.path(db_root,'Calculation_Procedures/TraceAnalysis_ini',config$Metadata$siteID,'log')
         output <- RandomForestModel(input_data[,vars_in],fill_name,log = log_path,retrain_every_n_months = retrain_interval)
         use_existing_model <- output[2]
-        gap_filled = dplyr::bind_cols(input_data[c("DateTime","Year","DoY","Hour")],output[1])
-        update_names <- list(fill_name)
-        names(update_names) <- c(fill_name)
-        input_data <- write_traces(gap_filled,update_names)
+        rf_results = dplyr::bind_cols(input_data[c("DateTime")],output[1])
+        browser()
+        update_names <- as.list(names(rf_results))
+        names(update_names) <- names(rf_results)
+        input_data <- write_traces(rf_results,update_names)
       })
-
     }else{
       print('!!!! Warning !!!!')
       print(sprintf('%s Not present, RandomForest will not process',RFConfig[[fill_name]]$var_dep))
@@ -445,6 +528,7 @@ RF_GapFilling <- function(){
 }
 
 write_traces <- function(data,update_names,unlink=FALSE){ 
+  # Update names for subset and save to main third stage folder
   siteID <- config$Metadata$siteID
   level_in <- config$Database$Paths$SecondStage
   # Set intermediary output depending on ustar scenario
@@ -459,6 +543,25 @@ write_traces <- function(data,update_names,unlink=FALSE){
   tv_input <- config$Database$Timestamp$name
   db_root <- config$Database$db_root
   
+  # Dumping everything by default into stage 3
+  # Can parse down later as desired
+  cols_out <- colnames(data)
+  cols_out <- cols_out[! cols_out %in% c("Year","DoY","Hour")]
+
+  update_names = update_names[names(update_names)!='DateTime']
+  # Drop incoming data from input data (simplifies join procedures)
+  input_data <- input_data[,!(names(input_data) %in% names(update_names))]
+
+  # add DateTime to use as join key
+  update_names <- c('DateTime'='DateTime',update_names)
+  # Subset of traces that can get appended to the input_data frame for use in subsequent steps if needed
+  append_cols <- data[unlist(update_names[update_names %in% cols_out])]
+  colnames(append_cols) <- names(update_names[update_names %in% cols_out])
+  
+  # Join the incoming data to the inputs incase needed for future use (e.g., ReddyPro outputs in RF)
+  input_data <- input_data %>% left_join(., append_cols, by = c('DateTime' = 'DateTime'))
+
+  
   for (year in config$years){
     print(sprintf('Writing %i',year))
     # Create new directory, or clear existing directory
@@ -471,28 +574,10 @@ write_traces <- function(data,update_names,unlink=FALSE){
     # Copy tv from stage 2 to intermediate stage 3
     file.copy(file.path(dpath,level_in,tv_input),
               file.path(dpath,intermediate_out,tv_input))
-    ind_s <- which(data$Year == year & data$DoY == 1 & data$Hour == 0.5)
-    ind_e <- which(data$Year == year+1 & data$DoY == 1 & data$Hour == 0)
-    ind <- seq(ind_s,ind_e)
+    ind_s <- which(year(data$DateTime) == year & yday(data$DateTime) == 1 & hour(data$DateTime) == 0 & minute(data$DateTime) == 30)
+    ind_e <- which(year(data$DateTime) == year+1 & yday(data$DateTime) == 1 & hour(data$DateTime) == 0 & minute(data$DateTime) == 0)
+    ind <- seq(ind_s[1],ind_e[1])
     
-    # Dumping everything by default into stage 3
-    # Can parse down later as desired
-    cols_out <- colnames(data)
-    cols_out <- cols_out[! cols_out %in% c("Year","DoY","Hour")]
-  
-    update_names = update_names[names(update_names)!='DateTime']
-    # Drop incoming data from input data (simplifies join procedures)
-    input_data <- input_data[,!(names(input_data) %in% names(update_names))]
-
-    # add DateTime to use as join key
-    update_names <- c('DateTime'='DateTime',update_names)
-    # Subset of traces can get appended to the input_data frame for use in subsequent steps if needed
-    append_cols <- data[unlist(update_names[update_names %in% cols_out])]
-    colnames(append_cols) <- names(update_names[update_names %in% cols_out])
-    
-    # Join the incoming data to the inputs incase needed for future use (e.g., ReddyPro outputs in RF)
-    input_data <- input_data %>% left_join(., append_cols, by = c('DateTime' = 'DateTime'))
-
     # Dump all data provided to intermediate output location
     setwd(file.path(dpath,intermediate_out))
     for (col in cols_out){
@@ -527,7 +612,14 @@ input_data <- read_and_copy_traces()
 input_data <- Met_Gap_Filling()
 
 # Apply storage correction (if required)
-input_data <- storage_correction()
+out <- Storage_Correction()
+input_data <- out$input_data
+config <- out$config
+
+# MAD algorithm, Papale et al. 2006
+out <- Spike_Removal()
+input_data <- out$input_data
+config <- out$config
 
 # Run REddyProc
 if (config$Processing$ThirdStage$REddyProc$Run){

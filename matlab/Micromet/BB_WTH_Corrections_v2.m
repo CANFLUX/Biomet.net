@@ -22,7 +22,7 @@ function [Corrected_WTD] = BB_WTD_Corrections(SiteID,db_year,well_number,inspect
     if strcmp(SiteID,'BB')
         start_year = 2015;
     else
-        start_year = 2019;
+        start_year = 2020;
     end
     % Read all data available
     for i=start_year:current_year

@@ -93,7 +93,7 @@ RandomForestModel <- function(df,fill_name,log_file_path,retrain_every_n_months=
     RF <- train(
       as.formula(paste(var_dep, "~.")), 
       data = train_set[,c(var_dep,predictor_vars)],
-      num.trees = 500, # start at 10xn_feat, maintain at 100 below 10 feat
+      num.trees = 100,# set to 100 instead of 500 to speed up training on large datasets500, # start at 10xn_feat, maintain at 100 below 10 feat
       method = 'ranger',
       trControl = myControl,
       tuneGrid = tgrid,
@@ -136,33 +136,32 @@ RandomForestModel <- function(df,fill_name,log_file_path,retrain_every_n_months=
   result$RF_filled <- ifelse(is.na(result[,var_dep]),result$RF_model,result[,var_dep]) # gap-filled column (true value when it is, gap-filled value when missing)
   result$RF_residual <- ifelse(is.na(result[,var_dep]),NA,result$RF_model - result[,var_dep]) # residual (model - obs). can be used for random uncertainty analysis
   # Rename variable names base on the dependant variable
-  names(result)[2:4] <- c(paste(fill_name,'_RF_model',sep=""),paste(fill_name,'_RF_filled',sep=""),paste(fill_name,'_RF_residual',sep=""))
+  names(result)[2:4] <- c(
+    paste(fill_name,'_model',sep=""),
+    paste(fill_name,'_filled',sep=""),
+    paste(fill_name,'_residual',sep=""))
   
   result$DateTime <- ML.df$DateTime
-  
-  p2 <- result %>% ggplot(aes_string('DateTime',names(result)[2])) + geom_point(color="red",alpha=0.5) +
-    geom_point(aes_string('DateTime',var_dep),color="black")+
-    theme_bw() + ylab(var_dep)
+  if (use_existing_model == FALSE){
+    p2 <- result %>% ggplot(aes_string('DateTime',names(result)[2])) + geom_point(color="red",alpha=0.5) +
+      geom_point(aes_string('DateTime',var_dep),color="black")+
+      theme_bw() + ylab(var_dep)
 
-  png(file.path(log_file_path,paste('RF',var_dep,"Observed_vs_Modeled_TimeSeries.png",sep="_")))
-  print(p2)
-  dev.off()
-
+    png(file.path(log_file_path,paste('RF',var_dep,"Observed_vs_Modeled_TimeSeries.png",sep="_")))
+    print(p2)
+    dev.off()
+    }
   # Output filled data (including 'var_Ustar_f_RF', 'var_Ustar_fall_RF' -> same naming convention as REddyProc)
-  df.out <- data.frame(df[,1])
-  # Make sure output data frame is the same length as the input data
-  df.out[pred_ix, ] <- result[,3] #RF_filled
-  names(df.out) <- paste(fill_name,sep="")
-  df.out$RF_filled <- NA
-  df.out$RF_filled[pred_ix] <- result[,2] #RF_model
-  names(df.out)[2] <- paste(fill_name,"_all",sep="")  
-
-  # Get all indicies before present timestamp
+  df.out <- as.data.frame(matrix(NaN, nrow = dim(df)[1], ncol = 3))
+  colnames(df.out) <- names(result)[2:4]
+  for (n in names(result)[2:4]){
+    df.out[pred_ix, n] <- result[,n]
+  }
   BP <- which(df$DateTime<Sys.time())
   
-  print(sprintf('RF Gap-Filling %s Complete, %i missing values remain in the time series',var_dep,sum(is.na(df.out[BP,1]))))
-  print(sprintf('%i of those missing values are between the first and last complete set of predictors',sum(is.na(df.out[pred_ix[1]:pred_ix[length(pred_ix)],1]))))
+  print(sprintf('RF Gap-Filling %s Complete, %i missing values remain in the time series',var_dep,sum(is.na(df.out[BP,'FCH4_PI_F_RF_model']))))
+  print(sprintf('%i of those missing values are between the first and last complete set of predictors',sum(is.na(df.out[pred_ix[1]:pred_ix[length(pred_ix)],'FCH4_PI_F_RF_model']))))
   
-  return(c(df.out,use_existing_model))
+  return(list(results = df.out,use_existing_model = use_existing_model))
   
 }
