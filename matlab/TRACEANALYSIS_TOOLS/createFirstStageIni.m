@@ -23,10 +23,13 @@ function createFirstStageIni(structSetup)
 % structSetup.outputPath = []; % keep it in the local directory
 %
 % Zoran Nesic               File created:           Mar 20, 2024
-%                           Last modification:      May 10, 2024
+%                           Last modification:      Oct 28, 2024
 
 % Revisions:
 %
+% Oct 28, 2024 (Zoran)
+%   - Removed obsolete properties.
+%   - Added instrumentType property
 % May 10, 2024 (Zoran)
 %   - Formatting improvements.
 % Apr 19, 2024 (Zoran)
@@ -63,22 +66,20 @@ for cntMeasurementTypes = 1:length(structSetup.allMeasurementTypes)
                 fprintf(fid,'[Trace]\n');
                 fprintf(fid,'    variableName         = ''%s''\n',variableName);
                 fprintf(fid,'    title                = ''Title goes here''\n');
-                fprintf(fid,'    originalVariable     = ''''\n');
                 fprintf(fid,'    inputFileName        = {''%s''}\n',variableName);
                 fprintf(fid,'    inputFileName_dates  = [ datenum(%d,%d,%d) datenum(%d,%d,%d)]\n',...
                                                         structSetup.startYear,structSetup.startMonth,structSetup.startDay,...
                                                         structSetup.endYear,structSetup.endMonth,structSetup.endDay);
                         
                 fprintf(fid,'    measurementType      = ''%s''\n',measurementType);
-                fprintf(fid,'    tags                 = ['''']\n');
                 fprintf(fid,'    units                = ''''\n');
                 fprintf(fid,'    instrument           = ''''\n');
                 fprintf(fid,'    instrumentSN         = ''''\n');
-                fprintf(fid,'    calibrationDates     = ''''\n');
-                fprintf(fid,'       loggedCalibration = [ 1 0 datenum(%d,%d,%d) datenum(%d,%d,%d)]\n',...
+                fprintf(fid,'    instrumentType       = ''''\n');
+                fprintf(fid,'    loggedCalibration    = [ 1 0 datenum(%d,%d,%d) datenum(%d,%d,%d)]\n',...
                                                         structSetup.startYear,structSetup.startMonth,structSetup.startDay,...
                                                         structSetup.endYear,structSetup.endMonth,structSetup.endDay);
-                fprintf(fid,'       currentCalibration= [ 1 0 datenum(%d,%d,%d) datenum(%d,%d,%d)]\n',...
+                fprintf(fid,'    currentCalibration   = [ 1 0 datenum(%d,%d,%d) datenum(%d,%d,%d)]\n',...
                                                         structSetup.startYear,structSetup.startMonth,structSetup.startDay,...
                                                         structSetup.endYear,structSetup.endMonth,structSetup.endDay);
                 fprintf(fid,'    comments             = ''''\n');
