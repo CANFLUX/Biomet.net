@@ -37,7 +37,7 @@ try
     
     %filePath = 'D:\Sites\Sync\Sync\ClimateStation_to_UBC'; % Changed Aug 3, 2024
     % filePath = 'T:\Research_Groups\BioMet\ClimateStation'; % chaged Oct 20, 2024
-    filePath = '\\annex001\Climate-UBCccc';
+    filePath = '\\annex001\Climate-UBC';
     destinationPath = 'D:\SITES\ubc\CSI_NET';
     fileExt = datestr(now,30);
     fileExt = fileExt(1:8);

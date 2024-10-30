@@ -45,11 +45,15 @@ function [EngUnits,Header,tv,outStruct] = fr_read_generic_data_file(fileName,ass
 %                          
 %
 % (c) Zoran Nesic                   File created:       Dec 20, 2023
-%                                   Last modification:  Oct 17, 2024
+%                                   Last modification:  Oct 24, 2024
 %
 
 % Revisions (last one first):
 %
+% Oct 24, 2024 (Zoran)
+%   - Bug fix: function was not able to automatically select the proper data type ("double") when the first few rows of a column
+%     were empty. It would pick the data type "char" for that column and that would be then converted to all NaNs. This
+%     would then set the entire trace to NaN. The fix now forces the VariableTypes of all the selected columns to be "double".
 % Oct 17, 2024 (Zoran)
 %   - Added ability to read simple xlxs files.
 %   - added more characters to renameFields. ("[","]",":")
@@ -142,6 +146,30 @@ function [EngUnits,Header,tv,outStruct] = fr_read_generic_data_file(fileName,ass
                 timeVariable = opts.VariableNames(dateColumnNum(2));
                 opts=setvartype(opts,timeVariable,'datetime');
                 opts.VariableOptions(dateColumnNum(2)).InputFormat = char(timeInputFormat{2});
+            end
+        end
+        
+        % Set all the rows of interest to data type "double"
+        % If colToKeep has two elements assume that those are indexes
+        % of the start and the stop of the columns that need to be kept.
+        % Otherwise, the colToKeep contains an array of indexes of the columns.
+        colStart = colToKeep(1);
+        if length(colToKeep) == 2
+            colEnd = colToKeep(2);
+            if isinf(colEnd)
+                colEnd = length(opts.VariableTypes);
+            end
+            colToKeepAll = colStart:colEnd;        
+        elseif length(colToKeep)>2
+            colToKeepAll = colToKeep;
+        end
+        % Cycle through all the coltToKeep variables and set their type to "double"
+        for curCol = colToKeepAll
+            % Every now and then the date/time column sneaks into colToKeep range
+            % (see example for SmartFlux). Make sure you leave those alone
+            if ~strcmpi(opts.VariableTypes(curCol),'datetime') ...
+                    && ~strcmpi(opts.VariableTypes(curCol),'Duration')
+                opts=setvartype(opts,opts.VariableNames(curCol),'double');
             end
         end
         
