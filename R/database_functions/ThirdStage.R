@@ -320,49 +320,47 @@ Spike_Removal <- function(){
       print(sprintf('%i values in %s were filtered out by the rain filter',na_out-na_in,term))
       }
     ## MAD algorithm, Papale et al. 2006
-    D_N <- list()
-    D_N[[1]] <- input_data[input_data$SW_IN_1_1_1 < 20,]
-    D_N[[2]] <- input_data[input_data$SW_IN_1_1_1 >= 20,]
+    # D_N <- list()
+    df <- na.omit(input_data[,c('DateTime',term,'SW_IN_1_1_1')])
+    df$DN <- NA
+    df[(df$SW_IN_1_1_1 < 20),'DN'] <- 1
+    df[(df$SW_IN_1_1_1 >= 20),'DN'] <- 2
+    df$di <- c(NA,diff(df[[term]])) - c(diff(df[[term]]),NA)
     dn <- c('Night','Day')
     for(i in 1:2){
       na_in <- sum(is.na(input_data[[term]]))
-      df <- D_N[[i]]
-      comp <- na.omit(df[,c(term,'DateTime')])
-      comp$di <- c(NA,diff(comp[[term]])) - c(diff(comp[[term]]),NA)
-        
+      # df <- D_N[[i]]
+      comp <- df[df$DN == i,c(term,'di','DateTime')]
+      window <- 13
       comp <- comp %>% mutate(
-        Md = slide_index_dbl(.x=di,
+        Md = slide_index_dbl(
+          .x=di,
           .i=DateTime,
-          .before=as.difftime(6,units="days"),
-          .after=as.difftime(6,units="days"),
+          .after=as.difftime(window,units="days"),
           .f=function(x) median(x,na.rm=TRUE),
           .complete=FALSE)
         )
-      
-      comp$MAD <- abs(comp$di-comp$Md)
 
+      z <- 4
       comp <- comp %>% mutate(
-        MAD = slide_index_dbl(
-          .x=MAD,
+        MAD_score = slide_index_dbl(
+          .x=di,
           .i=DateTime,
-          .before=as.difftime(6,units="days"),
-          .after=as.difftime(6,units="days"),
-          .f=function(x) median(x,na.rm=TRUE),
+          .after=as.difftime(window,units="days"),
+          .f=function(x) median(abs(x-median(x,na.rm=TRUE)))*z/0.6745,
           .complete=FALSE)
         )
-      
-      z <- 4
+
       comp$spike_Flag <- FALSE
       comp$spike_Flag[(is.na((comp$di)==TRUE)|
-        comp$di < comp$Md-(z*comp$MAD/0.6745)|
-        comp$di > comp$Md+(z*comp$MAD/0.6745)
+        comp$di < comp$Md-comp$MAD_score|
+        comp$di > comp$Md+comp$MAD_score
         )] <- TRUE
 
-      comp$spike_Flag == TRUE
       input_data[input_data$DateTime %in% comp$DateTime[comp$spike_Flag == TRUE],term] <- NA
 
       na_out <- sum(is.na(input_data[[term]]))
-      print(sprintf('%i values in %s were filtered out by %s-time spike filter',na_out-na_in,term,dn[i]))      
+      print(sprintf('%i values in %s were filtered out by %s-time spike filter',na_out-na_in,term,dn[i]))   
     }
   }
   update_names <- as.list(names(config$Processing$ThirdStage$Storage$Terms))
@@ -514,7 +512,6 @@ RF_GapFilling <- function(){
         output <- RandomForestModel(input_data[,vars_in],fill_name,log = log_path,retrain_every_n_months = retrain_interval)
         use_existing_model <- output[2]
         rf_results = dplyr::bind_cols(input_data[c("DateTime")],output[1])
-        browser()
         update_names <- as.list(names(rf_results))
         names(update_names) <- names(rf_results)
         input_data <- write_traces(rf_results,update_names)
