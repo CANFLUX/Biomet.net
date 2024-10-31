@@ -22,12 +22,14 @@ function [Corrected_WTD] = BB_WTD_Corrections(SiteID,db_year,well_number,inspect
     if strcmp(SiteID,'BB')
         start_year = 2015;
     else
-        start_year = 2019;
+        start_year = 2020;
     end
-
     % Read all data available
     for i=start_year:current_year
         [a,clean_tv] = read_db(i,SiteID,'Met/Clean',WTH_name);
+        if i == db_year
+            db_year_clean_tv = clean_tv;
+        end
         if sum(isnan(a)) ~= length(a)
             [b,clean_tv] = read_db(i,SiteID,'Met/Clean',WTD_name);
             [c,clean_tv] = read_db(i,SiteID,'Met/Clean',PH_name);
@@ -100,8 +102,9 @@ function [Corrected_WTD] = BB_WTD_Corrections(SiteID,db_year,well_number,inspect
     [ph_correction,sig_a,r,y_cl95] = linreg(X,y);
     PH_cont_est = (WTD_cont_drift_corrected*ph_correction(1)+ph_correction(2));
     WTD_surface_correced_estimate = WTD_cont_drift_corrected-PH_cont_est;
-    oix = year(full_tv) == db_year;
-    oix = [oix(end);oix(1:end-1)];
+    % oix = full_tv == db_year_clean_tv;
+    [~,oix,~]=intersect(full_tv,db_year_clean_tv,"stable");
+    % oix = [oix(end);oix(1:end-1)];
     
     Corrected_WTD = WTD_surface_correced_estimate(oix);
 
