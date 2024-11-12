@@ -9,10 +9,13 @@ function Biomet_Main_Scheduler
 %
 %
 % Zoran Nesic           File created:       Feb 12, 2024
-%                       Last modification:  Sep 22, 2024
+%                       Last modification:  Oct 20, 2024
 
 % Revisions:
 %
+% Oct 20, 2024 (Zoran)
+%   - Added more comments to remind me to change the filePath for Totem
+%   data. See: Process_Climate_Station
 % Sep 22, 2024 (Zoran)
 %   - changed source folder for Totem Field station from files.ubc.ca to
 %     \\annex001\climate-UBC
@@ -237,7 +240,12 @@ function Process_Climate_Station(fid)
         % Replaces a Task Scheduler task: ClimateStation_Data_Copy
         %filePath = 'd:\Sites\Sync\Sync\ClimateStation_to_UBC';
         %filePath = 'T:\Research_Groups\BioMet\ClimateStation';        
-        filePath = '\\annex001\Climate-UBC';                
+        %  ********
+        %  !!!!! DON'T FORGET to change the filePath also in ClimateStation_movefile !!!! 
+        %  *******
+        filePath = '\\annex001\Climate-UBC'; 
+        % !!!! See the note above
+
         destinationPath = 'D:\SITES\ubc\CSI_NET';
         fprintf(fid,'  Copying ubraw.dat from Sync to CSI_NET... %s  \n',datetime);
         [Success,Msg,MsgID] = copyfile(fullfile(filePath,'ubraw.dat'),...

@@ -6,11 +6,13 @@ function [Status1,Message1,MessageID1] = ClimateStation_movefile(fid)
 %                  
 %
 % (c) Zoran Nesic       File created:   Oct  6, 2014
-%                       Last modified:  Aug  3, 2024
+%                       Last modified:  Oct 20, 2024
 
 
 % Revisions
 %
+% Oct 20, 2024
+%   - changed the filePath to the new destination.
 % Aug 3, 2024 (Zoran)
 %   - finally remembered to change the source folder-name for the
 %   ubcraw.dat file. They've been on the T: drive for a while now.
@@ -34,7 +36,8 @@ try
     fileName = 'UBRAW.dat';
     
     %filePath = 'D:\Sites\Sync\Sync\ClimateStation_to_UBC'; % Changed Aug 3, 2024
-    filePath = 'T:\Research_Groups\BioMet\ClimateStation';
+    % filePath = 'T:\Research_Groups\BioMet\ClimateStation'; % chaged Oct 20, 2024
+    filePath = '\\annex001\Climate-UBC';
     destinationPath = 'D:\SITES\ubc\CSI_NET';
     fileExt = datestr(now,30);
     fileExt = fileExt(1:8);

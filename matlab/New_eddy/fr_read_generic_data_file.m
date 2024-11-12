@@ -45,11 +45,18 @@ function [EngUnits,Header,tv,outStruct] = fr_read_generic_data_file(fileName,ass
 %                          
 %
 % (c) Zoran Nesic                   File created:       Dec 20, 2023
-%                                   Last modification:  Aug 25, 2024
+%                                   Last modification:  Oct 24, 2024
 %
 
 % Revisions (last one first):
 %
+% Oct 24, 2024 (Zoran)
+%   - Bug fix: function was not able to automatically select the proper data type ("double") when the first few rows of a column
+%     were empty. It would pick the data type "char" for that column and that would be then converted to all NaNs. This
+%     would then set the entire trace to NaN. The fix now forces the VariableTypes of all the selected columns to be "double".
+% Oct 17, 2024 (Zoran)
+%   - Added ability to read simple xlxs files.
+%   - added more characters to renameFields. ("[","]",":")
 % Aug 25, 2024 (Zoran)
 %   - used a better way to create the datetime from the Data and Time columns. Converting Date to 'datetime' 
 %     and Time to 'duration' and then adding them up works better and enables proper conversion when the table
@@ -110,13 +117,26 @@ function [EngUnits,Header,tv,outStruct] = fr_read_generic_data_file(fileName,ass
                   % as for all the other fr_read* functions.
     try
         % Read the file using readtable function
-        if modifyVarNames
-            opts = detectImportOptions(fileName,'FileType',inputFileType,'VariableNamesLine',VariableNamesLine);
+        % First check if file is an excell sheet
+        try            
+            opts = detectImportOptions(fileName);
+        catch
+            % automatic detection could fail. Set opts=[] and continue
+            opts =[];
+        end
+        if isprop(opts,'Sheet')
+            % it's an Excel sheet. Ignore VariableNamesLine and inputFileType
+            % Use these settings
+            opts = detectImportOptions(fileName,'VariableNamingRule','preserve');
         else
-            opts = detectImportOptions(fileName,'FileType',inputFileType,'VariableNamingRule','preserve','VariableNamesLine',VariableNamesLine);
-            %opts.VariableNames = renameFields(opts.VariableNames);
-            % Now re-enable renaming of the variables
-            %opts.VariableNamingRule = 'modify';
+            if modifyVarNames
+                opts = detectImportOptions(fileName,'FileType',inputFileType,'VariableNamesLine',VariableNamesLine);
+            else
+                opts = detectImportOptions(fileName,'FileType',inputFileType,'VariableNamingRule','preserve','VariableNamesLine',VariableNamesLine);
+                %opts.VariableNames = renameFields(opts.VariableNames);
+                % Now re-enable renaming of the variables
+                %opts.VariableNamingRule = 'modify';
+            end
         end
         if length(dateColumnNum)==2
             opts.VariableTypes{dateColumnNum(1)} = 'datetime';           
@@ -126,6 +146,30 @@ function [EngUnits,Header,tv,outStruct] = fr_read_generic_data_file(fileName,ass
                 timeVariable = opts.VariableNames(dateColumnNum(2));
                 opts=setvartype(opts,timeVariable,'datetime');
                 opts.VariableOptions(dateColumnNum(2)).InputFormat = char(timeInputFormat{2});
+            end
+        end
+        
+        % Set all the rows of interest to data type "double"
+        % If colToKeep has two elements assume that those are indexes
+        % of the start and the stop of the columns that need to be kept.
+        % Otherwise, the colToKeep contains an array of indexes of the columns.
+        colStart = colToKeep(1);
+        if length(colToKeep) == 2
+            colEnd = colToKeep(2);
+            if isinf(colEnd)
+                colEnd = length(opts.VariableTypes);
+            end
+            colToKeepAll = colStart:colEnd;        
+        elseif length(colToKeep)>2
+            colToKeepAll = colToKeep;
+        end
+        % Cycle through all the coltToKeep variables and set their type to "double"
+        for curCol = colToKeepAll
+            % Every now and then the date/time column sneaks into colToKeep range
+            % (see example for SmartFlux). Make sure you leave those alone
+            if ~strcmpi(opts.VariableTypes(curCol),'datetime') ...
+                    && ~strcmpi(opts.VariableTypes(curCol),'Duration')
+                opts=setvartype(opts,opts.VariableNames(curCol),'double');
             end
         end
         
@@ -267,6 +311,36 @@ function renFields = renameFields(fieldsIn)
     renFields  = strrep(renFields,'/','_');
     renFields  = strrep(renFields,'(','_');
     renFields  = strrep(renFields,')','');
+    renFields  = strrep(renFields,'[','_');
+    renFields  = strrep(renFields,']','');    
+    renFields  = strrep(renFields,':','');
+    renFields  = strrep(renFields,'°','_');
+    renFields  = strrep(renFields,'³','3');
+    renFields  = strrep(renFields,'²','2');
+    
+    renFields  = strrep(renFields,'''','_');
+    renFields  = strrep(renFields,'?','Q');
+    % Test an alternative renaming
+    % Characters to replace with "_"
+    replaceWithUnderscore = {'[','(','-','.','/',' ','°',''''};
+    % Characters to replace with ""
+    replaceWithEmpty = {']',')',':'};
+    % New way of renaming
+    % first run complex renaming:
+    renFieldsNew  = replace(fieldsIn,'u*','us');
+    renFieldsNew  = replace(renFieldsNew,'(z-d)/L','zdL');
+    renFieldsNew  = replace(renFieldsNew,'T*','ts');
+    renFieldsNew  = replace(renFieldsNew,'%','p');
+    renFieldsNew  = replace(renFieldsNew,replaceWithUnderscore,'_');
+    renFieldsNew  = replace(renFieldsNew,replaceWithEmpty,'');
+    renFieldsNew  = replace(renFieldsNew,'³','3');
+    renFieldsNew  = replace(renFieldsNew,'²','2');
+    renFieldsNew  = replace(renFieldsNew,'?','Q');
+    if ~strcmp(renFields,renFieldsNew)
+        fprintf(2,'New variable renaming strategy not working in fr_read_generic_data_file.m\n');
+        fprintf(2,'Old name: %s\n',renFields);
+        fprintf(2,'New name: %s\n',renFieldsNew);
+    end
 end
 
 %%
