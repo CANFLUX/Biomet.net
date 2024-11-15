@@ -71,8 +71,10 @@ for (i in 1:length(sites)) {
   
   # Get index of each column of variable of interest
   indexvar <- c()
+  k <- 0
   for (j in 1:length(var_of_interest)) {
-    indexvar[j] <- which(names(data_in) %in% var_of_interest[j])
+    k <- k+1
+    indexvar[k] <- which(names(data_in) %in% var_of_interest[j])
   }
   indexvar <- na.omit(indexvar)
   

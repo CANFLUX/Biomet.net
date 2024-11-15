@@ -200,9 +200,9 @@ ui <- dashboardPage(skin = 'black', # Begin UI
                           h5(style="text-align: justify;",
                              'EDIT: If you are interested in learning more, improving this app, or building one yourself, check out the ', tags$a(href = 'https://shiny.rstudio.com/', 'RShiny package in R', target = 'blank'), ' or contact ', tags$a(href="https://sruehr.github.io/", "Sophie Ruehr.", target = 'blank'), 
                              'Code for this app is available on ', tags$a(href = 'https://github.com/sruehr?tab=repositories', 'GitHub.', target = 'blank')), 
-                          br(),
-                          h4('Citation'),
-                          h5('EDIT: If using any of these tools in publication or presentations, please acknowledge as "AmeriFlux Data Visualization Tool, Sophie Ruehr (2022), 10.5281/zenodo.7023749."'),
+                          #br(),
+                          #h4('Citation'),
+                          #h5('TBD'),
                           
                           
                           br(),
