@@ -96,6 +96,12 @@ configure <- function(siteID){
     # 'source'd via R console
     fx_path<- path_dir(normalizePath(sys.frames()[[1]]$ofile))
   }
+  
+  # Read a the global database configuration
+  filename <- file.path(fx_path,'global_config.yml')
+  dbase_config = yaml.load_file(filename)
+  
+  # Find the database and site-specific config
   db_root <- file.path(args[1])
   db_ini <- file.path(db_root,'Calculation_Procedures/TraceAnalysis_ini/')
   
@@ -115,10 +121,6 @@ configure <- function(siteID){
   }
   print(sprintf('Third stage run initialized for %s data in %s',args[2],db_root))
 
-# Read a the global database configuration
-  filename <- file.path(db_root,'Calculation_Procedures/TraceAnalysis_ini/global_config.yml')
-  dbase_config = yaml.load_file(filename)
-  
   # Get the siteID argument and read the site-specific configuration
   siteID <- args[2]
   fn <- sprintf('%s_config.yml',siteID)
@@ -279,28 +281,18 @@ Met_Gap_Filling <- function(){
   return(input_data)
 }
 
-Storage_Correction <- function(){
-  step_label = 'SC'
+Standard_Cleaning <- function(){
+  suffix_label = 'PI'
   Fluxes <- config$Processing$ThirdStage$Fluxes
-  Storage_Terms <- config$Processing$ThirdStage$Storage_Correction
   for (flux in names(Fluxes)){
     flux_in <- unlist(Fluxes[[flux]])
-    storage <- unlist(Storage_Terms[[flux]])
-    flux_out = paste(flux,'_PI_',step_label,sep="")
+    flux_out = paste(flux,'_',suffix_label,sep="")
     Fluxes[[flux]] <- flux_out
-    # Default behavior is to apply correction 
-    if (flux_in %in% colnames(input_data) && config$Processing$ThirdStage$Storage_Correction$Run) {
-      input_data[[flux_out]] <- input_data[[flux_in]]+input_data[[storage]]
-    # If storage correction is set to false, still create the variable (eg NEE = FC) so it doesn't break anything
-    }else if (flux_in %in% colnames(input_data) && !config$Processing$ThirdStage$Storage_Correction$Run) {
-      input_data[[flux_out]] <- input_data[[flux_in]]
-    # Or notify user if not available
-    }else{
-      print(sprintf('%s Not present in Second Stage, excluding from processing',flux))
-    }
+    # Declare flux out variables, needed because some (e.g., NEE) are renamed from their stage 2 value
+    input_data[[flux_out]] <- input_data[[flux_in]]
 
     if ('northOffset' %in% names(config$Metadata)){
-      half_width <- config$Processing$ThirdStage$Standard_cleaning$wakeFilter
+      half_width <- config$Processing$ThirdStage$Standard_Cleaning$wakeFilter
       filter <- config$Metadata$northOffset-180
       # Calculation is robust to user error and does not require adjustments based on wind direction
       na_in <- sum(is.na(input_data[[flux_out]]))
@@ -311,9 +303,11 @@ Storage_Correction <- function(){
         ] <- NA
       na_out <- sum(is.na(input_data[[flux_out]]))
       print(sprintf('%i values in %s were filtered by the wind sector filter',na_out-na_in,flux))
+      } else {
+         stop("Error: northOffset missing from you configuration file!")
       }
     if ('P_1_1_1' %in% colnames(input_data)){
-      p_thresh <- config$Processing$ThirdStage$Standard_cleaning$precipCutOff
+      p_thresh <- config$Processing$ThirdStage$Standard_Cleaning$precipCutOff
       na_in <- sum(is.na(input_data[[flux_out]]))
       input_data[[flux_out]][input_data$P_1_1_1>p_thresh & !is.na(input_data$P_1_1_1)] <- NA
       na_out <- sum(is.na(input_data[[flux_out]]))
@@ -321,12 +315,29 @@ Storage_Correction <- function(){
       }
   }
   config$Processing$ThirdStage$Fluxes <- Fluxes
+  # Delete old outputs, dump new ones
   input_data <- write_traces(input_data[,c('DateTime',unlist(unname(Fluxes)))],Fluxes,unlink=TRUE)    
   return(list(input_data=input_data,config=config))
 }
 
+Storage_Correction <- function(){
+  suffix_label = 'SC'
+  Fluxes <- config$Processing$ThirdStage$Fluxes
+  Storage_Terms <- config$Processing$ThirdStage$Storage_Correction
+  for (flux in names(Fluxes)){
+    flux_in <- unlist(Fluxes[[flux]])
+    storage <- unlist(Storage_Terms[[flux]])
+    flux_out = paste(flux_in,'_',suffix_label,sep="")
+    Fluxes[[flux]] <- flux_out
+    input_data[[flux_out]] <- input_data[[flux_in]]+input_data[[storage]]
+  }
+  config$Processing$ThirdStage$Fluxes <- Fluxes
+  input_data <- write_traces(input_data[,c('DateTime',unlist(unname(Fluxes)))],Fluxes,unlink=FALSE)    
+  return(list(input_data=input_data,config=config))
+}
+
 JS_Moving_Z <- function(){
-  step_label = 'JSZ'
+  suffix_label = 'JSZ'
   Fluxes <- config$Processing$ThirdStage$Fluxes
   # read filtering parameters from config
   window <- config$Processing$ThirdStage$JS_Moving_Z$window
@@ -334,7 +345,7 @@ JS_Moving_Z <- function(){
   
   for (flux in names(Fluxes)){
     flux_in <- unlist(Fluxes[[flux]])
-    flux_out = paste(flux_in,'_',step_label,sep="")
+    flux_out = paste(flux_in,'_',suffix_label,sep="")
     input_data[[flux_out]] <- input_data[[flux_in]]
     Fluxes[[flux]] <- flux_out
     na_in <- sum(is.na(input_data[[flux_in]]))
@@ -370,14 +381,14 @@ JS_Moving_Z <- function(){
 }
 
 Papale_Spike_Removal <- function(){
-  step_label = 'MAD'
+  suffix_label = 'MAD'
   Fluxes <- config$Processing$ThirdStage$Fluxes
   # read filtering parameters from config
   window <- config$Processing$ThirdStage$Papale_Spike_Removal$window
   z <- config$Processing$ThirdStage$Papale_Spike_Removal$z_thresh
   for (flux in names(Fluxes)){
     flux_in <- unlist(Fluxes[[flux]])
-    flux_out = paste(flux_in,'_',step_label,sep="")
+    flux_out = paste(flux_in,'_',suffix_label,sep="")
     input_data[[flux_out]] <- input_data[[flux_in]]
     Fluxes[[flux]] <- flux_out
     ## MAD algorithm, Papale et al. 2006
@@ -429,7 +440,7 @@ Papale_Spike_Removal <- function(){
 
 Run_REddyProc <- function() {
   
-  step_label = 'RP'
+  suffix_label = 'RP'
   Fluxes <- config$Processing$ThirdStage$Fluxes
   # Subset just the config info relevant to REddyProc
   REddyConfig <- config$Processing$ThirdStage$REddyProc
@@ -462,9 +473,9 @@ Run_REddyProc <- function() {
     if (!(v %in% Time_Vars) & (invert[v] %in% REddyConfig$MDSGapFill$UStarScens | invert[v] %in% REddyConfig$MDSGapFill$basic) ){
       iv = unlist(unname(invert[v]))
       if (grepl('_PI_',v)){
-        REddyConfig$vars_in[iv] = paste(v,'_',step_label,'_F',sep="")
+        REddyConfig$vars_in[iv] = paste(v,'_',suffix_label,sep="")
       } else if (!(v %in% Time_Vars)) {
-        REddyConfig$vars_in[iv] = paste(v,'_PI_F_',step_label,sep="")
+        REddyConfig$vars_in[iv] = paste(v,'_PI_',suffix_label,sep="")
       }
     } 
   }
@@ -623,15 +634,6 @@ write_traces <- function(data,final_outputs=NULL,unlink=FALSE){
   # Can parse down later as desired
   cols_out <- colnames(data)
   cols_out <- cols_out[! cols_out %in% c("Year","DoY","Hour")]
-  # update_names = update_names[names(update_names)!='DateTime']
-  # Drop incoming data from input data (simplifies join procedures)
-  # input_data <- input_data[,!(names(input_data) %in% names(update_names))]
-
-  # add DateTime to use as join key
-  # update_names <- c('DateTime'='DateTime',update_names)
-  # Subset of traces that can get appended to the input_data frame for use in subsequent steps if needed
-  # append_cols <- data[unlist(update_names[update_names %in% cols_out])]
-  # colnames(append_cols) <- names(update_names[update_names %in% cols_out])
   
   # Join the incoming data to the inputs incase needed for future use (e.g., ReddyPro outputs in RF)
   input_data <- input_data %>% left_join(., data, by = c('DateTime' = 'DateTime'))
@@ -683,12 +685,19 @@ config <- configure()
 # Read Stage 2 Data
 input_data <- read_and_copy_traces() 
 
+# Apply standard cleaning
+out <- Standard_Cleaning()
+input_data <- out$input_data
+config <- out$config
+
 input_data <- Met_Gap_Filling()
 
 # Apply storage correction (if required)
-out <- Storage_Correction()
-input_data <- out$input_data
-config <- out$config
+if (config$Processing$ThirdStage$Storage_Correction$Run){
+  out <- Storage_Correction()
+  input_data <- out$input_data
+  config <- out$config
+}
 
 if (config$Processing$ThirdStage$JS_Moving_Z$Run){
   # JS_Moving_Z
