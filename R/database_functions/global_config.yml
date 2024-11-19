@@ -6,6 +6,7 @@ Database:
     ThirdStage: Clean/ThirdStage
     ThirdStage_Default: Clean/ThirdStage_Default_Ustar
     ThirdStage_Advanced: Clean/ThirdStage_Full_Ustar_Uncertainty
+    AnnualSummary: Clean/Annual_Summary
     FirstStage:
       Met:
         raw: Met

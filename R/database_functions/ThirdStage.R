@@ -46,17 +46,17 @@ if (any(installed_packages == FALSE)) {
 invisible(lapply(packages, library, character.only = TRUE))
 
 merge_nested_lists = function(...) {
-# Modified from: https://gist.github.com/joshbode/ed70291253a4b4412026
+  # Modified from: https://gist.github.com/joshbode/ed70291253a4b4412026
   stack = rev(list(...))
   names(stack) = rep('', length(stack))
   result = list()
-
+  
   while (length(stack)) {
     # pop a value from the stack
     obj = stack[[1]]
     root = names(stack)[[1]]
     stack = stack[-1]
-
+    
     if (is.list(obj) && !is.null(names(obj))) {
       if (any(names(obj) == '')) {
         stop("Mixed named and unnamed elements are not supported.")
@@ -78,7 +78,7 @@ merge_nested_lists = function(...) {
       result[[path]] = obj
     }
   }
-
+  
   return(result)
 }
 
@@ -94,7 +94,7 @@ configure <- function(siteID){
     fx_path<- path_dir(normalizePath(sub(needle, "", cmdArgs[match])))
   } else {
     # 'source'd via R console
-    fx_path<- path_dir(normalizePath(sys.frames()[[1]]$ofile))
+    fx_path<- "/Users/saraknox/Code/Biomet.net/R/database_functions/"#path_dir(normalizePath(sys.frames()[[1]]$ofile))
   }
   
   # Read a the global database configuration
@@ -120,7 +120,7 @@ configure <- function(siteID){
     }
   }
   print(sprintf('Third stage run initialized for %s data in %s',args[2],db_root))
-
+  
   # Get the siteID argument and read the site-specific configuration
   siteID <- args[2]
   fn <- sprintf('%s_config.yml',siteID)
@@ -128,11 +128,11 @@ configure <- function(siteID){
   site_config <- yaml.load_file(filename)
   # merge the config files
   config <- merge_nested_lists(site_config,dbase_config)
-
+  
   # Add the relevant paths to the config
   config$Database$db_root <- db_root
   config$fx_path <- fx_path
-
+  
   # Find all site-years in database
   yearsAll = suppressWarnings(as.numeric(list.dirs(db_root, recursive = FALSE,full.names = FALSE)))
   yearsAll = yearsAll[!sapply(yearsAll, is.na)]
@@ -144,20 +144,20 @@ configure <- function(siteID){
   siteYearsAll = gsub(tv,'',siteYearsAll)
   siteYearsAll = gsub(config$Database$Paths$SecondStage,'',siteYearsAll)
   siteYearsAll = gsub('//','',siteYearsAll)
-
+  
   # Determine site years to output
   if (length(args)>2){
     years <- c(args[3]:args[length(args)])
     siteYearsOut = file.path(db_root,as.character(years),siteID)
   } else {
-     siteYearsOut = siteYearsAll
-     years <- yearsAll
+    siteYearsOut = siteYearsAll
+    years <- yearsAll
   }
-
+  
   config$siteYearsAll <- siteYearsAll
   config$siteYearsOut <- siteYearsOut
   config$years <- years
-    
+  
   # Set procedures to run by default unless specified otherwise in site-specific files
   # Can update to have user overrides by command line as well if desired
   # For now, just apply the overrides in site-specific config files
@@ -180,35 +180,35 @@ configure <- function(siteID){
 }
 
 read_database <- function(input_paths,vars) {
-    # remove from memory if 
-    if (exists('data_out')) {rm(data_out)}
-    # simplified version of database read function
-    for (input_path in input_paths){
-      # Convert Matlab timevector to POSIXct
-      tv <- readBin(paste0(input_path,"/",config$Database$Timestamp$name,sep=""), double(), n = 18000)
-      datetime <- as.POSIXct((tv - 719529) * 86400, origin = "1970-01-01", tz = "UTC")
-      # Round to nearest 30 min
-      datetime <- lubridate::round_date(datetime, "30 minutes")
-      df <- data.frame(datetime)
-      # Read any variable that exists and is not empty
-      for (var in vars) {
-        dpath = file.path(input_path,var)
-        if (file.exists(dpath)) {
-          data <- data.frame(readBin(dpath, numeric(), n = 18000, size = 4))
-          colnames(data) <- var
-          if (nrow(data) == nrow(df)){
-            df <- cbind(df, data)
-          } else {
-            print(sprintf('Empty file or incorrect number of records, skipping: %s', dpath))
-          }
+  # remove from memory if 
+  if (exists('data_out')) {rm(data_out)}
+  # simplified version of database read function
+  for (input_path in input_paths){
+    # Convert Matlab timevector to POSIXct
+    tv <- readBin(paste0(input_path,"/",config$Database$Timestamp$name,sep=""), double(), n = 18000)
+    datetime <- as.POSIXct((tv - 719529) * 86400, origin = "1970-01-01", tz = "UTC")
+    # Round to nearest 30 min
+    datetime <- lubridate::round_date(datetime, "30 minutes")
+    df <- data.frame(datetime)
+    # Read any variable that exists and is not empty
+    for (var in vars) {
+      dpath = file.path(input_path,var)
+      if (file.exists(dpath)) {
+        data <- data.frame(readBin(dpath, numeric(), n = 18000, size = 4))
+        colnames(data) <- var
+        if (nrow(data) == nrow(df)){
+          df <- cbind(df, data)
         } else {
-          print(sprintf('Does not exist: %s', dpath))
+          print(sprintf('Empty file or incorrect number of records, skipping: %s', dpath))
         }
+      } else {
+        print(sprintf('Does not exist: %s', dpath))
       }
-      if (exists('data_out')){data_out <- bind_rows(data_out,df)}
-      else {data_out <- df}
     }
-    return(data_out)
+    if (exists('data_out')){data_out <- bind_rows(data_out,df)}
+    else {data_out <- df}
+  }
+  return(data_out)
 }
 
 read_and_copy_traces <- function(){
@@ -219,11 +219,11 @@ read_and_copy_traces <- function(){
   # Copy files from second stage to third stage, copies everything by default  
   level_in <- config$Database$Paths$SecondStage
   level_out <- config$Database$Paths$ThirdStage
-
+  
   input_paths <- file.path(config$siteYearsAll,level_in)
   copy_vars <- unique(list.files(input_paths))
   copy_vars <- copy_vars[! copy_vars %in% config$Database$Timestamp$name]
-
+  
   # read all site-years 
   data <- read_database(input_paths,copy_vars)
   
@@ -234,11 +234,11 @@ read_and_copy_traces <- function(){
     if (siteYearIn %in% config$siteYearsOut){
       dir.create(out_path, showWarnings = FALSE)
       unlink(file.path(out_path,'*'))
-
+      
       # First copy time-vector
       file.copy(file.path(in_path,config$Database$Timestamp$name),
                 file.path(out_path,config$Database$Timestamp$name))
-
+      
       # Now copy traces
       for (filename in copy_vars){
         if (file.exists(file.path(in_path,filename))){
@@ -290,7 +290,7 @@ Standard_Cleaning <- function(){
     Fluxes[[flux]] <- flux_out
     # Declare flux out variables, needed because some (e.g., NEE) are renamed from their stage 2 value
     input_data[[flux_out]] <- input_data[[flux_in]]
-
+    
     if ('northOffset' %in% names(config$Metadata)){
       half_width <- config$Processing$ThirdStage$Standard_Cleaning$wakeFilter
       filter <- config$Metadata$northOffset-180
@@ -298,21 +298,21 @@ Standard_Cleaning <- function(){
       na_in <- sum(is.na(input_data[[flux_out]]))
       input_data[[flux_out]][(
         (abs(input_data$WD_1_1_1-filter)<=half_width)|
-        (abs(input_data$WD_1_1_1-360-filter)<=half_width)|
-        (abs(input_data$WD_1_1_1+360-filter)<=half_width))& !is.na(input_data$WD_1_1_1)
-        ] <- NA
+          (abs(input_data$WD_1_1_1-360-filter)<=half_width)|
+          (abs(input_data$WD_1_1_1+360-filter)<=half_width))& !is.na(input_data$WD_1_1_1)
+      ] <- NA
       na_out <- sum(is.na(input_data[[flux_out]]))
       print(sprintf('%i values in %s were filtered by the wind sector filter',na_out-na_in,flux))
-      } else {
-         stop("Error: northOffset missing from you configuration file!")
-      }
+    } else {
+      stop("Error: northOffset missing from you configuration file!")
+    }
     if ('P_1_1_1' %in% colnames(input_data)){
       p_thresh <- config$Processing$ThirdStage$Standard_Cleaning$precipCutOff
       na_in <- sum(is.na(input_data[[flux_out]]))
       input_data[[flux_out]][input_data$P_1_1_1>p_thresh & !is.na(input_data$P_1_1_1)] <- NA
       na_out <- sum(is.na(input_data[[flux_out]]))
       print(sprintf('%i values in %s were filtered out by the rain filter',na_out-na_in,flux))
-      }
+    }
   }
   config$Processing$ThirdStage$Fluxes <- Fluxes
   # Delete old outputs, dump new ones
@@ -352,25 +352,25 @@ JS_Moving_Z <- function(){
     temp <- input_data[,c('DateTime',flux_in)]
     colnames(temp) <- c('DateTime','F')
     temp <- temp %>% mutate(
-        U = slide_index_dbl(.x=F,.i=DateTime,
-          .before=as.difftime(window,units="days"),
-          .after=as.difftime(window,units="days"),
-          .f=function(x) mean(x,na.rm=TRUE),
-          .complete=FALSE)
-        )
+      U = slide_index_dbl(.x=F,.i=DateTime,
+                          .before=as.difftime(window,units="days"),
+                          .after=as.difftime(window,units="days"),
+                          .f=function(x) mean(x,na.rm=TRUE),
+                          .complete=FALSE)
+    )
     temp <- temp %>% mutate(
-        sigma = slide_index_dbl(.x=F,.i=DateTime,
-          .before=as.difftime(window,units="days"),
-          .after=as.difftime(window,units="days"),
-          .f=function(x) sd(x,na.rm=TRUE),
-          .complete=FALSE)
-        )
+      sigma = slide_index_dbl(.x=F,.i=DateTime,
+                              .before=as.difftime(window,units="days"),
+                              .after=as.difftime(window,units="days"),
+                              .f=function(x) sd(x,na.rm=TRUE),
+                              .complete=FALSE)
+    )
     temp$sliding_Z_flag <- (temp$F-temp$U)/temp$sigma
     
     temp$drop <- FALSE
     temp$drop[(is.na((temp$sliding_Z_flag)==TRUE)|
-      abs(temp$sliding_Z_flag) >z
-      )] <- TRUE
+                 abs(temp$sliding_Z_flag) >z
+    )] <- TRUE
     input_data[input_data$DateTime %in% temp$DateTime[temp$drop == TRUE],flux_out] <- NA
     na_out <- sum(is.na(input_data[[flux_out]]))
     print(sprintf('%i values in %s were filtered out by moving Z score filter',na_out-na_in,flux))
@@ -410,8 +410,8 @@ Papale_Spike_Removal <- function(){
           .after=as.difftime(window,units="days"),
           .f=function(x) median(x,na.rm=TRUE),
           .complete=FALSE)
-        )
-
+      )
+      
       temp <- temp %>% mutate(
         MAD_score = slide_index_dbl(
           .x=di,
@@ -420,15 +420,15 @@ Papale_Spike_Removal <- function(){
           .after=as.difftime(window,units="days"),
           .f=function(x) median(abs(x-median(x,na.rm=TRUE)))*z/0.6745,
           .complete=FALSE)
-        )
-
+      )
+      
       temp$spike_Flag <- FALSE
       temp$spike_Flag[(is.na((temp$di)==TRUE)|
-        temp$di < temp$Md-temp$MAD_score|
-        temp$di > temp$Md+temp$MAD_score
-        )] <- TRUE
+                         temp$di < temp$Md-temp$MAD_score|
+                         temp$di > temp$Md+temp$MAD_score
+      )] <- TRUE
       input_data[input_data$DateTime %in% temp$DateTime[temp$spike_Flag == TRUE],flux_out] <- NA
-
+      
       na_out <- sum(is.na(input_data[[flux_out]]))
       print(sprintf('%i values in %s were filtered out by %s-time MAD spike filter',na_out-na_in,flux,dn[i]))   
     }
@@ -444,17 +444,17 @@ Run_REddyProc <- function() {
   Fluxes <- config$Processing$ThirdStage$Fluxes
   # Subset just the config info relevant to REddyProc
   REddyConfig <- config$Processing$ThirdStage$REddyProc
-
+  
   # Update names for ReddyProc
   for (v in names(REddyConfig$vars_in)){
     if (v %in% names(Fluxes)){
       REddyConfig$vars_in[v] = Fluxes[v]
     }
-    }
-
+  }
+  
   # Limit to only variables present in input_data (e.g., exclude FCH4 if not present)
   REddyConfig$vars_in <- REddyConfig$vars_in[REddyConfig$vars_in %in% colnames(input_data)]
-
+  
   skip <- names(REddyConfig$vars_in[REddyConfig$vars_in=='NULL']) 
   for (var in skip){
     print(sprintf('%s Not present, REddyProc will not process',var))
@@ -503,7 +503,7 @@ Run_REddyProc <- function() {
     }
   }
   time_cols <- input_data[c("DateTime","Year","DoY","Hour")] %>% filter(DateTime %in% data_REddyProc$DateTime)
-
+  
   # Run REddyProc
   # Following "https://cran.r-project.org/web/packages/REddyProc/vignettes/useCase.html" This is more up to date than the Wutzler et al. paper
   # NOTE: skipped loading in txt file since already have data in data frame
@@ -548,7 +548,7 @@ Run_REddyProc <- function() {
   
   # Create data frame for REddyProc output
   REddyOutput <- EProc$sExportResults()
-
+  
   # Delete uStar dulplicate columns since they are output for each gap-filled variables
   vars_remove <- c(colnames(REddyOutput)[grepl('\\Thres.', colnames(REddyOutput))],
                    colnames(REddyOutput)[grepl('\\_fqc.', colnames(REddyOutput))])
@@ -564,15 +564,15 @@ Run_REddyProc <- function() {
     uNames <- lapply(colnames(REddyOutput), function(x) if (startsWith(x,rep)) {sub(rep,sub,x)} else {x})
     colnames(REddyOutput) <- uNames
   }
-
+  
   # Add the time columns back for writing
   REddyOutput = dplyr::bind_cols(
     time_cols,REddyOutput
   )
   if (exists("time_out")){
-  REddyOutput <- bind_rows(time_out,REddyOutput)
-  REddyOutput <- REddyOutput[order(REddyOutput$DateTime), ]}
-
+    REddyOutput <- bind_rows(time_out,REddyOutput)
+    REddyOutput <- REddyOutput[order(REddyOutput$DateTime), ]}
+  
   toSave <- c()
   # Important variables to transfer to final third stage output
   for (suffix in REddyConfig$saveBySuffix){
@@ -580,7 +580,7 @@ Run_REddyProc <- function() {
   }
   
   input_data <- write_traces(REddyOutput,toSave)
-
+  
   return(input_data)
 }
 
@@ -705,30 +705,36 @@ if (config$Processing$ThirdStage$JS_Moving_Z$Run){
   input_data <- out$input_data
   config <- out$config
 } else {
-   print('Skipping JS_Moving_Z')
+  print('Skipping JS_Moving_Z')
 }
 
 
 if (config$Processing$ThirdStage$Papale_Spike_Removal$Run){
-# MAD algorithm, Papale et al. 2006
+  # MAD algorithm, Papale et al. 2006
   out <- Papale_Spike_Removal()
   input_data <- out$input_data
   config <- out$config
 } else {
-   print('Skipping Papale_Spike_Removal')
+  print('Skipping Papale_Spike_Removal')
 }
 # Run REddyProc
 if (config$Processing$ThirdStage$REddyProc$Run){
   input_data <- Run_REddyProc() 
 } else {
-   print('Skipping Run_REddyProc')
+  print('Skipping Run_REddyProc')
 }
 
 # Run RF model
 if (config$Processing$ThirdStage$RF_GapFilling$Run){
   input_data <- RF_GapFilling()
 } else {
-   print('Skipping RF_GapFilling')
+  print('Skipping RF_GapFilling')
+}
+
+# Calculate uncertainty and annual summaries/statistics if running ThirdStage_Advanced
+if (!config$Processing$ThirdStage$REddyProc$Ustar_filtering$run_defaults){
+  uncertainty_annual_summary(input_data,"NEE_PI_SC_JSZ_MAD_RP_uStar","LE_PI_SC_JSZ_MAD_RP_uStar","H_PI_SC_JSZ_MAD_RP_uStar")
+  print('Calculating annual summary')
 }
 
 end.time <- Sys.time()
