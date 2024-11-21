@@ -94,7 +94,7 @@ configure <- function(siteID){
     fx_path<- path_dir(normalizePath(sub(needle, "", cmdArgs[match])))
   } else {
     # 'source'd via R console
-    fx_path<- "/Users/saraknox/Code/Biomet.net/R/database_functions/"#path_dir(normalizePath(sys.frames()[[1]]$ofile))
+    fx_path<- path_dir(normalizePath(sys.frames()[[1]]$ofile))
   }
   
   # Read a the global database configuration
@@ -733,8 +733,20 @@ if (config$Processing$ThirdStage$RF_GapFilling$Run){
 
 # Calculate uncertainty and annual summaries/statistics if running ThirdStage_Advanced
 if (!config$Processing$ThirdStage$REddyProc$Ustar_filtering$run_defaults){
-  uncertainty_annual_summary(input_data,"NEE_PI_SC_JSZ_MAD_RP_uStar","LE_PI_SC_JSZ_MAD_RP_uStar","H_PI_SC_JSZ_MAD_RP_uStar")
-  print('Calculating annual summary')
+  
+  Fluxes <- config$Processing$ThirdStage$Annual_Summary$Fluxes_Uncertainty#config$Processing$ThirdStage$Fluxes
+  # Remove final suffix so that uncertainty can calculate different variables
+  Fluxes_trimmed <- lapply(Fluxes, function(x) sub("_[^_]+$", "", x))
+  
+  AE_variables <- config$Processing$ThirdStage$Annual_Summary$Variables_AE
+  
+  uncertainty_annual_summary(input_data,
+                             Fluxes_trimmed$NEE,
+                             Fluxes_trimmed$LE,
+                             Fluxes_trimmed$H,
+                             Fluxes_trimmed$FCH4,
+                             c(AE_variables$SW_IN,AE_variables$G),
+                             c(Fluxes$LE,Fluxes$H))
 }
 
 end.time <- Sys.time()

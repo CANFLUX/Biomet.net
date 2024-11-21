@@ -5,13 +5,14 @@
 # Modified July 11, 2023 to create function and loop over years
 # Modified Nov, 2024 to include in third stage
 
-# NOTES:
-# Add H, LE, FCH4 (MDS)
-# Add uncertainty calc to global_config
+# NOTE: It's calculated with var_orig as default for consistency with different re-run (so that we always use the same variable to compare annual sums)
+
+# To do:
+# Add RF (MDS)
 
 # Make sure to create ini file first
 
-uncertainty_annual_summary <- function(data,NEE_var,LE_var,H_var) {
+uncertainty_annual_summary <- function(data,NEE_var,LE_var,H_var,AE_var,H_LE_var) {
   
   # Update names for subset and save to main third stage folder
   siteID <- config$Metadata$siteID
@@ -346,8 +347,26 @@ uncertainty_annual_summary <- function(data,NEE_var,LE_var,H_var) {
     conv_MJ <- 1/(10^6) * 60 * 60 * 24 * length(df[[paste0(H_var, "_f")]]) / 48 # Converts w/M2 to MJ/yr
     H_sdAnnual_MJ <- H_sdAnnual*conv_MJ    
     
+    # Calculate EBC
+    # Create new df for EBC
+    if(any(AE_var == "")){
+    AE_total <- df[, which(colnames(df) %in% AE_var[1]), drop = TRUE]} else {
+      AE_total = rowSums(df[, which(colnames(df) %in% AE_var), drop = TRUE])
+    }
+    df.EBC <- data.frame(AE = AE_total)
+    df.EBC$H_LE <- rowSums(df[, which(colnames(df) %in% H_LE_var), drop = TRUE])
+       
+    #plot_ly(data = df.EBC, x = ~AE, y = ~H_LE, name = 'filled', type = 'scatter', mode = 'markers',marker = list(size = 3))
+    
+    model <- lm(H_LE ~ AE, data = df.EBC)
+    slope <- coef(model)["AE"]
+    r_squared <- summary(model)$r.squared
+    
+    EBC <- data.frame(slope,r_squared)
+    colnames(EBC) <- c("half hourly EBC", "EBC R2")
+    
     # Final output file - combine CO2, H, LE uncertainty
-    all_data <- cbind(mean_sdAnnual_gC,LE_sdAnnual_MJ,H_sdAnnual_MJ)
+    all_data <- cbind(mean_sdAnnual_gC,LE_sdAnnual_MJ,H_sdAnnual_MJ,EBC)
     
     write.csv(round(all_data,2), paste0(dpath,'/',level_out,"/annual_summary_",year,"_",format(Sys.time(), "%Y%m%d%H%M%S"),".csv"), row.names = FALSE)
     
