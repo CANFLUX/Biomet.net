@@ -578,10 +578,13 @@ Run_REddyProc <- function() {
   for (suffix in REddyConfig$saveBySuffix){
     toSave <- c(toSave,names(REddyOutput)[endsWith(names(REddyOutput),suffix)])
   }
-  
+  for (flux in names(Fluxes)){
+    flux_in <- unlist(Fluxes[[flux]])
+    Fluxes[[flux]] <- toSave[(startsWith(toSave,flux_in)) & (endsWith(toSave,REddyConfig$saveBySuffix[1]))]
+  }
+  config$Processing$ThirdStage$Fluxes <- Fluxes
   input_data <- write_traces(REddyOutput,toSave)
-
-  return(input_data)
+  return(list(input_data=input_data,config=config))
 }
 
 RF_GapFilling <- function(){
@@ -719,7 +722,9 @@ if (config$Processing$ThirdStage$Papale_Spike_Removal$Run){
 }
 # Run REddyProc
 if (config$Processing$ThirdStage$REddyProc$Run){
-  input_data <- Run_REddyProc() 
+  out <- Run_REddyProc() 
+  input_data <- out$input_data
+  config <- out$config
 } else {
    print('Skipping Run_REddyProc')
 }

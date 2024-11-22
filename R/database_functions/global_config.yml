@@ -116,16 +116,17 @@ Processing:
         basic: 
           - Rg
           - Tair
-          # - rH
           - VPD
       saveBySuffix:
+        # The top value listed here will be treated as the "most up to date" value in the processing chain
         # All_ReddyProc outputs are saved to intermediate step, only those with suffixes listed will be saved to "final" third stage folder
-        - uStar_orig # ustar filtered values
+        - uStar_orig # ustar filtered values.  These will be used as the basis for uncertainty calculations?
         - uStar_f # filled (with MDS) after filtering
         - uStar # Incudes key variables modeled variables from partitioning
         - U95_orig # Same as above but the seasonal U95 threshold instead of the annual maximum of U50
         - U95_f
         - U95
+      
 
     RF_GapFilling:
       Run: False
