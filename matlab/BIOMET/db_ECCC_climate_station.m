@@ -1,4 +1,4 @@
-function db_ECCC_climate_station(yearRange,monthRange,stationID,dbPath,timeperiod) 
+function db_ECCC_climate_station(yearRange,monthRange,stationID,dbPath,timeUnit) 
 % db_ECCC_climate_station(yearRange,monthRange,stationID,dbPath,timeperiod) 
 %
 % Inputs:
@@ -7,15 +7,19 @@ function db_ECCC_climate_station(yearRange,monthRange,stationID,dbPath,timeperio
 %   stationID       - station ID
 %   dbPath          - path where data goes. It has to contain "yyyy"
 %                     (p:\database\yyyy\BB1\MET\ECCC)
-%   timePeriod      - data sample rate in minutes (default for ECCC is 60)
+%   timeUnit        - data sample rate in minutes (default for ECCC is '60MIN')
 %
 %
 % Zoran Nesic               File created:       Apr  3, 2022
-%                           Last modification:  Nov 29, 2022
+%                           Last modification:  Nov 21, 2024
 %
 
 % Revisions:
 %
+% Nov 21, 2024 (Zoran)
+%   - renamed timeperiod to timeUnit and switched it from a number to a string
+%     to match all the other db_ programs. Default changed from 60 to '60MIN' 
+%   - switched from using db_save_struct to the new standard: db_struct2database.
 % Nov 29, 2022 (Zoran)
 %   - Increased timeout for websave from 5s to 20s. The original value
 %     was not sufficient when downloading some of the ECCC data.
@@ -34,7 +38,7 @@ function db_ECCC_climate_station(yearRange,monthRange,stationID,dbPath,timeperio
 arg_default('yearRange',yearNow);               % default year is now
 arg_default('monthRange',monthNow-1:monthNow)   % default month is previous:current
 arg_default('stationID',49088);                 % default station is Burns Bog
-arg_default('timeperiod',60);                   % data is hourly (60 minutes)
+arg_default('timeUnit','60MIN');                % data is hourly (60 minutes)
 
 pathToMatlabTemp = fullfile(tempdir,'MatlabTemp');
 if ~exist(pathToMatlabTemp,'dir')
@@ -74,7 +78,8 @@ for yearNow = yearRange
             fprintf('Processing: StationID = %d, Year = %d, Month = %d   ',stationID,currentYear,monthIn);
             fprintf('   ');
             fprintf('Saving 60-min data to %s folder.\n',dbPath);
-            db_save_struct(Stats,dbPath,[],[],timeperiod,NaN);
+            %db_save_struct(Stats,dbPath,[],[],timeperiod,NaN);
+            db_struct2database(Stats,dbPath,0,[],timeUnit,NaN,0,1);
             % now interpolate data from 60- to 30- min time periods
             % and shift it by 30 min forward.
             % generic TimeVector for GMT time
@@ -83,7 +88,8 @@ for yearNow = yearRange
             db30minPath = fullfile(dbPath,'30min');
                         
             fprintf('Saving 30-min data to %s folder.\n',db30minPath);
-            db_save_struct(Stats30min,db30minPath,[],[],30,NaN);
+            %db_save_struct(Stats30min,db30minPath,[],[],30,NaN);
+            db_struct2database(Stats30min,db30minPath,0,[],'30MIN',NaN,0,1);
         end
     end
 end
