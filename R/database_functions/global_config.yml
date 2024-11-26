@@ -158,11 +158,7 @@ Processing:
           var_dep: LE_PI_uStar_orig
           Predictors: SW_IN_1_1_1_PI_f,TA_1_1_1_PI_f,VPD_1_1_1_PI_f
     Annual_Summary:
-      Fluxes_Uncertainty:
-        NEE: NEE_PI_SC_JSZ_MAD_RP_uStar_orig
-        LE: LE_PI_SC_JSZ_MAD_RP_uStar_orig
-        H: H_PI_SC_JSZ_MAD_RP_uStar_orig
-      Variables_AE:
+      Variables_AE: # Variables included in available energy (typically NETRAD-G)
         SW_IN: SW_IN_1_1_1
-        G: G_1
+        G: G_1 # If doesn't exist, use ""
 

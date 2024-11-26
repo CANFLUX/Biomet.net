@@ -97,6 +97,9 @@ configure <- function(siteID){
     fx_path<- path_dir(normalizePath(sys.frames()[[1]]$ofile))
   }
   
+  # load summary function (for uncertainty and EBC)
+  source(file.path(fx_path,'uncertainty_annual_summary.R'))
+  
   # Read a the global database configuration
   filename <- file.path(fx_path,'global_config.yml')
   dbase_config = yaml.load_file(filename)
@@ -720,6 +723,7 @@ if (config$Processing$ThirdStage$Papale_Spike_Removal$Run){
 # Run REddyProc
 if (config$Processing$ThirdStage$REddyProc$Run){
   input_data <- Run_REddyProc() 
+  #config <- out$config
 } else {
   print('Skipping Run_REddyProc')
 }
@@ -734,7 +738,7 @@ if (config$Processing$ThirdStage$RF_GapFilling$Run){
 # Calculate uncertainty and annual summaries/statistics if running ThirdStage_Advanced
 if (!config$Processing$ThirdStage$REddyProc$Ustar_filtering$run_defaults){
   
-  Fluxes <- config$Processing$ThirdStage$Annual_Summary$Fluxes_Uncertainty#config$Processing$ThirdStage$Fluxes
+  Fluxes <- config$Processing$ThirdStage$Fluxes 
   # Remove final suffix so that uncertainty can calculate different variables
   Fluxes_trimmed <- lapply(Fluxes, function(x) sub("_[^_]+$", "", x))
   
@@ -744,7 +748,6 @@ if (!config$Processing$ThirdStage$REddyProc$Ustar_filtering$run_defaults){
                              Fluxes_trimmed$NEE,
                              Fluxes_trimmed$LE,
                              Fluxes_trimmed$H,
-                             Fluxes_trimmed$FCH4,
                              c(AE_variables$SW_IN,AE_variables$G),
                              c(Fluxes$LE,Fluxes$H))
 }
