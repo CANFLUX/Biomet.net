@@ -6,6 +6,7 @@ Database:
     ThirdStage: Clean/ThirdStage
     ThirdStage_Default: Clean/ThirdStage_Default_Ustar
     ThirdStage_Advanced: Clean/ThirdStage_Full_Ustar_Uncertainty
+    AnnualSummary: Clean/Annual_Summary
     FirstStage:
       Met:
         raw: Met
@@ -126,8 +127,6 @@ Processing:
         - U95_orig # Same as above but the seasonal U95 threshold instead of the annual maximum of U50
         - U95_f
         - U95
-      
-
     RF_GapFilling:
       Run: False
       # Specify the interval for re-training RF models
@@ -157,3 +156,8 @@ Processing:
           # Fill the ReddyProc UStar Filtered Variable
           var_dep: LE_PI_uStar_orig
           Predictors: SW_IN_1_1_1_PI_f,TA_1_1_1_PI_f,VPD_1_1_1_PI_f
+    Annual_Summary:
+      Variables_AE: # Variables included in available energy (typically NETRAD-G)
+        SW_IN: SW_IN_1_1_1
+        G: G_1 # If doesn't exist, use ""
+
