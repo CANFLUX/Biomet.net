@@ -127,7 +127,6 @@ Processing:
         - U95_orig # Same as above but the seasonal U95 threshold instead of the annual maximum of U50
         - U95_f
         - U95
-      
     RF_GapFilling:
       Run: False
       # Specify the interval for re-training RF models
