@@ -10,8 +10,6 @@
 # To do:
 # Add RF (MDS)
 
-# Make sure to create ini file first
-
 uncertainty_annual_summary <- function(data,NEE_var,LE_var,H_var,AE_var,H_LE_var) {
   
   # Update names for subset and save to main third stage folder
