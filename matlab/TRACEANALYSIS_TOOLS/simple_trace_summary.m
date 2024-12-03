@@ -1,10 +1,14 @@
-function simple_trace_summary(tv,input1)
+function simple_trace_summary(tv,input1,options)
+
+if nargin<3
+    options.title = '';
+end
 
 tv_dt = datetime(tv,'ConvertFrom','datenum');
 % [~,~,~,HH] = datevec(tv); % Extract hour from time vector
 idx = ~isnan(input1) & ~isinf(input1);
 
-fh = figure('color','white');
+fh = figure('color','white','Name',options.title);
 
 allhandles = findall(fh);
 menuhandles = findobj(allhandles,'type','uimenu');
@@ -40,7 +44,7 @@ plot(tv_dt(span/2:span:end), input1_daily, 'r.')
 %--> Used to store extra data to dynamically update other panels
 plot(tv_dt,input1,'Visible','off') 
 ylabel('Raw data')
-set(gca,'YMinorTick','on')
+set(gca,'YMinorTick','on','xgrid','on','ygrid','on')
 legend('raw','Daily avg.','location','northoutside','numcolumns',2,'EdgeColor','w');
 
 axtoolbar(ah11,{'pan','zoomin','zoomout'});
@@ -67,6 +71,8 @@ set(zh, 'ActionPostCallback', @mypostcallback_summary);
 % end
 
 
+% d = dataTipInteraction;
+% z = zoomInteraction('Dimensions','y');
 
 %--------------------------------------------------------------------------
 % Boxplot to examine diurnal variation -- upper right panel
@@ -77,7 +83,7 @@ ah12 = axes('position',[xpos_root+0.5 0.62 0.39 0.36]);
 boxplot(ah12, input1, HH)
 ylabel(ah12,'Boxplot')
 xlabel(ah12,'Hour of day')
-set(ah12,'XMinorTick','on','YMinorTick','on')
+set(ah12,'XMinorTick','on','YMinorTick','on','ygrid','on')
 box(ah12,'on')
 
 ah12.UserData = 12;
@@ -87,11 +93,16 @@ disableDefaultInteractivity(ah12)
 
 
 %--------------------------------------------------------------------------
-% QQ-plot (maybe remove diurnal before QQ-plot?) - placeholder for now
+% Relative change per time step (help identify spikes)
 %--------------------------------------------------------------------------
 ah21 = axes('position',[xpos_root 0.1 0.39 0.375]);
 
-qqplot(ah21, input1(idx))
+y = input1;
+% delta_y_norm = [0; diff(y)./y(1:end-1)];
+delta_y = [0; diff(y)];
+
+plot(ah21, tv_dt, delta_y)
+% qqplot(ah21, input1(idx))
 box(ah21,'on')
 % xlims = get(gca,'xlim');
 % ylims = get(gca,'ylim');
@@ -99,9 +110,9 @@ box(ah21,'on')
 % fit = linreg(input1(idx), input2(idx));
 % plot(xlims, fit(1).*xlims+fit(2), 'k--') % Add linear regression
 % set(gca,'xlim',xlims,'ylim',ylims)
-set(ah21,'xminortick','on','YMinorTick','on')
+set(ah21,'xminortick','on','YMinorTick','on','xgrid','on','ygrid','on')
 % xlabel('input1')
-% ylabel('input2')
+ylabel('y_{t} - y_{t-1}')
 title(ah21,'')
 
 % rsq = corr(input1(idx), input2(idx)).^2;
@@ -130,7 +141,7 @@ pctls = prctile(input1(idx),[1 99]);
 if diff(pctls)>0
     set(ah22,'xlim',pctls)
 end
-set(ah22,'XMinorTick','on','YMinorTick','on','ytick',0:0.2:1)
+set(ah22,'XMinorTick','on','YMinorTick','on','ytick',0:0.2:1,'xgrid','on','ygrid','on')
 ylabel(ah22,'CDF')
 xlabel(ah22,'Raw values')
 
@@ -186,10 +197,18 @@ if eventdata.Axes.UserData==11
         end
     end
 
-    % Update qqplot
+    % Update time-difference plot
     ah = h.Children(UserData==21);
-    qqplot(ah,input_subset)
-    title(ah,'')
+    % if size(input_subset,1)==1
+    %     input_subset = input_subset';
+    % end
+    % if size(xdata,1)==1
+    %     xdata = xdata';
+    % end
+    % plot(ah,xdata,[0; (input_subset(2:end)-input_subset(1:end-1))./input_subset(1:end-1)]) % Could just update x-axis zoom instead...
+    set(ah,'xlim',xlims)
+    % ylabel(ah,'y_{t} - y_{t-1}')
+    % title(ah,'')
     % qh = ah.Children(end);
     % refreshdata(qh,'caller')
     %--> Update stats
@@ -211,7 +230,7 @@ if eventdata.Axes.UserData==11
     boxplot(ah,input_subset,HH)
     % bh = ah.Children(end);
     % refreshdata(bh,'caller')
-    set(ah,'position',[xpos_root+0.5 0.62 0.39 0.36])
+    set(ah,'position',[xpos_root+0.5 0.62 0.39 0.36],'ygrid','on')
     ylabel(ah,'Boxplot')
     xlabel(ah,'Hour of day')
     ah.UserData = 12;
