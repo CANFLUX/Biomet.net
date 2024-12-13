@@ -8,7 +8,6 @@
 # Optional: 
 # lastYear years run will be: c(startYear:lastYear)
 
-
 # Note: this currently assumes that "pathTo/yourProject"
 # Third stage procedures assumes that pathTo/yourProject contains a matlab file:
 #  * pathTo/yourProject/Matlab/biomet_database_default.m
@@ -23,7 +22,6 @@
 # cd pathTo/yourProject
 # Rscript --vanilla C:/Biomet.net/R/database_functions/ThirdStage.R siteID startYear endYear
 
-
 ## Call from R terminal
 
 # # Giving database as an input
@@ -35,43 +33,34 @@
 # args <- c("siteID",startYear,endYear)
 # source("C:/Biomet.net/R/database_functions/ThirdStage.R")
 
-# # Install on first run
-# install.packages(c('REddyProc','ggplot','fs','yaml','rlist','dplyr','lubridate','data.table','tidyverse','caret','ranger','zoo','reshape2','stringr'))
+# Package names
+packages <- c("fs", "yaml", "REddyProc", "rlist", "zoo", "dplyr", "lubridate", "data.table", "reshape2", "stringr", "tidyverse", "slider", "ranger", "caret", "ggplot2")
 
+# Install packages not yet installed
+installed_packages <- packages %in% rownames(installed.packages())
+if (any(installed_packages == FALSE)) {
+  install.packages(packages[!installed_packages])
+}
 
-# Load libraries
-library('fs')
-library("yaml")
-library("REddyProc")
-library("rlist")
-library("zoo")
-require("dplyr")
-require("lubridate")
-require("data.table")
-library("reshape2")
-library("stringr")
-library("tidyverse")
-library("ranger")
-library("caret")
-library("ggplot2")
+# Packages loading
+invisible(lapply(packages, library, character.only = TRUE))
 
 merge_nested_lists = function(...) {
-# Modified from: https://gist.github.com/joshbode/ed70291253a4b4412026
+  # Modified from: https://gist.github.com/joshbode/ed70291253a4b4412026
   stack = rev(list(...))
   names(stack) = rep('', length(stack))
   result = list()
-
+  
   while (length(stack)) {
     # pop a value from the stack
     obj = stack[[1]]
     root = names(stack)[[1]]
     stack = stack[-1]
-
+    
     if (is.list(obj) && !is.null(names(obj))) {
       if (any(names(obj) == '')) {
         stop("Mixed named and unnamed elements are not supported.")
       }
-
       # restack for next-level processing
       if (root != '') {
         names(obj) = paste(root, names(obj), sep='|')
@@ -89,7 +78,7 @@ merge_nested_lists = function(...) {
       result[[path]] = obj
     }
   }
-
+  
   return(result)
 }
 
@@ -107,6 +96,15 @@ configure <- function(siteID){
     # 'source'd via R console
     fx_path<- path_dir(normalizePath(sys.frames()[[1]]$ofile))
   }
+  
+  # load summary function (for uncertainty and EBC)
+  source(file.path(fx_path,'uncertainty_annual_summary.R'))
+  
+  # Read a the global database configuration
+  filename <- file.path(fx_path,'global_config.yml')
+  dbase_config = yaml.load_file(filename)
+  
+  # Find the database and site-specific config
   db_root <- file.path(args[1])
   db_ini <- file.path(db_root,'Calculation_Procedures/TraceAnalysis_ini/')
   
@@ -126,11 +124,6 @@ configure <- function(siteID){
   }
   print(sprintf('Third stage run initialized for %s data in %s',args[2],db_root))
   
-
-  # Read a the global database configuration
-  filename <- file.path(db_root,'Calculation_Procedures/TraceAnalysis_ini/global_config.yml')
-  dbase_config = yaml.load_file(filename)
-  
   # Get the siteID argument and read the site-specific configuration
   siteID <- args[2]
   fn <- sprintf('%s_config.yml',siteID)
@@ -138,12 +131,12 @@ configure <- function(siteID){
   site_config <- yaml.load_file(filename)
   # merge the config files
   config <- merge_nested_lists(site_config,dbase_config)
-
+  
   # Add the relevant paths to the config
   config$Database$db_root <- db_root
   config$fx_path <- fx_path
-
-  # Fin all site-years in database
+  
+  # Find all site-years in database
   yearsAll = suppressWarnings(as.numeric(list.dirs(db_root, recursive = FALSE,full.names = FALSE)))
   yearsAll = yearsAll[!sapply(yearsAll, is.na)]
   level_in <- config$Database$Paths$SecondStage
@@ -153,24 +146,32 @@ configure <- function(siteID){
   siteYearsAll = siteYearsAll[sapply(siteYearsAll,file.exists)]
   siteYearsAll = gsub(tv,'',siteYearsAll)
   siteYearsAll = gsub(config$Database$Paths$SecondStage,'',siteYearsAll)
+  siteYearsAll = gsub('//','',siteYearsAll)
+  
   # Determine site years to output
   if (length(args)>2){
     years <- c(args[3]:args[length(args)])
     siteYearsOut = file.path(db_root,as.character(years),siteID)
   } else {
-     siteYearsOut = siteYearsAll
-     years <- yearsAll
+    siteYearsOut = siteYearsAll
+    years <- yearsAll
   }
-
+  
   config$siteYearsAll <- siteYearsAll
   config$siteYearsOut <- siteYearsOut
   config$years <- years
-    
+  
   # Set procedures to run by default unless specified otherwise in site-specific files
   # Can update to have user overrides by command line as well if desired
   # For now, just apply the overrides in site-specific config files
-  if(is.null(config$Processing$ThirdStage$Storage$Apply_Correction)){
-    config$Processing$ThirdStage$Storage$Apply_Correction=TRUE
+  if(is.null(config$Processing$ThirdStage$Storage_Correction$Run)){
+    config$Processing$ThirdStage$Storage_Correction$Run=TRUE
+  }
+  if(is.null(config$Processing$ThirdStage$JS_Moving_Z$Run)){
+    config$Processing$ThirdStage$JS_Moving_Z$Run=TRUE
+  }
+  if(is.null(config$Processing$ThirdStage$Papale_Spike_Removal$Run)){
+    config$Processing$ThirdStage$Papale_Spike_Removal$Run=TRUE
   }
   if(is.null(config$Processing$ThirdStage$REddyProc$Run)){
     config$Processing$ThirdStage$REddyProc$Run=TRUE
@@ -182,35 +183,35 @@ configure <- function(siteID){
 }
 
 read_database <- function(input_paths,vars) {
-    # remove from memory if 
-    if (exists('data_out')) {rm(data_out)}
-    # simplified version of database read function
-    for (input_path in input_paths){
-      # Convert Matlab timevector to POSIXct
-      tv <- readBin(paste0(input_path,"/",config$Database$Timestamp$name,sep=""), double(), n = 18000)
-      datetime <- as.POSIXct((tv - 719529) * 86400, origin = "1970-01-01", tz = "UTC")
-      # Round to nearest 30 min
-      datetime <- lubridate::round_date(datetime, "30 minutes")
-      df <- data.frame(datetime)
-      # Read any variable that exists and is not empty
-      for (var in vars) {
-        dpath = file.path(input_path,var)
-        if (file.exists(dpath)) {
-          data <- data.frame(readBin(dpath, numeric(), n = 18000, size = 4))
-          colnames(data) <- var
-          if (nrow(data) == nrow(df)){
-            df <- cbind(df, data)
-          } else {
-            print(sprintf('Empty file or incorrect number of records, skipping: %s', dpath))
-          }
+  # remove from memory if 
+  if (exists('data_out')) {rm(data_out)}
+  # simplified version of database read function
+  for (input_path in input_paths){
+    # Convert Matlab timevector to POSIXct
+    tv <- readBin(paste0(input_path,"/",config$Database$Timestamp$name,sep=""), double(), n = 18000)
+    datetime <- as.POSIXct((tv - 719529) * 86400, origin = "1970-01-01", tz = "UTC")
+    # Round to nearest 30 min
+    datetime <- lubridate::round_date(datetime, "30 minutes")
+    df <- data.frame(datetime)
+    # Read any variable that exists and is not empty
+    for (var in vars) {
+      dpath = file.path(input_path,var)
+      if (file.exists(dpath)) {
+        data <- data.frame(readBin(dpath, numeric(), n = 18000, size = 4))
+        colnames(data) <- var
+        if (nrow(data) == nrow(df)){
+          df <- cbind(df, data)
         } else {
-          print(sprintf('Does not exist: %s', dpath))
+          print(sprintf('Empty file or incorrect number of records, skipping: %s', dpath))
         }
+      } else {
+        print(sprintf('Does not exist: %s', dpath))
       }
-      if (exists('data_out')){data_out <- bind_rows(data_out,df)}
-      else {data_out <- df}
     }
-    return(data_out)
+    if (exists('data_out')){data_out <- bind_rows(data_out,df)}
+    else {data_out <- df}
+  }
+  return(data_out)
 }
 
 read_and_copy_traces <- function(){
@@ -221,11 +222,11 @@ read_and_copy_traces <- function(){
   # Copy files from second stage to third stage, copies everything by default  
   level_in <- config$Database$Paths$SecondStage
   level_out <- config$Database$Paths$ThirdStage
-
+  
   input_paths <- file.path(config$siteYearsAll,level_in)
   copy_vars <- unique(list.files(input_paths))
   copy_vars <- copy_vars[! copy_vars %in% config$Database$Timestamp$name]
-
+  
   # read all site-years 
   data <- read_database(input_paths,copy_vars)
   
@@ -233,15 +234,14 @@ read_and_copy_traces <- function(){
   for (siteYearIn in config$siteYearsAll) {
     in_path <- file.path(siteYearIn,level_in)
     out_path <- file.path(siteYearIn,level_out)
-
     if (siteYearIn %in% config$siteYearsOut){
       dir.create(out_path, showWarnings = FALSE)
       unlink(file.path(out_path,'*'))
-
+      
       # First copy time-vector
       file.copy(file.path(in_path,config$Database$Timestamp$name),
                 file.path(out_path,config$Database$Timestamp$name))
-
+      
       # Now copy traces
       for (filename in copy_vars){
         if (file.exists(file.path(in_path,filename))){
@@ -284,32 +284,180 @@ Met_Gap_Filling <- function(){
   return(input_data)
 }
 
-storage_correction <- function(){
-  Storage_Terms <- config$Processing$ThirdStage$Storage$Terms
-  terms <- names(Storage_Terms)
-    for (term in terms){
-      flux <- names(Storage_Terms[[term]])
-      storage <- names(Storage_Terms[[term]])
-      # Default behavior is to apply correction 
-      if (flux %in% colnames(input_data) && config$Processing$ThirdStage$Storage$Apply_Correction) {
-        input_data[[term]] <- input_data[[flux]]+input_data[[storage]]
-      # If storage correction is set to false, still create the variable (eg NEE = FC) so it doesn't break anything
-      }else if (flux %in% colnames(input_data) && !config$Processing$ThirdStage$Storage$Apply_Correction) {
-        input_data[[term]] <- input_data[[flux]]
-      # Or notify user if not available
-      }else{
-        print(sprintf('%s Not present in Second Stage, excluding from storage correction',flux))
-      }
+Standard_Cleaning <- function(){
+  suffix_label = 'PI'
+  Fluxes <- config$Processing$ThirdStage$Fluxes
+  for (flux in names(Fluxes)){
+    flux_in <- unlist(Fluxes[[flux]])
+    flux_out = paste(flux,'_',suffix_label,sep="")
+    Fluxes[[flux]] <- flux_out
+    # Declare flux out variables, needed because some (e.g., NEE) are renamed from their stage 2 value
+    input_data[[flux_out]] <- input_data[[flux_in]]
+    
+    if ('northOffset' %in% names(config$Metadata)){
+      half_width <- config$Processing$ThirdStage$Standard_Cleaning$wakeFilter
+      filter <- config$Metadata$northOffset-180
+      # Calculation is robust to user error and does not require adjustments based on wind direction
+      na_in <- sum(is.na(input_data[[flux_out]]))
+      input_data[[flux_out]][(
+        (abs(input_data$WD_1_1_1-filter)<=half_width)|
+          (abs(input_data$WD_1_1_1-360-filter)<=half_width)|
+          (abs(input_data$WD_1_1_1+360-filter)<=half_width))& !is.na(input_data$WD_1_1_1)
+      ] <- NA
+      na_out <- sum(is.na(input_data[[flux_out]]))
+      print(sprintf('%i values in %s were filtered by the wind sector filter',na_out-na_in,flux))
+    } else {
+      stop("Error: northOffset missing from you configuration file!")
+    }
+    if ('P_1_1_1' %in% colnames(input_data)){
+      p_thresh <- config$Processing$ThirdStage$Standard_Cleaning$precipCutOff
+      na_in <- sum(is.na(input_data[[flux_out]]))
+      input_data[[flux_out]][input_data$P_1_1_1>p_thresh & !is.na(input_data$P_1_1_1)] <- NA
+      na_out <- sum(is.na(input_data[[flux_out]]))
+      print(sprintf('%i values in %s were filtered out by the rain filter',na_out-na_in,flux))
+    }
   }
-  return(input_data)
+  config$Processing$ThirdStage$Fluxes <- Fluxes
+  # Delete old outputs, dump new ones
+  input_data <- write_traces(input_data[,c('DateTime',unlist(unname(Fluxes)))],Fluxes,unlink=TRUE)    
+  return(list(input_data=input_data,config=config))
+}
+
+Storage_Correction <- function(){
+  suffix_label = 'SC'
+  Fluxes <- config$Processing$ThirdStage$Fluxes
+  Storage_Terms <- config$Processing$ThirdStage$Storage_Correction
+  for (flux in names(Fluxes)){
+    flux_in <- unlist(Fluxes[[flux]])
+    storage <- unlist(Storage_Terms[[flux]])
+    flux_out = paste(flux_in,'_',suffix_label,sep="")
+    Fluxes[[flux]] <- flux_out
+    input_data[[flux_out]] <- input_data[[flux_in]]+input_data[[storage]]
+  }
+  config$Processing$ThirdStage$Fluxes <- Fluxes
+  input_data <- write_traces(input_data[,c('DateTime',unlist(unname(Fluxes)))],Fluxes,unlink=FALSE)    
+  return(list(input_data=input_data,config=config))
+}
+
+JS_Moving_Z <- function(){
+  suffix_label = 'JSZ'
+  Fluxes <- config$Processing$ThirdStage$Fluxes
+  # read filtering parameters from config
+  window <- config$Processing$ThirdStage$JS_Moving_Z$window
+  z <- config$Processing$ThirdStage$JS_Moving_Z$z_thresh
+  
+  for (flux in names(Fluxes)){
+    flux_in <- unlist(Fluxes[[flux]])
+    flux_out = paste(flux_in,'_',suffix_label,sep="")
+    input_data[[flux_out]] <- input_data[[flux_in]]
+    Fluxes[[flux]] <- flux_out
+    na_in <- sum(is.na(input_data[[flux_in]]))
+    temp <- input_data[,c('DateTime',flux_in)]
+    colnames(temp) <- c('DateTime','F')
+    temp <- temp %>% mutate(
+      U = slide_index_dbl(.x=F,.i=DateTime,
+                          .before=as.difftime(window,units="days"),
+                          .after=as.difftime(window,units="days"),
+                          .f=function(x) mean(x,na.rm=TRUE),
+                          .complete=FALSE)
+    )
+    temp <- temp %>% mutate(
+      sigma = slide_index_dbl(.x=F,.i=DateTime,
+                              .before=as.difftime(window,units="days"),
+                              .after=as.difftime(window,units="days"),
+                              .f=function(x) sd(x,na.rm=TRUE),
+                              .complete=FALSE)
+    )
+    temp$sliding_Z_flag <- (temp$F-temp$U)/temp$sigma
+    
+    temp$drop <- FALSE
+    temp$drop[(is.na((temp$sliding_Z_flag)==TRUE)|
+                 abs(temp$sliding_Z_flag) >z
+    )] <- TRUE
+    input_data[input_data$DateTime %in% temp$DateTime[temp$drop == TRUE],flux_out] <- NA
+    na_out <- sum(is.na(input_data[[flux_out]]))
+    print(sprintf('%i values in %s were filtered out by moving Z score filter',na_out-na_in,flux))
+  }
+  config$Processing$ThirdStage$Fluxes <- Fluxes
+  input_data <- write_traces(input_data[,c('DateTime',unlist(unname(Fluxes)))],Fluxes,unlink=FALSE)     
+  return(list(input_data=input_data,config=config))
+}
+
+Papale_Spike_Removal <- function(){
+  suffix_label = 'MAD'
+  Fluxes <- config$Processing$ThirdStage$Fluxes
+  # read filtering parameters from config
+  window <- config$Processing$ThirdStage$Papale_Spike_Removal$window
+  z <- config$Processing$ThirdStage$Papale_Spike_Removal$z_thresh
+  for (flux in names(Fluxes)){
+    flux_in <- unlist(Fluxes[[flux]])
+    flux_out = paste(flux_in,'_',suffix_label,sep="")
+    input_data[[flux_out]] <- input_data[[flux_in]]
+    Fluxes[[flux]] <- flux_out
+    ## MAD algorithm, Papale et al. 2006
+    # D_N <- list()
+    df <- na.omit(input_data[,c('DateTime',flux_in,'SW_IN_1_1_1')])
+    df$DN <- NA
+    df[(df$SW_IN_1_1_1 < 20),'DN'] <- 1
+    df[(df$SW_IN_1_1_1 >= 20),'DN'] <- 2
+    df$di <- c(NA,diff(df[[flux_in]])) - c(diff(df[[flux_in]]),NA)
+    dn <- c('Night','Day')
+    for(i in 1:2){
+      na_in <- sum(is.na(input_data[[flux_in]]))
+      temp <- df[df$DN == i,c(flux_in,'di','DateTime')]
+      temp <- temp %>% mutate(
+        Md = slide_index_dbl(
+          .x=di,
+          .i=DateTime,
+          .before=as.difftime(window,units="days"),
+          .after=as.difftime(window,units="days"),
+          .f=function(x) median(x,na.rm=TRUE),
+          .complete=FALSE)
+      )
+      
+      temp <- temp %>% mutate(
+        MAD_score = slide_index_dbl(
+          .x=di,
+          .i=DateTime,
+          .before=as.difftime(window,units="days"),
+          .after=as.difftime(window,units="days"),
+          .f=function(x) median(abs(x-median(x,na.rm=TRUE)))*z/0.6745,
+          .complete=FALSE)
+      )
+      
+      temp$spike_Flag <- FALSE
+      temp$spike_Flag[(is.na((temp$di)==TRUE)|
+                         temp$di < temp$Md-temp$MAD_score|
+                         temp$di > temp$Md+temp$MAD_score
+      )] <- TRUE
+      input_data[input_data$DateTime %in% temp$DateTime[temp$spike_Flag == TRUE],flux_out] <- NA
+      
+      na_out <- sum(is.na(input_data[[flux_out]]))
+      print(sprintf('%i values in %s were filtered out by %s-time MAD spike filter',na_out-na_in,flux,dn[i]))   
+    }
+  }
+  config$Processing$ThirdStage$Fluxes <- Fluxes
+  input_data <- write_traces(input_data[,c('DateTime',unlist(unname(Fluxes)))],Fluxes,unlink=FALSE)      
+  return(list(input_data=input_data,config=config))
 }
 
 Run_REddyProc <- function() {
+  
+  suffix_label = 'RP'
+  Fluxes <- config$Processing$ThirdStage$Fluxes
   # Subset just the config info relevant to REddyProc
   REddyConfig <- config$Processing$ThirdStage$REddyProc
   
+  # Update names for ReddyProc
+  for (v in names(REddyConfig$vars_in)){
+    if (v %in% names(Fluxes)){
+      REddyConfig$vars_in[v] = Fluxes[v]
+    }
+  }
+  
   # Limit to only variables present in input_data (e.g., exclude FCH4 if not present)
-  REddyConfig$vars_in <- lapply(REddyConfig$vars_in, function(x) if (x %in% colnames(input_data)){x})
+  REddyConfig$vars_in <- REddyConfig$vars_in[REddyConfig$vars_in %in% colnames(input_data)]
+  
   skip <- names(REddyConfig$vars_in[REddyConfig$vars_in=='NULL']) 
   for (var in skip){
     print(sprintf('%s Not present, REddyProc will not process',var))
@@ -317,34 +465,59 @@ Run_REddyProc <- function() {
   REddyConfig$vars_in <- REddyConfig$vars_in[!REddyConfig$vars_in=='NULL']
   
   # Rearrange data frame and only keep relevant variables for input into REddyProc
-  data_REddyProc <- input_data[ , c(unlist(REddyConfig$vars_in),"DateTime","Year","DoY","Hour")]
+  Time_Vars <- c("DateTime","Year","DoY","Hour")
+  data_REddyProc <- input_data[ , c(unlist(REddyConfig$vars_in),Time_Vars)]
   # Rename column names to variable names in REddyProc
-  colnames(data_REddyProc)<-c(names(REddyConfig$vars_in),"DateTime","Year","DoY","Hour")
+  colnames(data_REddyProc)<-c(names(REddyConfig$vars_in),Time_Vars)
   
-  # Limit to default REddyProc season-years bounding the site-years requested
-  start_time <- paste(as.character(min(config$years)-1),"-12-01 00:00:00",sep='')
-  end_time <- paste(as.character(max(config$years)+1),"-03-01 00:00:00",sep='')
-  data_REddyProc <- data_REddyProc %>% filter(
-    DateTime > as.POSIXct(start_time, tz = "UTC") & DateTime < as.POSIXct(end_time, tz = "UTC"))
-
-  # Joined to ReddProc Output after processing
-  time_cols <- input_data[c("DateTime","Year","DoY","Hour")] %>% filter(
-    DateTime > as.POSIXct(start_time, tz = "UTC") & DateTime < as.POSIXct(end_time, tz = "UTC"))
-
+  # Modify REddyConfig$vars_in to dump output names
+  invert <- as.list(setNames(names(REddyConfig$vars_in), REddyConfig$vars_in))
+  for (v in REddyConfig$vars_in){
+    if (!(v %in% Time_Vars) & (invert[v] %in% REddyConfig$MDSGapFill$UStarScens | invert[v] %in% REddyConfig$MDSGapFill$basic) ){
+      iv = unlist(unname(invert[v]))
+      if (grepl('_PI_',v)){
+        REddyConfig$vars_in[iv] = paste(v,'_',suffix_label,sep="")
+      } else if (!(v %in% Time_Vars)) {
+        REddyConfig$vars_in[iv] = paste(v,'_PI_',suffix_label,sep="")
+      }
+    } 
+  }
+  
+  if (!('season' %in% colnames(data_REddyProc))){
+    # Limit to default REddyProc season-years bounding the site-years requested
+    # Create Season Year Variable and filter out any SeasonYear with < 700 obs.
+    # Exit if no data remain
+    start_time <- paste(as.character(min(config$years)-1),"-12-01 00:30:00",sep='')
+    end_time <- paste(as.character(max(config$years)+1),"-03-01 00:00:00",sep='')
+    data_REddyProc <- data_REddyProc %>% filter(DateTime > as.POSIXct(start_time, tz = "UTC") & DateTime < as.POSIXct(end_time, tz = "UTC"))
+    data_REddyProc$SeasonYear = (year(data_REddyProc$DateTime)+floor(month(data_REddyProc$DateTime)/12))
+    data_REddyProc[month(data_REddyProc$DateTime)==12 & day(data_REddyProc$DateTime)==1 & data_REddyProc$Hour==0,'SeasonYear'] = data_REddyProc[month(data_REddyProc$DateTime)==12 & day(data_REddyProc$DateTime)==1 & data_REddyProc$Hour==0,'SeasonYear'] - 1
+    bySeasonYear <- data_REddyProc %>% group_by(SeasonYear) %>%
+      summarise(across(names(REddyConfig$vars_in), ~ sum(!is.na(.)), .names = "countFlag_{col}"))
+    # # REddyProc Will Crash if given any season with less than 700 observations
+    seasonFilter <- bySeasonYear %>%  filter(if_any(starts_with("countFlag_"), ~ . < 700))
+    date_Drop <- data_REddyProc %>%  filter(SeasonYear %in% seasonFilter$SeasonYear)
+    date_Drop <- date_Drop %>% select(DateTime)
+    data_REddyProc <- data_REddyProc %>%  filter(!(SeasonYear %in% seasonFilter$SeasonYear))
+    time_out <- input_data[c("DateTime","Year","DoY","Hour")] %>% filter(!(DateTime %in% data_REddyProc$DateTime))
+    if((dim(data_REddyProc)[1]==0)){
+      print('Insufficient data available for specified site-years to run REddyProc')
+      return(input_data)
+    }
+  }
+  time_cols <- input_data[c("DateTime","Year","DoY","Hour")] %>% filter(DateTime %in% data_REddyProc$DateTime)
+  
   # Run REddyProc
   # Following "https://cran.r-project.org/web/packages/REddyProc/vignettes/useCase.html" This is more up to date than the Wutzler et al. paper
-  # NOTE: skipped loading in txt file since alread have data in data frame
-  # Initalize R5 reference class sEddyProc for post-processing of eddy data
-  # with the variables needed for post-processing later
+  # NOTE: skipped loading in txt file since already have data in data frame
+  # Initalize R5 reference class sEddyProc for post-processing of eddy data with the variables needed for post-processing later
   EProc <- sEddyProc$new(
     config$Metadata$siteID,
     data_REddyProc,
     c(names(REddyConfig$vars_in),'Year','DoY','Hour')) 
-  
   EProc$sSetLocationInfo(LatDeg = config$Metadata$lat, 
                          LongDeg = config$Metadata$long,
                          TimeZoneHour = config$Metadata$TimeZoneHour)
-  
   if (REddyConfig$Ustar_filtering$run_defaults){
     EProc$sEstimateUstarScenarios()
   } else {
@@ -378,7 +551,7 @@ Run_REddyProc <- function() {
   
   # Create data frame for REddyProc output
   REddyOutput <- EProc$sExportResults()
-
+  
   # Delete uStar dulplicate columns since they are output for each gap-filled variables
   vars_remove <- c(colnames(REddyOutput)[grepl('\\Thres.', colnames(REddyOutput))],
                    colnames(REddyOutput)[grepl('\\_fqc.', colnames(REddyOutput))])
@@ -388,22 +561,33 @@ Run_REddyProc <- function() {
   
   # Revert to original input name (but maintain ReddyProc modifications that follow first underscore)
   # Most are the same so doesn't matter, but some (e.g., Tair aren't standard AmeriFlux names)
-  for (i in 1:length(REddyConfig$vars_in)){
-    rep <- paste(as.character(names(REddyConfig$vars_in[i])),"_",sep="")
-    sub <- paste(as.character(REddyConfig$vars_in[i]),"_",sep="")
+  for (n in names(REddyConfig$vars_in)){
+    rep <- paste(as.character(n),"_",sep="")
+    sub <- paste(as.character(REddyConfig$vars_in[n]),"_",sep="")
     uNames <- lapply(colnames(REddyOutput), function(x) if (startsWith(x,rep)) {sub(rep,sub,x)} else {x})
     colnames(REddyOutput) <- uNames
   }
+  
+  # Add the time columns back for writing
   REddyOutput = dplyr::bind_cols(
     time_cols,REddyOutput
   )
-
-  # Write all REddyProc outputs to intermediate folder
-  # Update names for subset and save to main third stage folder
-  update_names <- config$Processing$ThirdStage$AmeriFlux_Names
-  input_data <- write_traces(REddyOutput,update_names,unlink = TRUE)
-
-  return(input_data)
+  if (exists("time_out")){
+    REddyOutput <- bind_rows(time_out,REddyOutput)
+    REddyOutput <- REddyOutput[order(REddyOutput$DateTime), ]}
+  
+  toSave <- c()
+  # Important variables to transfer to final third stage output
+  for (suffix in REddyConfig$saveBySuffix){
+    toSave <- c(toSave,names(REddyOutput)[endsWith(names(REddyOutput),suffix)])
+  }
+  for (flux in names(Fluxes)){
+    flux_in <- unlist(Fluxes[[flux]])
+    Fluxes[[flux]] <- toSave[(startsWith(toSave,flux_in)) & (endsWith(toSave,REddyConfig$saveBySuffix[1]))]
+  }
+  config$Processing$ThirdStage$Fluxes <- Fluxes
+  input_data <- write_traces(REddyOutput,toSave)
+  return(list(input_data=input_data,config=config))
 }
 
 RF_GapFilling <- function(){
@@ -423,12 +607,11 @@ RF_GapFilling <- function(){
         log_path = file.path(db_root,'Calculation_Procedures/TraceAnalysis_ini',config$Metadata$siteID,'log')
         output <- RandomForestModel(input_data[,vars_in],fill_name,log = log_path,retrain_every_n_months = retrain_interval)
         use_existing_model <- output[2]
-        gap_filled = dplyr::bind_cols(input_data[c("DateTime","Year","DoY","Hour")],output[1])
-        update_names <- list(fill_name)
-        names(update_names) <- c(fill_name)
-        input_data <- write_traces(gap_filled,update_names)
+        rf_results = dplyr::bind_cols(input_data[c("DateTime")],output[1])
+        update_names <- as.list(names(rf_results))
+        names(update_names) <- names(rf_results)
+        input_data <- write_traces(rf_results,update_names)
       })
-
     }else{
       print('!!!! Warning !!!!')
       print(sprintf('%s Not present, RandomForest will not process',RFConfig[[fill_name]]$var_dep))
@@ -437,7 +620,8 @@ RF_GapFilling <- function(){
   return(input_data)
 }
 
-write_traces <- function(data,update_names,unlink=FALSE){ 
+write_traces <- function(data,final_outputs=NULL,unlink=FALSE){ 
+  # Update names for subset and save to main third stage folder
   siteID <- config$Metadata$siteID
   level_in <- config$Database$Paths$SecondStage
   # Set intermediary output depending on ustar scenario
@@ -452,7 +636,16 @@ write_traces <- function(data,update_names,unlink=FALSE){
   tv_input <- config$Database$Timestamp$name
   db_root <- config$Database$db_root
   
+  # Dumping everything by default into stage 3
+  # Can parse down later as desired
+  cols_out <- colnames(data)
+  cols_out <- cols_out[! cols_out %in% c("Year","DoY","Hour")]
+  
+  # Join the incoming data to the inputs incase needed for future use (e.g., ReddyPro outputs in RF)
+  input_data <- input_data %>% left_join(., data, by = c('DateTime' = 'DateTime'))
+  
   for (year in config$years){
+    print(sprintf('Writing %i',year))
     # Create new directory, or clear existing directory
     dpath <- file.path(db_root,as.character(year),siteID) 
     if (unlink == TRUE || !dir.exists(file.path(dpath,intermediate_out))) {
@@ -463,43 +656,27 @@ write_traces <- function(data,update_names,unlink=FALSE){
     # Copy tv from stage 2 to intermediate stage 3
     file.copy(file.path(dpath,level_in,tv_input),
               file.path(dpath,intermediate_out,tv_input))
+    ind_s <- which(year(data$DateTime) == year & yday(data$DateTime) == 1 & hour(data$DateTime) == 0 & minute(data$DateTime) == 30)
+    ind_e <- which(year(data$DateTime) == year+1 & yday(data$DateTime) == 1 & hour(data$DateTime) == 0 & minute(data$DateTime) == 0)
+    ind <- seq(ind_s[1],ind_e[1])
     
-    ind_s <- which(data$Year == year & data$DoY == 1 & data$Hour == 0.5)
-    ind_e <- which(data$Year == year+1 & data$DoY == 1 & data$Hour == 0)
-    ind <- seq(ind_s,ind_e)
-    
-    # Dumping everything by default into stage 3
-    # Can parse down later as desired
-    cols_out <- colnames(data)
-    cols_out <- cols_out[! cols_out %in% c("Year","DoY","Hour")]
-  
-    # Drop incoming data from input data (simplifies join procedures)
-    input_data <- input_data[,!(names(input_data) %in% names(update_names))]
-
-    # add DateTime to use as join key
-    update_names <- c('DateTime'='DateTime',update_names)
-    # Subset of traces can get appended to the input_data frame for use in subsequent steps if needed
-    append_cols <- data[unlist(update_names[update_names %in% cols_out])]
-    colnames(append_cols) <- names(update_names[update_names %in% cols_out])
-    
-    # Join the incoming data to the inputs incase needed for future use (e.g., ReddyPro outputs in RF)
-    input_data <- input_data %>% left_join(., append_cols, by = c('DateTime' = 'DateTime'))
-
     # Dump all data provided to intermediate output location
     setwd(file.path(dpath,intermediate_out))
     for (col in cols_out){
+      print(sprintf('Writing %s',col))
       writeBin(as.numeric(data[ind,col]), col, size = 4)
     }
     
     # Copy/rename final outputs
-    for (name in names(update_names)){
-      if (file.exists(file.path(dpath,intermediate_out,update_names[name]))){
+    for (name in final_outputs){
+      if (file.exists(file.path(dpath,intermediate_out,name))){
+        print(sprintf('Copying %s from %s to %s',name,intermediate_out,level_out))
         file.copy(
-          file.path(dpath,intermediate_out,update_names[name]),
+          file.path(dpath,intermediate_out,name),
           file.path(dpath,level_out,name),
           overwrite = TRUE)
       }else{
-        print(sprintf('%s was not created, cannot copy to final output for %i',update_names[name],year))
+        print(sprintf('%s was not created, cannot copy to final output for %i',name,year))
       }
     }
   } 
@@ -514,20 +691,70 @@ config <- configure()
 # Read Stage 2 Data
 input_data <- read_and_copy_traces() 
 
+# Apply standard cleaning
+out <- Standard_Cleaning()
+input_data <- out$input_data
+config <- out$config
+
 input_data <- Met_Gap_Filling()
 
 # Apply storage correction (if required)
-input_data <- storage_correction()
+if (config$Processing$ThirdStage$Storage_Correction$Run){
+  out <- Storage_Correction()
+  input_data <- out$input_data
+  config <- out$config
+}
 
+if (config$Processing$ThirdStage$JS_Moving_Z$Run){
+  # JS_Moving_Z
+  out <- JS_Moving_Z()
+  input_data <- out$input_data
+  config <- out$config
+} else {
+  print('Skipping JS_Moving_Z')
+}
+
+
+if (config$Processing$ThirdStage$Papale_Spike_Removal$Run){
+  # MAD algorithm, Papale et al. 2006
+  out <- Papale_Spike_Removal()
+  input_data <- out$input_data
+  config <- out$config
+} else {
+  print('Skipping Papale_Spike_Removal')
+}
 # Run REddyProc
 if (config$Processing$ThirdStage$REddyProc$Run){
-  input_data <- Run_REddyProc() 
+  out <- Run_REddyProc() 
+  input_data <- out$input_data
+  config <- out$config
+} else {
+  print('Skipping Run_REddyProc')
 }
 
 # Run RF model
 if (config$Processing$ThirdStage$RF_GapFilling$Run){
   input_data <- RF_GapFilling()
-} 
+} else {
+  print('Skipping RF_GapFilling')
+}
+
+# Calculate uncertainty and annual summaries/statistics if running ThirdStage_Advanced
+if (!config$Processing$ThirdStage$REddyProc$Ustar_filtering$run_defaults){
+  
+  Fluxes <- config$Processing$ThirdStage$Fluxes 
+  # Remove final suffix so that uncertainty can calculate different variables
+  Fluxes_trimmed <- lapply(Fluxes, function(x) sub("_[^_]+$", "", x))
+  
+  AE_variables <- config$Processing$ThirdStage$Annual_Summary$Variables_AE
+  
+  uncertainty_annual_summary(input_data,
+                             Fluxes_trimmed$NEE,
+                             Fluxes_trimmed$LE,
+                             Fluxes_trimmed$H,
+                             c(AE_variables$SW_IN,AE_variables$G),
+                             c(Fluxes$LE,Fluxes$H))
+}
 
 end.time <- Sys.time()
 print('Stage 3 Complete, total run time:')

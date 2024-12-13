@@ -1,4 +1,11 @@
-function simple_trace_comparison(tv,input1, input2)
+function simple_trace_comparison(tv,input1, input2, options)
+
+if nargin<4
+    options.input1.name = 'input1';
+    options.input1.units = '';
+    options.input2.name = 'input2';
+    options.input2.units = '';
+end
 
 tv_dt = datetime(tv,'ConvertFrom','datenum');
 % [~,~,~,HH] = datevec(tv); % Extract hour from time vector
@@ -38,9 +45,10 @@ residuals_daily = mean(residuals(idx_daily),1,'omitnan');
 plot(tv_dt(span/2:span:end), residuals_daily, 'r.')
 plot([tv_dt(1) tv_dt(end)], [0 0], 'k-')
 %--> Used to store extra data to dynamically update other panels
-plot(tv_dt,[input1 input2],'Visible','off') 
-ylabel('Residuals')
-set(gca,'YMinorTick','on')
+plot(tv_dt,[input1 input2],'Visible','off')
+yaxis_str = char([options.input1.name '-' options.input2.name]);
+ylabel(yaxis_str)
+set(gca,'YMinorTick','on','xgrid','on','ygrid','on')
 legend('raw','24h run mean','location','northoutside','numcolumns',2,'EdgeColor','w');
 
 axtoolbar(ah11,{'pan','zoomin','zoomout'});
@@ -57,7 +65,7 @@ set(zh, 'ActionPostCallback', @mypostcallback);
 
 
 %--------------------------------------------------------------------------
-% Cross-correlation to check for time lags
+% Cross-covariance to check for time lags
 %--------------------------------------------------------------------------
 ah12 = axes('position',[0.1+0.5 0.62 0.39 0.375]);
 maxLags = 48;
@@ -86,15 +94,27 @@ disableDefaultInteractivity(ah12)
 ah21 = axes('position',[0.1 0.1 0.39 0.375]);
 hold on; box on
 scatter(input1, input2, '.','XDataSource','input1','YDataSource','input2')
-xlims = get(gca,'xlim');
-ylims = get(gca,'ylim');
+pcts = prctile(input1,[25 50 75]);
+xlims = [pcts(2)-4.*(pcts(2)-pcts(1)) pcts(2)+4.*(pcts(3)-pcts(2))];
+pcts = prctile(input2,[25 50 75]);
+ylims = [pcts(2)-4.*(pcts(2)-pcts(1)) pcts(2)+4.*(pcts(3)-pcts(2))];
+% xlims = get(gca,'xlim');
+% ylims = get(gca,'ylim');
 plot(xlims, xlims,'k-') % Add 1:1 line
 fit = linreg(input1(idx), input2(idx));
 plot(xlims, fit(1).*xlims+fit(2), 'k--') % Add linear regression
 set(gca,'xlim',xlims,'ylim',ylims)
-set(gca,'xminortick','on','YMinorTick','on')
-xlabel('input1')
-ylabel('input2')
+set(gca,'xminortick','on','YMinorTick','on','xgrid','on','ygrid','on')
+xlabel_str = options.input1.name;
+if ~strcmp(options.input1.units,'')
+    xlabel_str = char([xlabel_str '(' options.input1.units ')']);
+end
+ylabel_str = options.input2.name;
+if ~strcmp(options.input2.units,'')
+    ylabel_str = char([ylabel_str '(' options.input2.units ')']);
+end
+xlabel(xlabel_str)
+ylabel(ylabel_str)
 
 rsq = corr(input1(idx), input2(idx)).^2;
 xpos = xlims(1)+0.05*(xlims(2)-xlims(1));
@@ -108,7 +128,7 @@ end
 ypos = ylims(1)+0.8*(ylims(2)-ylims(1));
 int_val = roundn(fit(2),-2);
 if int_val==0
-    text(xpos,ypos,char(['slope=' num2str(fit(2),'%1.2E')]))
+    text(xpos,ypos,char(['int.=' num2str(fit(2),'%1.2E')]))
 else
     text(xpos,ypos,char(['int.=' num2str(int_val)]))
 end
@@ -132,7 +152,7 @@ pctls = prctile(residuals(idx),[1 99]);
 if diff(pctls)>0
     set(gca,'xlim',pctls)
 end
-set(gca,'XMinorTick','on','YMinorTick','on','ytick',0:0.2:1)
+set(gca,'XMinorTick','on','YMinorTick','on','ytick',0:0.2:1,'xgrid','on','ygrid','on')
 ylabel('CDF')
 xlabel('Residuals')
 
@@ -191,14 +211,25 @@ if eventdata.Axes.UserData==11
     ah = h.Children(UserData==21);
     sh = ah.Children(end);
     refreshdata(sh,'caller') %--> Uses 'input1' and 'input2' to refresh
+    %--> Update xlim and ylim -- simple for now
+    pcts = prctile(input1,[25 50 75]);
+    xlims = [pcts(2)-4.*(pcts(2)-pcts(1)) pcts(2)+4.*(pcts(3)-pcts(2))];
+    pcts = prctile(input2,[25 50 75]);
+    ylims = [pcts(2)-4.*(pcts(2)-pcts(1)) pcts(2)+4.*(pcts(3)-pcts(2))];
+    set(ah,'ylim',ylims','xlim',xlims)
     %--> Update stats
     fit = linreg(input1, input2);
     ah.Children(1).String = char(['r^2=' num2str(roundn(corr(input1(idx_nan)',input2(idx_nan)').^2,-2))]);
+    ah.Children(1).Position = [xlims(1)+0.05.*diff(xlims) ylims(2)-3.*0.09.*diff(ylims) 0];
     ah.Children(2).String = char(['int.=' num2str(roundn(fit(2),-2))]);
+    ah.Children(2).Position = [xlims(1)+0.05.*diff(xlims) ylims(2)-2.*0.09.*diff(ylims) 0];
     ah.Children(3).String = char(['slope=' num2str(roundn(fit(1),-2))]);
+    ah.Children(3).Position = [xlims(1)+0.05.*diff(xlims) ylims(2)-1.*0.09.*diff(ylims) 0];
     xlims = get(ah,'XLim');
     ah.Children(4).XData = xlims;
     ah.Children(4).YData = fit(1).*xlims + fit(2);
+    ah.Children(5).XData = xlims;
+    ah.Children(5).YData = xlims;
     ah.UserData = 21;
     ah.Toolbar.Visible='off';
     ah.HitTest = 0;

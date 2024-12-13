@@ -12,10 +12,13 @@ function run_ECCC_climate_station_update(yearsIn,monthsIn,stationIDs,dbase_pth)
 % dbase_pth     - Optional data base path
 %
 % Zoran Nesic                   File created:               2022
-%                               Last modification:  Aug  1, 2024
+%                               Last modification:  Nov 21, 2024
 
 % Revisions
 %
+% Nov 21, 2024 (Zoran)
+%   - changed the time period input for db_ECCC_climate_station
+%     from a number (60) to a string ('60MIN')
 % Aug 1, 2024 (Zoran)
 %   - Added Winipeg St. Andrew stations (55463) to the list.
 % Sep 11, 2023 (Zoran)
@@ -60,7 +63,7 @@ for cntStations = 1:length(stationIDs)
     if ~isempty(pathECCC)
         try
             db_ECCC_climate_station(yearsIn,monthsIn,sID,...
-                                    fullfile(dbase_pth,pathECCC),60);
+                                    fullfile(dbase_pth,pathECCC),'60MIN');
         catch
             fprintf('Error processing station: %d (year: %d, month: %d)\n',sID,yearsIn,monthsIn(end));
         end

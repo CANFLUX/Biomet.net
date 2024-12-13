@@ -4,6 +4,9 @@ R/database_functions/.DS_Store
 R/database_functions/Test.R
 R/data_visualization/.Rhistory
 R/database_functions/.Rhistory
+R/RShiny_flux_plots/.Rhistory
+R/RShiny_flux_plots/data_tmp/all_data.RData
+
 .lintr
 .vscode
 # Windows default autosave extension
