@@ -8,10 +8,13 @@ function gui_Browse_Folder(pathIn)
 %
 %
 % Zoran Nesic                   File created:       May 26, 2023
-%                               Last modifications: Jun  3, 2024
+%                               Last modifications: Dec 23, 2024
 
 % Revisions:
 %
+% Dec 23, 2024 (Zoran)
+%   - prevented Matlab from changing the time axis when the data trace is incomplete. 
+%     The plot now goes from the first to the last date of the year.
 % June 3, 2024 (Zoran)
 %   - Plotting improvements. Conversion from uifigure to uicontrol. 
 %     Sizing up the figure to match the screen size.
@@ -118,6 +121,7 @@ function gui_Browse_Folder(pathIn)
         x_new = read_bor(currentFile);
 
         plot(ah,tv_dt,x_new,'color','#0072BD','marker','o','linestyle','none')
+        xlim([tv_dt([1 end])])
         grid(ah,'on');
         zoom(ah,'on');
 %             title(ah,s_all(cntFiles).name,'interpreter','none');
