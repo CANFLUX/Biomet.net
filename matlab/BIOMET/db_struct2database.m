@@ -43,10 +43,13 @@ function [structIn,dbFileNames, dbFieldNames,errCode] = db_struct2database(struc
 %
 %
 % (c) Zoran Nesic               File created:       Sep 28, 2023
-%                               Last modification:  Aug 11, 2024
+%                               Last modification:  Jan  2, 2025
 
 % Revisions:
 % 
+% Jan 2, 2025 (Zoran)
+%   - Fixed the bug that caused the program to avoid processing SmartFlux data file that starts
+%     with a midnight point on Jan 1 (YYYY-01-01 00:00). Search below for 20240102 for more info.
 % Aug 11, 2024 (Zoran)
 %   - Fixed bug: clean_tv file should have been treated the same way as sample_tv 
 %     and other time traces but it wasn't. That caused an error when updateing folders
@@ -182,8 +185,20 @@ function [structIn,dbFileNames, dbFieldNames,errCode] = db_struct2database(struc
     end    
     
     %%
-    % Cycle through all years and process data one year at a time    
-    allYears = unique(year(new_tv));
+    % Cycle through all years and process data one year at a time  
+    % Bug fix: 20240102 (Zoran):
+    % Subtract ~1second from the new_tv otherwise the next statement
+    % will never process the data with the new_tv that starts with
+    % TimeVector which is exactly at midnight. The "allYears" will not 
+    % identify this line as belonging to the previous year.
+    % Example:
+    %  The following two time vectors should return two allYears (2024 and 2025)
+    %  (TimeVector contains *end times* so the first point belong to 2024)
+    %  but it returns only one (2025)
+    %   unique(year([datenum(2025,1,1,0,0,0); datenum(2025,1,1,0,30,0)]))
+    %  The fix is to subtract <1s from the data:
+    %   unique(year([datenum(2025,1,1,0,0,0); datenum(2025,1,1,0,30,0)]-1e-6))
+    allYears = unique(year(new_tv-1e-6));
     allYears = allYears(:)';   % make sure that allYears is "horizontal" vector
     for currentYear = allYears
         indCurrentYear = find(new_tv > datenum(currentYear,1,1,0,0,0.1) & new_tv <= datenum(currentYear+1,1,1)); %#ok<*DATNM>

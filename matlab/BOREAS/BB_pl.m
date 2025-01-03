@@ -6,12 +6,16 @@ function [t,x] = BB_pl(ind, year, siteID, select, fig_num_inc,flgPause)
 %   the UBC data-base formated files.
 %
 % (c) c) Nesic Zoran         File created:       May 11, 2021      
-%                            Last modification:  Jul 16, 2024
+%                            Last modification:  Jan  2, 2025
 %           
 %
 
 % Revisions:
 %
+% Jan 2, 2025 (Zoran)
+%   - Bug fix: There were some issues with the plotting of cumulative precipitation
+%     when plotting the first few days of a new year. Patched it up with try-catch-end.
+%     If there is time, this could be fixed properly.
 % Jul 16, 2024 (Zoran)
 %   - Added Precip plots
 % Jan 5, 2024 (Zoran)
@@ -204,8 +208,15 @@ x1(isnan(x1)) = 0; % replace NaNs with 0 so that cumsum can work
 y_axis      = [];
 fig_num = fig_num + fig_num_inc;
 x = plt_msig( cumsum(x1), ind, trace_name, trace_legend, year, trace_units, y_axis, t, fig_num,unitMult );
-xlim(originalXlim);
-indAxes = indAxes+1; allAxes(indAxes) = gca;
+try
+    % sometimes at the begining of new year this causes an error. Ignore. (20250102 Zoran)
+    xlim(originalXlim);
+    indAxes = indAxes+1; allAxes(indAxes) = gca;
+catch
+    close(fig_num);
+    fig_num = fig_num - fig_num_inc;
+end
+
 
 %----------------------------------------------------------
 % Samples collected

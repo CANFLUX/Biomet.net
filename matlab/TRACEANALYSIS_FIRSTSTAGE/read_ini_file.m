@@ -34,6 +34,8 @@ function trace_str_out = read_ini_file(fid,yearIn,fromRootIniFile)
 
 % Revisions
 %
+% Dec 19, 2024 (Zoran)
+%   - bug fix: the program was not properly overwriting globalVars.traceName.Evaluate fields.
 % Sep 13, 2024 (Zoran)
 %   - Added more error reporting
 % Sep 2, 2024 (Zoran)
@@ -598,7 +600,27 @@ if ~flagRecursiveCall
                 allFieldsToOverwrite = fieldnames(globalVars.Trace.(variableName));
                 for cntOverwrite = 1:length(allFieldsToOverwrite)
                     fieldToOverwrite = char(allFieldsToOverwrite(cntOverwrite));
-                    trace_str(cntTrace).ini.(fieldToOverwrite) = globalVars.Trace.(variableName).(fieldToOverwrite);
+                    if strcmpi(fieldToOverwrite,'Evaluate')
+                        % special handling is required when overwriting Evaluate field
+                        % Multiple instances of Evaluate fields are possible (Evaluate1, Evaluate2...)
+                        % so the first step is erase all fields that start with Evaluate
+                        % NOTE: due to how the globalVars work, the new 'Evaluate' field
+                        %       will only have one valid 'Evaluate' field. 
+                        
+                        % Erase all existing 'Evaluate' fields 
+                        allTraceFields = fieldnames(trace_str(cntTrace).ini);
+                        for cntErase = 1:length(allTraceFields)
+                            currentField = char(allTraceFields(cntErase));
+                            if startsWith(currentField,'Evaluate','IgnoreCase',true)
+                                trace_str(cntTrace).ini = rmfield(trace_str(cntTrace).ini,currentField);
+                            end
+                        end
+                        % rename 'Evaluate' to 'Evaluate1' to stay compatible with the naming convention                        
+                        newName = sprintf('%s%d',fieldToOverwrite,1);
+                        trace_str(cntTrace).ini.(newName) = globalVars.Trace.(variableName).(fieldToOverwrite);
+                    else
+                        trace_str(cntTrace).ini.(fieldToOverwrite) = globalVars.Trace.(variableName).(fieldToOverwrite);
+                    end
                 end
             end
         end
