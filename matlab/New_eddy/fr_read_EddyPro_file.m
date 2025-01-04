@@ -20,11 +20,13 @@ function [EngUnits, Header,tv,outStruct] = fr_read_EddyPro_file(fileName,assign_
 %
 %
 % (c) Zoran Nesic                   File created:       Aug 25, 2022
-%                                   Last modification:  Sep 10, 2024
+%                                   Last modification:  Jan  4, 2025
 %
 
 % Revisions (last one first):
 %
+% Jan 4, 2025 (Zoran)
+%   - Improvement: Added "rowsToRead = [3 Inf];" when reading EP summary files.
 % Sep 10, 2024 (Zoran)
 %   - New feature: using optionsFileRead.flagFileType user can specify the EddyPro file 
 %     type directly (options = {'biomet','fulloutput','summary'}). Otherwise program will
@@ -136,13 +138,14 @@ function [EngUnits, Header,tv,outStruct] = fr_read_EddyPro_file(fileName,assign_
             timeInputFormat = {[],'HH:mm:ss'};
             dateColumnNum = [3 4];
             colToKeep = [5 Inf];
+            rowsToRead = [3 Inf];
             structType = 1;
             inputFileType = 'delimitedtext';
             modifyVarNames=0;
             VariableNamesLine = 1;
             [EngUnits,Header,tv,outStruct] = fr_read_generic_data_file(fileName,...
                                                              [],[], dateColumnNum, timeInputFormat,colToKeep,structType,...
-                                                             inputFileType,modifyVarNames,VariableNamesLine);
+                                                             inputFileType,modifyVarNames,VariableNamesLine,rowsToRead);
         end
 
         % Extract individual flags from flag variables
