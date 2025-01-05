@@ -30,13 +30,15 @@ function [numOfFilesProcessed,numOfDataPointsProcessed] = fr_TOA5_database(wildC
 %       missingPointValue       - Values that indicate missing data (default = NaN)
 %
 % Zoran Nesic                   File Created:      May  9, 2024
-%                               Last modification: May 10, 2024
+%                               Last modification: Jan  4, 2025
 
 % Created based on fr_EddyPro_database.m
 
 %
 % Revisions:
 %
+%  Jan 4, 2025 (Zoran)
+%   - Improvement: split the waitbar message into two lines to improve readability. 
 %  May 10, 2024 (Zoran)
 %   -Bug fix: fr_read_generic_file was called with [4 Inf] instead of 
 %     [2  Inf]. That caused it to skipp two columns from csv files (RECORD
@@ -75,7 +77,7 @@ timeInputFormat = {[],'HH:mm:ss'};
 
 for i=1:length(h)
     try 
-        waitbar(i/length(h),hnd_wait,sprintf('Processing: %s ', [pth h(i).name]))
+        waitbar(i/length(h),hnd_wait,{sprintf('Processing: %s',h(i).name),sprintf('In folder: %s ',pth)})
     catch  %#ok<*CTCH>
         waitbar(i/length(h),hnd_wait)
     end

@@ -43,6 +43,7 @@ function [numOfFilesProcessed,numOfDataPointsProcessed] = fr_EddyPro_database(wi
 % Jan 4, 2025 (Zoran)
 %   - Improvement: the function now checks if the input file is empty (h(i).bytes == 0) before tryint to process it.
 %     In case the file is empty, the program will report that it's skipping it and it will mark it as processed.
+%   - Improvement: split the waitbar message into two lines to improve readability.
 % Sep 2, 2024 (Zoran)
 %   - Added new parameter optionsFileRead to be passed to
 %     fr_read_EddyPro_file. See that file for more info. 
@@ -79,7 +80,7 @@ hnd_wait = waitbar(0,'Updating database...');
 
 for i=1:length(h)
     try 
-        waitbar(i/length(h),hnd_wait,sprintf('Processing: %s ', [pth h(i).name]))
+        waitbar(i/length(h),hnd_wait,{sprintf('Processing: %s',h(i).name),sprintf('In folder: %s ',pth)})
     catch  %#ok<*CTCH>
         waitbar(i/length(h),hnd_wait)
     end
