@@ -33,13 +33,16 @@ function [numOfFilesProcessed,numOfDataPointsProcessed] = fr_EddyPro_database(wi
 %                                 more info. Default = [];
 %
 % Zoran Nesic                   File Created:      Feb  16, 2024
-%                               Last modification: Sep   2, 2024
+%                               Last modification: Jan   4, 2025
 
 % Created based on fr_SmartFlux_database.m
 
 %
 % Revisions:
 %
+% Jan 4, 2025 (Zoran)
+%   - Improvement: the function now checks if the input file is empty (h(i).bytes == 0) before tryint to process it.
+%     In case the file is empty, the program will report that it's skipping it and it will mark it as processed.
 % Sep 2, 2024 (Zoran)
 %   - Added new parameter optionsFileRead to be passed to
 %     fr_read_EddyPro_file. See that file for more info. 
@@ -96,16 +99,21 @@ for i=1:length(h)
             % to load it. fr_read_EddyPro_file is able to read
             % full_output, _biomet_ and EP-Summary files
             fileName = fullfile(pth,h(i).name);
-            [~, ~,tv,Stats] = fr_read_EddyPro_file(fileName,[],[],optionsFileRead);
-            tv = tv + time_shift;
-            structType = 1;
-            db_struct2database(Stats,databasePath,0,[],timeUnit,missingPointValue,structType,1);         
-
+            if h(i).bytes == 0 
+                % If file is of zero-length, skip processing but add it to the progress list
+                tv = [];
+                Stats = [];
+                fprintf(2,'Empty file: %s. Skipping... \n', fileName);
+            else            
+                [~, ~,tv,Stats] = fr_read_EddyPro_file(fileName,[],[],optionsFileRead);
+                tv = tv + time_shift;
+                structType = 1;
+                db_struct2database(Stats,databasePath,0,[],timeUnit,missingPointValue,structType,1);         
+            end
             % if there is no errors update records
             numOfFilesProcessed = numOfFilesProcessed + 1;
             numOfDataPointsProcessed = numOfDataPointsProcessed + length(tv);
             filesProcessProgressList(j).Modified = datenum(h(i).date);
-
         catch ME
             fprintf(2,'\nError processing file: %s. \n',fileName);
             fprintf(2,'%s\n',ME.message);
