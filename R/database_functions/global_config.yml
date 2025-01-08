@@ -71,7 +71,7 @@ Processing:
       # creates a sliding window MAD for outlier detection
       window: 6
       # conservative value as per literature
-      z_thresh: 4
+      z_thresh: 5.5
     REddyProc:
       Ustar_filtering:
         # Keep "run_defaults" as True to run "fast" ustar filtering
