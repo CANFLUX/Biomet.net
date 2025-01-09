@@ -26,6 +26,7 @@
 
 # # Giving database as an input
 # args <- c("C:/Database","siteID",startYear,endYear)
+# args <- c("F:/EcoFlux lab/Database","CF1",2021,2021)
 # source("C:/Biomet.net/R/database_functions/ThirdStage.R")
 
 # # If current directory is the the root of a database
@@ -123,7 +124,7 @@ configure <- function(siteID){
     }
   }
   print(sprintf('Third stage run initialized for %s data in %s',args[2],db_root))
-  
+  #browser()
   # Get the siteID argument and read the site-specific configuration
   siteID <- args[2]
   fn <- sprintf('%s_config.yml',siteID)
@@ -178,6 +179,9 @@ configure <- function(siteID){
   }
   if(is.null(config$Processing$ThirdStage$RF_GapFilling$Run)){
     config$Processing$ThirdStage$RF_GapFilling$Run=TRUE
+  }
+  if(is.null(config$Processing$ThirdStage$REddyProc$Flux_Partitioning$Run)){
+    config$Processing$ThirdStage$REddyProc$Flux_Partitioning$Run=TRUE
   }
   return(config)
 }
@@ -285,6 +289,7 @@ Met_Gap_Filling <- function(){
 }
 
 Standard_Cleaning <- function(){
+  #browser()
   suffix_label = 'PI'
   Fluxes <- config$Processing$ThirdStage$Fluxes
   for (flux in names(Fluxes)){
@@ -324,6 +329,7 @@ Standard_Cleaning <- function(){
 }
 
 Storage_Correction <- function(){
+  #browser()
   suffix_label = 'SC'
   Fluxes <- config$Processing$ThirdStage$Fluxes
   Storage_Terms <- config$Processing$ThirdStage$Storage_Correction
@@ -396,6 +402,7 @@ Papale_Spike_Removal <- function(){
     Fluxes[[flux]] <- flux_out
     ## MAD algorithm, Papale et al. 2006
     # D_N <- list()
+    #browser()
     df <- na.omit(input_data[,c('DateTime',flux_in,'SW_IN_1_1_1')])
     df$DN <- NA
     df[(df$SW_IN_1_1_1 < 20),'DN'] <- 1
@@ -546,8 +553,15 @@ Run_REddyProc <- function() {
   }
   
   # Nighttime (MR) and Daytime (GL)
-  EProc$sMRFluxPartitionUStarScens()
-  EProc$sGLFluxPartitionUStarScens()
+  #browser()
+  if (REddyConfig$Flux_Partitioning$Run){
+    EProc$sMRFluxPartitionUStarScens()
+    EProc$sGLFluxPartitionUStarScens()
+  } else {
+    print('Skipping flux partitioning')
+  }
+  
+ 
   
   # Create data frame for REddyProc output
   REddyOutput <- EProc$sExportResults()
@@ -603,7 +617,7 @@ RF_GapFilling <- function(){
       try({
         var_dep <- unlist(RFConfig[[fill_name]]$var_dep)
         predictors <- unlist(strsplit(RFConfig[[fill_name]]$Predictors, split = ","))
-        vars_in <- c(var_dep,predictors,"DateTime","DoY")
+        vars_in <- c(var_dep,predictors,"DateTime","DoY.x")
         log_path = file.path(db_root,'Calculation_Procedures/TraceAnalysis_ini',config$Metadata$siteID,'log')
         output <- RandomForestModel(input_data[,vars_in],fill_name,log = log_path,retrain_every_n_months = retrain_interval)
         use_existing_model <- output[2]
@@ -691,6 +705,20 @@ config <- configure()
 # Read Stage 2 Data
 input_data <- read_and_copy_traces() 
 
+# Check input_data for config$Processing$ThirdStage$Fluxes
+Fluxes <- config$Processing$ThirdStage$Fluxes
+for (flux in names(Fluxes)){
+  flux_name <- unlist(Fluxes[[flux]])
+  flux_eval <- input_data[[flux_name]]
+  # If 'flux_name' isn't found in 'input_data' remove from config$Processing$ThirdStage$Fluxes
+  if (is.null(flux_eval)){
+    # Extra error checking
+    if(flux_name %in% names(Fluxes)){
+      config$Processing$ThirdStage$Fluxes <- config$Processing$ThirdStage$Fluxes[ - which(names(config$Processing$ThirdStage$Fluxes) == flux_name)]
+    }
+  }
+}
+
 # Apply standard cleaning
 out <- Standard_Cleaning()
 input_data <- out$input_data
@@ -714,7 +742,7 @@ if (config$Processing$ThirdStage$JS_Moving_Z$Run){
   print('Skipping JS_Moving_Z')
 }
 
-
+#browser()
 if (config$Processing$ThirdStage$Papale_Spike_Removal$Run){
   # MAD algorithm, Papale et al. 2006
   out <- Papale_Spike_Removal()
