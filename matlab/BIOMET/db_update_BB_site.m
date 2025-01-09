@@ -10,13 +10,20 @@ function db_update_BB_site(yearIn,sites,skipWebUpdates)
 % files
 
 % file created:  June 24, 2019        
-% last modified: Feb  20, 2024 (Zoran)
+% last modified: Jan   8, 2025 
 %
 
 % function based on db_update_HH_sites
 
 % Revisions:
 %
+% Jan 8, 2025 (Zoran)
+%   - Bug fix/Improvement: For some data loggers each new year a new ProgressList
+%     would be created which would contain *all* datalogger files from the Sites folder. 
+%     That means that the first time this function would run in a new year, 
+%     all datalogger files for all years would be reprocessed!). The fix 
+%     forces reading of data logger files with extensions .YYYY* and avoids
+%     reprocessing of old files.
 % Feb 20, 2024 (Zoran)
 %  - Syntax updates
 %  - Cleaning out some redundant eval statements
@@ -90,7 +97,7 @@ for cntYears=1:length(yearIn)
             % (Zoran 20190624)
             %=================================
             [numOfFilesProcessed,numOfDataPointsProcessed] = ...
-                   fr_site_met_database(fullfile('p:\sites\', siteID,'\MET\BB_MET.*'), ...
+                   fr_site_met_database(fullfile('p:\sites\', siteID,['\MET\BB_MET.' num2str(yearIn(cntYears)) '*']), ...
                                         [],[],[],progressList_30min_Pth,outputPath,2,0,5,[],missingPointValue);
             fprintf('  %s_MET:  Number of files processed = %d, Number of 5-minute periods = %d\n',siteID,numOfFilesProcessed,numOfDataPointsProcessed);
 
@@ -99,19 +106,19 @@ for cntYears=1:length(yearIn)
 
         elseif strcmp(siteID,'BB2')
             [numOfFilesProcessed,numOfDataPointsProcessed] = fr_site_met_database(...
-                fullfile('p:\sites\', siteID, 'MET', [siteID '_MET.*']), ...
+                fullfile('p:\sites\', siteID, 'MET', [siteID '_MET.' num2str(yearIn(cntYears)) '*']), ...
                 [],[],[],progressList_30min_Pth,outputPath,2,0,30,[],missingPointValue);
             fprintf('  %s_MET:  Number of files processed = %d, Number of 5-minute periods = %d\n',siteID,numOfFilesProcessed,numOfDataPointsProcessed);
 
        elseif strcmp(siteID,'DSM')||strcmp(siteID,'RBM')
             % RAW Table
             [numOfFilesProcessed,numOfDataPointsProcessed] = fr_site_met_database(...
-                fullfile('p:\sites\', siteID,'MET', [siteID '_RAW.*']),...
+                fullfile('p:\sites\', siteID,'MET', [siteID '_RAW.' num2str(yearIn(cntYears)) '*']),...
                 [],[],[],progressList_RAW30min_Pth,outputPath,2,0,30,[],missingPointValue);
             fprintf('  %s_RAW:  Number of files processed = %d, Number of 30-minute periods = %d\n',siteID,numOfFilesProcessed,numOfDataPointsProcessed);
             % MET Table
             [numOfFilesProcessed,numOfDataPointsProcessed] = fr_site_met_database(...
-                    fullfile('p:\sites\',siteID,'MET', [siteID '_MET.*']),...
+                    fullfile('p:\sites\',siteID,'MET', [siteID '_MET.' num2str(yearIn(cntYears)) '*']),...
                     [],[],[],progressList_30min_Pth,outputPath,2,0,30,[],missingPointValue);          
             fprintf('  %s_MET:  Number of files processed = %d, Number of 30-minute periods = %d\n',siteID,numOfFilesProcessed,numOfDataPointsProcessed);
         end
