@@ -1,4 +1,4 @@
-function runThirdStageCleaningREddyProc(yearIn,siteID,yearsToProcess)
+function fidLog = runThirdStageCleaningREddyProc(yearIn,siteID,yearsToProcess);
 % runThirdStageCleaningREddyProc(yearIn,siteID)
 %
 % This function invokes Micromet third-stage cleaning R-script.
@@ -16,6 +16,8 @@ function runThirdStageCleaningREddyProc(yearIn,siteID,yearsToProcess)
 
 % Revisions
 %
+% Dec, 2024 (Paul)
+%   - fidLog added as function output
 % Oct 24, 2024 (Zoran)
 %   - Bug fix: enclosed all the paths into "" when calling R script. That removes the bug 
 %     where the calls to R would not work if the file path included spaces.
