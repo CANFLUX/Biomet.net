@@ -34,6 +34,11 @@ function trace_str_out = read_ini_file(fid,yearIn,fromRootIniFile)
 
 % Revisions
 %
+% Jan 10, 2024 (Zoran)
+%   - Bug fix: Disabled the property globalVars.Instrument.otherTraces
+%     It caused too many issues by overwriting properties of all traces that
+%     had their instrumentType == ''. Too many unintended consequences to keep track of. Better to just 
+%     disable it.
 % Dec 19, 2024 (Zoran)
 %   - bug fix: the program was not properly overwriting globalVars.traceName.Evaluate fields.
 % Sep 13, 2024 (Zoran)
@@ -570,13 +575,20 @@ if ~flagRecursiveCall
             % Process all defaults (instrumentType ='') using otherTraces variables    
             if exist('globalVars','var') && isfield(globalVars,'Instrument') && isfield(globalVars.Instrument,'otherTraces') ...
                && isfield(globalVars.Instrument.otherTraces,'Enable') && globalVars.Instrument.otherTraces.Enable == 1
-                fNames = fieldnames(globalVars.Instrument.otherTraces);
-                for cntFields = 1:length(fNames)
-                    curName = char(fNames(cntFields));
-                    if ~strcmpi(curName,'Enable')
-                        trace_str(cntTrace).ini.(curName) = globalVars.Instrument.otherTraces.(curName);
-                    end
-                end                    
+                % The property otherTraces caused too many issues by overwriting properties of all traces that
+                % had their instrumentType == ''. Too many unintended consequences to keep track of. Better to just 
+                % cancel it. Zoran 20250110
+                fprintf(2,'Property globalVars.Instrument.otherTraces.Enable = 1 is not supported anymore. Please set to 0 or remove.\n');
+                if 1==2
+                    % keeping it here for the future reference. It will never be used.
+                    fNames = fieldnames(globalVars.Instrument.otherTraces);
+                    for cntFields = 1:length(fNames)
+                        curName = char(fNames(cntFields));
+                        if ~strcmpi(curName,'Enable')
+                            trace_str(cntTrace).ini.(curName) = globalVars.Instrument.otherTraces.(curName);
+                        end
+                    end                    
+                end
             end
         end
         % if globalVars.other exist, store them under the ini.globalVars.other field
