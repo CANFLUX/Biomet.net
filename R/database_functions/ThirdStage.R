@@ -289,12 +289,11 @@ Met_Gap_Filling <- function(){
 }
 
 Standard_Cleaning <- function(){
-  #browser()
-  suffix_label = 'PI'
+  suffix_label = ''
   Fluxes <- config$Processing$ThirdStage$Fluxes
   for (flux in names(Fluxes)){
     flux_in <- unlist(Fluxes[[flux]])
-    flux_out = paste(flux,'_',suffix_label,sep="")
+    flux_out = paste(flux,suffix_label,sep="")
     Fluxes[[flux]] <- flux_out
     # Declare flux out variables, needed because some (e.g., NEE) are renamed from their stage 2 value
     input_data[[flux_out]] <- input_data[[flux_in]]
@@ -322,9 +321,27 @@ Standard_Cleaning <- function(){
       print(sprintf('%i values in %s were filtered out by the rain filter',na_out-na_in,flux))
     }
   }
+  
   config$Processing$ThirdStage$Fluxes <- Fluxes
   # Delete old outputs, dump new ones
-  input_data <- write_traces(input_data[,c('DateTime',unlist(unname(Fluxes)))],Fluxes,unlink=TRUE)    
+  input_data <- write_traces(input_data[,c('DateTime',unlist(unname(Fluxes)))],Fluxes,unlink=TRUE,suffix_opts=c('',''))    
+  return(list(input_data=input_data,config=config))
+}
+
+# Removed PI label from being added in Standard_Cleaning. Copy fluxes into new
+#   _PI variables prior to 'SC', 'JSZ',' MAD', and 'RP'. Flux_PI is not written 
+#   to disk, it is only once a secondary suffix is added.
+Add_PI_label <- function(){
+  suffix_label = 'PI'
+  Fluxes <- config$Processing$ThirdStage$Fluxes
+  for (flux in names(Fluxes)){
+    flux_in <- unlist(Fluxes[[flux]])
+    flux_out = paste(flux,'_',suffix_label,sep="")
+    Fluxes[[flux]] <- flux_out
+    # Declare flux out variables, needed because some (e.g., NEE) are renamed from their stage 2 value
+    input_data[[flux_out]] <- input_data[[flux_in]]
+  }
+  config$Processing$ThirdStage$Fluxes <- Fluxes
   return(list(input_data=input_data,config=config))
 }
 
@@ -634,7 +651,7 @@ RF_GapFilling <- function(){
   return(input_data)
 }
 
-write_traces <- function(data,final_outputs=NULL,unlink=FALSE){ 
+write_traces <- function(data,final_outputs=NULL,unlink=FALSE,suffix_opts=c('x','y')){ 
   # Update names for subset and save to main third stage folder
   siteID <- config$Metadata$siteID
   level_in <- config$Database$Paths$SecondStage
@@ -656,7 +673,7 @@ write_traces <- function(data,final_outputs=NULL,unlink=FALSE){
   cols_out <- cols_out[! cols_out %in% c("Year","DoY","Hour")]
   
   # Join the incoming data to the inputs incase needed for future use (e.g., ReddyPro outputs in RF)
-  input_data <- input_data %>% left_join(., data, by = c('DateTime' = 'DateTime'))
+  input_data <- input_data %>% left_join(., data, by = c('DateTime' = 'DateTime'),suffix=suffix_opts)
   
   for (year in config$years){
     print(sprintf('Writing %i',year))
@@ -726,6 +743,10 @@ config <- out$config
 
 input_data <- Met_Gap_Filling()
 
+out <- Add_PI_label()
+input_data <- out$input_data
+config <- out$config
+
 # Apply storage correction (if required)
 if (config$Processing$ThirdStage$Storage_Correction$Run){
   out <- Storage_Correction()
@@ -742,7 +763,6 @@ if (config$Processing$ThirdStage$JS_Moving_Z$Run){
   print('Skipping JS_Moving_Z')
 }
 
-#browser()
 if (config$Processing$ThirdStage$Papale_Spike_Removal$Run){
   # MAD algorithm, Papale et al. 2006
   out <- Papale_Spike_Removal()
