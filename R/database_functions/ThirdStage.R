@@ -26,7 +26,7 @@
 
 # # Giving database as an input
 # args <- c("C:/Database","siteID",startYear,endYear)
-# args <- c("F:/EcoFlux lab/Database","CF1",2021,2021)
+# args <- c("F:/EcoFlux lab/Database","CA3",2020,2020)
 # source("C:/Biomet.net/R/database_functions/ThirdStage.R")
 
 # # If current directory is the the root of a database
@@ -299,24 +299,32 @@ Standard_Cleaning <- function(){
     input_data[[flux_out]] <- input_data[[flux_in]]
     
     if ('northOffset' %in% names(config$Metadata)){
+      WD_varname <- 'WD_1_1_1'
+      if ('WD' %in% names(config$Processing$ThirdStage$REddyProc$vars_in)){
+        WD_varname <- config$Processing$ThirdStage$REddyProc$vars_in$WD
+      }
       half_width <- config$Processing$ThirdStage$Standard_Cleaning$wakeFilter
       filter <- config$Metadata$northOffset-180
       # Calculation is robust to user error and does not require adjustments based on wind direction
       na_in <- sum(is.na(input_data[[flux_out]]))
       input_data[[flux_out]][(
-        (abs(input_data$WD_1_1_1-filter)<=half_width)|
-          (abs(input_data$WD_1_1_1-360-filter)<=half_width)|
-          (abs(input_data$WD_1_1_1+360-filter)<=half_width))& !is.na(input_data$WD_1_1_1)
+        (abs(input_data[WD_varname]-filter)<=half_width)|
+          (abs(input_data[WD_varname]-360-filter)<=half_width)|
+          (abs(input_data[WD_varname]+360-filter)<=half_width))& !is.na(input_data[WD_varname])
       ] <- NA
       na_out <- sum(is.na(input_data[[flux_out]]))
       print(sprintf('%i values in %s were filtered by the wind sector filter',na_out-na_in,flux))
     } else {
       stop("Error: northOffset missing from you configuration file!")
     }
-    if ('P_1_1_1' %in% colnames(input_data)){
+    P_varname <- 'P_1_1_1'
+    if ('P' %in% names(config$Processing$ThirdStage$REddyProc$vars_in)){
+      P_varname <- config$Processing$ThirdStage$REddyProc$vars_in$P
+    }
+    if (P_varname %in% colnames(input_data)){
       p_thresh <- config$Processing$ThirdStage$Standard_Cleaning$precipCutOff
       na_in <- sum(is.na(input_data[[flux_out]]))
-      input_data[[flux_out]][input_data$P_1_1_1>p_thresh & !is.na(input_data$P_1_1_1)] <- NA
+      input_data[[flux_out]][input_data[P_varname]>p_thresh & !is.na(input_data[P_varname])] <- NA
       na_out <- sum(is.na(input_data[[flux_out]]))
       print(sprintf('%i values in %s were filtered out by the rain filter',na_out-na_in,flux))
     }
@@ -409,6 +417,7 @@ JS_Moving_Z <- function(){
 Papale_Spike_Removal <- function(){
   suffix_label = 'MAD'
   Fluxes <- config$Processing$ThirdStage$Fluxes
+  SW_varname <- config$Processing$ThirdStage$REddyProc$vars_in$Rg
   # read filtering parameters from config
   window <- config$Processing$ThirdStage$Papale_Spike_Removal$window
   z <- config$Processing$ThirdStage$Papale_Spike_Removal$z_thresh
@@ -420,10 +429,10 @@ Papale_Spike_Removal <- function(){
     ## MAD algorithm, Papale et al. 2006
     # D_N <- list()
     #browser()
-    df <- na.omit(input_data[,c('DateTime',flux_in,'SW_IN_1_1_1')])
+    df <- na.omit(input_data[,c('DateTime',flux_in,SW_varname)])
     df$DN <- NA
-    df[(df$SW_IN_1_1_1 < 20),'DN'] <- 1
-    df[(df$SW_IN_1_1_1 >= 20),'DN'] <- 2
+    df[(df[SW_varname] < 20),'DN'] <- 1
+    df[(df[SW_varname] >= 20),'DN'] <- 2
     df$di <- c(NA,diff(df[[flux_in]])) - c(diff(df[[flux_in]]),NA)
     dn <- c('Night','Day')
     for(i in 1:2){
