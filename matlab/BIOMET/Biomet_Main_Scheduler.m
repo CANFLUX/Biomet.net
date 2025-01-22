@@ -9,10 +9,13 @@ function Biomet_Main_Scheduler
 %
 %
 % Zoran Nesic           File created:       Feb 12, 2024
-%                       Last modification:  Oct 20, 2024
+%                       Last modification:  Jan 15, 2025
 
 % Revisions:
 %
+% Jan 15, 2025 (Zoran)
+%   - Commented out YF data processing. Site has been shut down Jan 11,
+%     2025.
 % Oct 20, 2024 (Zoran)
 %   - Added more comments to remind me to change the filePath for Totem
 %   data. See: Process_Climate_Station
@@ -107,40 +110,40 @@ cd('d:\')
         fprintf(fid,'======= End of Moving Sites-TEMP data (%s)========\n',datetime);
     end
     
-    %------------------------
-    % YF site: File unzipping
-    if ismember(hourX,14:17) && minuteX == 2
-        fprintf(fid,'======= Moving and Unzipping YF DailyZip files (%s) ========\n',datetime);
-        fprintf(fid,'%s\n',datetime);
-        fprintf(fid,'Moving ZIP files from Sync.com to Sites.\n');
-        [status,result] = system('"C:\Ubc_flux\Move_DailyZipFiles_from_Public_to_Sites.bat"');
-        if ~isempty(result)
-            fprintf(fid,'   Error while moving ZIP files:\n%s\n',result);        
-        end        
-        fprintf(fid,'------- Unzipping ... (%s) -------\n',datetime);
-        % *** Note: UBC_ZIP.exe has a one minute wait period before it returns control to 
-        %           Matlab. Use "&" to avoid waiting for it to return
-        %           control to Matlab but be aware that the unzipping may
-        %           not be finshed yet. Alternatively, bypass this program
-        %           by writing a Matlab native version of UBC_ZIP.
-        % ***           
-        [status,result] = system('C:\Ubc_flux\UBC_ZIP.exe C:\Ubc_flux\ubc_unzip.ini &');
-        if ~isempty(result)
-            fprintf(fid,'   Error while unzipping files:\n%s\n',result);        
-        end        
-        fprintf(fid,'%s\n',datetime);
-        fprintf(fid,'======= End of Moving and Unzipping (%s)    ========\n',datetime);
-    end
- 
-    %------------------------
-    % YF site: MET data processing
-    if ismember(hourX,14:17) && minuteX == 12
-        fprintf(fid,'======= YF MET data processing (%s) ========\n',datetime);
-        fprintf(fid,'%s\n',datetime);
-        run_YF_met_db_update;
-        fprintf(fid,'%s\n',datetime);
-        fprintf(fid,'======= End of YF MET data processing (%s)    ========\n',datetime);
-    end
+    % %------------------------
+    % % YF site: File unzipping
+    % if ismember(hourX,14:17) && minuteX == 2
+    %     fprintf(fid,'======= Moving and Unzipping YF DailyZip files (%s) ========\n',datetime);
+    %     fprintf(fid,'%s\n',datetime);
+    %     fprintf(fid,'Moving ZIP files from Sync.com to Sites.\n');
+    %     [status,result] = system('"C:\Ubc_flux\Move_DailyZipFiles_from_Public_to_Sites.bat"');
+    %     if ~isempty(result)
+    %         fprintf(fid,'   Error while moving ZIP files:\n%s\n',result);        
+    %     end        
+    %     fprintf(fid,'------- Unzipping ... (%s) -------\n',datetime);
+    %     % *** Note: UBC_ZIP.exe has a one minute wait period before it returns control to 
+    %     %           Matlab. Use "&" to avoid waiting for it to return
+    %     %           control to Matlab but be aware that the unzipping may
+    %     %           not be finshed yet. Alternatively, bypass this program
+    %     %           by writing a Matlab native version of UBC_ZIP.
+    %     % ***           
+    %     [status,result] = system('C:\Ubc_flux\UBC_ZIP.exe C:\Ubc_flux\ubc_unzip.ini &');
+    %     if ~isempty(result)
+    %         fprintf(fid,'   Error while unzipping files:\n%s\n',result);        
+    %     end        
+    %     fprintf(fid,'%s\n',datetime);
+    %     fprintf(fid,'======= End of Moving and Unzipping (%s)    ========\n',datetime);
+    % end
+    % 
+    % %------------------------
+    % % YF site: MET data processing
+    % if ismember(hourX,14:17) && minuteX == 12
+    %     fprintf(fid,'======= YF MET data processing (%s) ========\n',datetime);
+    %     fprintf(fid,'%s\n',datetime);
+    %     run_YF_met_db_update;
+    %     fprintf(fid,'%s\n',datetime);
+    %     fprintf(fid,'======= End of YF MET data processing (%s)    ========\n',datetime);
+    % end
 
     %------------------------
     %  MBP1 site: data processing

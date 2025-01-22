@@ -26,7 +26,7 @@
 
 # # Giving database as an input
 # args <- c("C:/Database","siteID",startYear,endYear)
-# args <- c("F:/EcoFlux lab/Database","CF1",2021,2021)
+# args <- c("F:/EcoFlux lab/Database","CA3",2020,2020)
 # source("C:/Biomet.net/R/database_functions/ThirdStage.R")
 
 # # If current directory is the the root of a database
@@ -289,7 +289,57 @@ Met_Gap_Filling <- function(){
 }
 
 Standard_Cleaning <- function(){
-  #browser()
+  suffix_label = ''
+  Fluxes <- config$Processing$ThirdStage$Fluxes
+  for (flux in names(Fluxes)){
+    flux_in <- unlist(Fluxes[[flux]])
+    flux_out = paste(flux,suffix_label,sep="")
+    Fluxes[[flux]] <- flux_out
+    # Declare flux out variables, needed because some (e.g., NEE) are renamed from their stage 2 value
+    input_data[[flux_out]] <- input_data[[flux_in]]
+    
+    if ('northOffset' %in% names(config$Metadata)){
+      WD_varname <- 'WD_1_1_1'
+      if ('WD' %in% names(config$Processing$ThirdStage$REddyProc$vars_in)){
+        WD_varname <- config$Processing$ThirdStage$REddyProc$vars_in$WD
+      }
+      half_width <- config$Processing$ThirdStage$Standard_Cleaning$wakeFilter
+      filter <- config$Metadata$northOffset-180
+      # Calculation is robust to user error and does not require adjustments based on wind direction
+      na_in <- sum(is.na(input_data[[flux_out]]))
+      input_data[[flux_out]][(
+        (abs(input_data[WD_varname]-filter)<=half_width)|
+          (abs(input_data[WD_varname]-360-filter)<=half_width)|
+          (abs(input_data[WD_varname]+360-filter)<=half_width))& !is.na(input_data[WD_varname])
+      ] <- NA
+      na_out <- sum(is.na(input_data[[flux_out]]))
+      print(sprintf('%i values in %s were filtered by the wind sector filter',na_out-na_in,flux))
+    } else {
+      stop("Error: northOffset missing from you configuration file!")
+    }
+    P_varname <- 'P_1_1_1'
+    if ('P' %in% names(config$Processing$ThirdStage$REddyProc$vars_in)){
+      P_varname <- config$Processing$ThirdStage$REddyProc$vars_in$P
+    }
+    if (P_varname %in% colnames(input_data)){
+      p_thresh <- config$Processing$ThirdStage$Standard_Cleaning$precipCutOff
+      na_in <- sum(is.na(input_data[[flux_out]]))
+      input_data[[flux_out]][input_data[P_varname]>p_thresh & !is.na(input_data[P_varname])] <- NA
+      na_out <- sum(is.na(input_data[[flux_out]]))
+      print(sprintf('%i values in %s were filtered out by the rain filter',na_out-na_in,flux))
+    }
+  }
+  
+  config$Processing$ThirdStage$Fluxes <- Fluxes
+  # Delete old outputs, dump new ones
+  input_data <- write_traces(input_data[,c('DateTime',unlist(unname(Fluxes)))],Fluxes,unlink=TRUE,suffix_opts=c('',''))    
+  return(list(input_data=input_data,config=config))
+}
+
+# Removed PI label from being added in Standard_Cleaning. Copy fluxes into new
+#   _PI variables prior to 'SC', 'JSZ',' MAD', and 'RP'. Flux_PI is not written 
+#   to disk, it is only once a secondary suffix is added.
+Add_PI_label <- function(){
   suffix_label = 'PI'
   Fluxes <- config$Processing$ThirdStage$Fluxes
   for (flux in names(Fluxes)){
@@ -298,33 +348,8 @@ Standard_Cleaning <- function(){
     Fluxes[[flux]] <- flux_out
     # Declare flux out variables, needed because some (e.g., NEE) are renamed from their stage 2 value
     input_data[[flux_out]] <- input_data[[flux_in]]
-    
-    if ('northOffset' %in% names(config$Metadata)){
-      half_width <- config$Processing$ThirdStage$Standard_Cleaning$wakeFilter
-      filter <- config$Metadata$northOffset-180
-      # Calculation is robust to user error and does not require adjustments based on wind direction
-      na_in <- sum(is.na(input_data[[flux_out]]))
-      input_data[[flux_out]][(
-        (abs(input_data$WD_1_1_1-filter)<=half_width)|
-          (abs(input_data$WD_1_1_1-360-filter)<=half_width)|
-          (abs(input_data$WD_1_1_1+360-filter)<=half_width))& !is.na(input_data$WD_1_1_1)
-      ] <- NA
-      na_out <- sum(is.na(input_data[[flux_out]]))
-      print(sprintf('%i values in %s were filtered by the wind sector filter',na_out-na_in,flux))
-    } else {
-      stop("Error: northOffset missing from you configuration file!")
-    }
-    if ('P_1_1_1' %in% colnames(input_data)){
-      p_thresh <- config$Processing$ThirdStage$Standard_Cleaning$precipCutOff
-      na_in <- sum(is.na(input_data[[flux_out]]))
-      input_data[[flux_out]][input_data$P_1_1_1>p_thresh & !is.na(input_data$P_1_1_1)] <- NA
-      na_out <- sum(is.na(input_data[[flux_out]]))
-      print(sprintf('%i values in %s were filtered out by the rain filter',na_out-na_in,flux))
-    }
   }
   config$Processing$ThirdStage$Fluxes <- Fluxes
-  # Delete old outputs, dump new ones
-  input_data <- write_traces(input_data[,c('DateTime',unlist(unname(Fluxes)))],Fluxes,unlink=TRUE)    
   return(list(input_data=input_data,config=config))
 }
 
@@ -392,6 +417,7 @@ JS_Moving_Z <- function(){
 Papale_Spike_Removal <- function(){
   suffix_label = 'MAD'
   Fluxes <- config$Processing$ThirdStage$Fluxes
+  SW_varname <- config$Processing$ThirdStage$REddyProc$vars_in$Rg
   # read filtering parameters from config
   window <- config$Processing$ThirdStage$Papale_Spike_Removal$window
   z <- config$Processing$ThirdStage$Papale_Spike_Removal$z_thresh
@@ -403,10 +429,10 @@ Papale_Spike_Removal <- function(){
     ## MAD algorithm, Papale et al. 2006
     # D_N <- list()
     #browser()
-    df <- na.omit(input_data[,c('DateTime',flux_in,'SW_IN_1_1_1')])
+    df <- na.omit(input_data[,c('DateTime',flux_in,SW_varname)])
     df$DN <- NA
-    df[(df$SW_IN_1_1_1 < 20),'DN'] <- 1
-    df[(df$SW_IN_1_1_1 >= 20),'DN'] <- 2
+    df[(df[SW_varname] < 20),'DN'] <- 1
+    df[(df[SW_varname] >= 20),'DN'] <- 2
     df$di <- c(NA,diff(df[[flux_in]])) - c(diff(df[[flux_in]]),NA)
     dn <- c('Night','Day')
     for(i in 1:2){
@@ -634,7 +660,7 @@ RF_GapFilling <- function(){
   return(input_data)
 }
 
-write_traces <- function(data,final_outputs=NULL,unlink=FALSE){ 
+write_traces <- function(data,final_outputs=NULL,unlink=FALSE,suffix_opts=c('x','y')){ 
   # Update names for subset and save to main third stage folder
   siteID <- config$Metadata$siteID
   level_in <- config$Database$Paths$SecondStage
@@ -656,7 +682,7 @@ write_traces <- function(data,final_outputs=NULL,unlink=FALSE){
   cols_out <- cols_out[! cols_out %in% c("Year","DoY","Hour")]
   
   # Join the incoming data to the inputs incase needed for future use (e.g., ReddyPro outputs in RF)
-  input_data <- input_data %>% left_join(., data, by = c('DateTime' = 'DateTime'))
+  input_data <- input_data %>% left_join(., data, by = c('DateTime' = 'DateTime'),suffix=suffix_opts)
   
   for (year in config$years){
     print(sprintf('Writing %i',year))
@@ -726,6 +752,10 @@ config <- out$config
 
 input_data <- Met_Gap_Filling()
 
+out <- Add_PI_label()
+input_data <- out$input_data
+config <- out$config
+
 # Apply storage correction (if required)
 if (config$Processing$ThirdStage$Storage_Correction$Run){
   out <- Storage_Correction()
@@ -742,7 +772,6 @@ if (config$Processing$ThirdStage$JS_Moving_Z$Run){
   print('Skipping JS_Moving_Z')
 }
 
-#browser()
 if (config$Processing$ThirdStage$Papale_Spike_Removal$Run){
   # MAD algorithm, Papale et al. 2006
   out <- Papale_Spike_Removal()

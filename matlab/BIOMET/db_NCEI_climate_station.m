@@ -10,17 +10,25 @@ function db_NCEI_climate_station(yearRange,UTC2local,stationID,dbPath,timeUnit)
 %
 %
 % Paul Moore                File created:       Jan 09, 2025
-%                           Last modification:  
-%
+%                           Last modification:  Jan 15, 2025
 
 % Revisions:
-%
+% Jan 15, 2025 (Paul)
+%   - Fixed time offset (supposed to be hours, not days)
+%   - Station list can be found at: https://www.ncei.noaa.gov/pub/data/noaa/isd-history.txt
+%   - stationID is the USAF and WBAN numbers combined into an 11-digit number
+%   - Map view of ISD stations: https://www.ncei.noaa.gov/access/search/data-search/global-hourly
 
 [yearNow,~,~]= datevec(now);
 arg_default('yearRange',yearNow);               % default year is now
 arg_default('UTC2local',0)                      % default offset is 0
 arg_default('stationID',72785794129);           % default station is Pullman Moscow regional airport
 arg_default('timeUnit','60MIN');                % data is hourly (60 minutes)
+arg_default('dbPath','');
+
+if isempty(dbPath)
+    dbPath = fullfile(biomet_database_default,'yyyy','ECCC',num2str(stationID));
+end
 
 pathToMatlabTemp = fullfile(tempdir,'MatlabTemp');
 if ~exist(pathToMatlabTemp,'dir')
@@ -46,7 +54,7 @@ for yearIn = yearRange
     %   so it seems reasonable to just round to the nearest hour. However,
     %   whether this applies to all weather station data needs to be
     %   assessed.
-    TimeVector = get_stats_field(Stats,'TimeVector') + UTC2local;
+    TimeVector = get_stats_field(Stats,'TimeVector') + UTC2local./24;
     for cnt = 1:length(TimeVector)
         Stats(cnt).TimeVector = fr_round_time(TimeVector(cnt),'hour',1);
     end
