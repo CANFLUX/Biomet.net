@@ -1,4 +1,4 @@
-function create_TAB_ProjectFolders(projectPath,siteID)
+ function create_TAB_ProjectFolders(projectPath,siteID)
 % Create the directory structure for Trace Analysis Biomet (TAB) data projects
 % create_TAB_ProjectFolders ('E:\Projects\My_MicrometSites','Site_1')
 %                           - creates the data tree to be used with TAB projects
