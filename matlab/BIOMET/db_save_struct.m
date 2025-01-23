@@ -19,12 +19,14 @@ function [StatsAll,dbFileNames, dbFieldNames] = db_save_struct(StatsAll,pthOut,v
 %       k                    - number of files processed
 %
 % (c) Zoran Nesic               File created:       Apr  3, 2022
-%                               Last modification:  Jan 21, 2025
+%                               Last modification:  Jan 23, 2025
 
 % Revisions:
 %
+%   Jan 23, 2025 (Zoran)
+%       - made check_or_create_path() OS independent and streamlined.
 %   Jan 21, 2025 (Rosie)
-%       - edited the" function so that it works on Mac as
+%       - edited the function so it works on Mac as
 %       well as windows (added pthOut = fullfile(pthOut) to make sure that proper 
 %       folder separator is used).
 %   Jul 27, 2022 (Zoran)
@@ -166,22 +168,17 @@ if verbose_flag,fprintf('%i database entries generated in %4.3f seconds.\n',([le
 %
 %===============================================================
 function pthOut = check_or_create_path(pthOut)
-    pth_tmp = fr_valid_path_name(pthOut);          % check the path and create
-    if isempty(pth_tmp)                         
+    if ~exist(pthOut,'dir')
        fprintf(1,'Directory %s does not exist!... ',pthOut);
        fprintf(1,'Creating new folder!... ');
-       indDrive = find(pthOut == '\');
-       [successFlag] = mkdir(pthOut(1:indDrive(1)),pthOut(indDrive(1)+1:end));
+       [successFlag] = mkdir(pthOut);
        if successFlag
            fprintf(1,'New folder created!\n');
        else
            fprintf(1,'Error creating folder!\n');
            error('Error creating folder!');
        end
-    else
-       pthOut = pth_tmp;
     end
-
 
 %===============================================================
 %
