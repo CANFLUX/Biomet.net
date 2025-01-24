@@ -261,6 +261,8 @@ try
             end
         elseif strncmp(tm_line,'[Trace]',7)
             %------------------------------------locate each [TRACE]->[END] block in ini_file
+            % save the line # for error reporting
+            traceFieldLineNum = countLines;
             %update which trace this is(used only for error messages):
             countTraces = countTraces+1;
             %Read the first line inside the [TRACE]->[END] block:
@@ -521,6 +523,30 @@ try
                     trace_str(countTraces).Last_Updated = char(datetime("now"));
             end
             %---------------Finished reading the trace information between [TRACE]->[END] block
+            
+            % At this point a new trace_str(countTraces) is fully created. This could be a trace with 
+            % a same name as a previously created trace. This could be a mistake (a duplicate trace)
+            % or one could be doing it on purpose with a goal of overwriting a trace defined.
+            % Let's check:
+            %
+            % First find out if the trace is unique. Need at least two traces.
+            if countTraces > 1
+                allTraceNames = {trace_str(:).variableName};
+                indDuplicate = find(ismember(allTraceNames(1:end-1),trace_str(countTraces).variableName));
+                if ~isempty(indDuplicate)
+                    % if a duplicate exists, check if the new copy has the property "Overwrite = 1"
+                    % if it does, then overwrite. If not, report an error, 
+                    % suggest using "Overwrite" and then ignore the new copy
+                    % TO BE IMPLEMENTED
+                    % ************
+
+                    % Continue
+                    fprintf(2,'      Found a duplicate trace: %s (Line:%d)\n',trace_str(countTraces).variableName,traceFieldLineNum);
+                    trace_str(indDuplicate(1)) = trace_str(countTraces);
+                    trace_str = trace_str(1:countTraces-1);
+                end
+            end
+                    
 
         elseif isletter(tm_line(1))
             %read other variables in the ini_file not between [TRACE]->[END] blocks:
