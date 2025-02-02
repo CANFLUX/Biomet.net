@@ -738,15 +738,19 @@ if ~flagRecursiveCall & strcmpi(iniFileType,'first')
                         fprintf(1,'        Overwritting the old trace (#%d) with the duplicate.\n',cntTrace);
                         trace_str_unique(cntTrace) = trace_str_out(indDuplicate(cntDuplicates));
                     else
-                        % Delete the existing trace and add new one at the back
+                        % Delete the existing trace and add new one at the back 
+                        % (this changes order of traces in the output trace_str)
                         fprintf(1,'      Found a duplicate trace: %s \n',currentTrace);
                         fprintf(1,'        Original  trace line %4d in file: %s\n',trace_str_out(indDuplicate(1)).iniFileLineNum,trace_str_out(indDuplicate(1)).iniFileName);
                         fprintf(1,'        Duplicate trace line %4d in file: %s\n',trace_str_out(indDuplicate(cntDuplicates)).iniFileLineNum,trace_str_out(indDuplicate(cntDuplicates)).iniFileName);
                         fprintf(1,'        Deleting the old trace (#%d). Adding this one at the back (#%d).\n',cntTrace,length(trace_str_unique));
                         % add duplicate to the end of trace_str_unique
                         trace_str_unique(length(trace_str_unique)+1) = trace_str_out(indDuplicate(cntDuplicates));
-                        % delete the duplicate                        
-                        trace_str_unique(indDuplicate(1)) = [];
+                        % delete the duplicate 
+                        % Find where the currentTrace is in the trace_str_unique 
+                        % (it may not be at the same location as in trace_str_out so we don't want to delete a wrong trace
+                        indDuplicateInUnique = find(ismember(uniqueTraceNames,currentTrace));
+                        trace_str_unique(indDuplicateInUnique(1)) = [];
                     end
                 else       % if flagOverwriteOld >= flagOverwriteNew
                     fprintf(2,'      Found a duplicate trace: %s\n',currentTrace);

@@ -13,10 +13,13 @@ function trace_str = read_data(yearIn, SiteID, ini_file)
 %                      See the function 'read_ini_file' for more information
 
 
-% last modification: Sep 13, 2024
+% last modification: Feb 1, 2025
 
 % revisions:
 %
+% Feb 1, 2025 (Zoran)
+%   - Bug fix: This function was displaying 'Cleaning traces...' but it was not cleaning them, only reading them
+%     Replaced with: 'Reading traces from database...'
 % Sep 13, 2024 (Zoran)
 %   - Changed this line:
 %       if isempty(lsttv) & isfield(trace_str(1).ini,'Evaluate1')
@@ -249,7 +252,7 @@ set(h,'Name','Reading traces from database ...');
 set(get(h,'Children'),'Color',bgc,'LineWidth',0.5);
 set(get(get(h,'Children'),'Title'),'Color',[1 1 1])
 
-disp('Cleaning traces ...');
+fprintf(1,'Reading traces from database...\n');
 
 for countTraces = 1:numberTraces
 
