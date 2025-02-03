@@ -13,9 +13,6 @@ function data_out = clean_traces(trace_str,interp_flag)
 
 % Revisions:
 %
-% Feb 2, 2025 (Zoran)
-%   - added postEvaluate field processing. Used the same way as the Evaluate statement but 
-%     it works on the trace *after* it's been cleaned.
 % Apr 8, 2024 (Zoran)
 %  - fixed a bug where the function didn't test if a field was empty before trying to 
 %    access it as an array. It affected "clampedMinMax".
@@ -336,11 +333,6 @@ else
    trace_in.stats.numpts.outsideFilter = 0;
 end
 trace_in.stats.clean_flags = clean_flags;
-
-% Run postEvaluate statement for the current trace
-if isfield(trace_in.ini,'postEvaluate')                     % if the data needs to be evaluated
-    trace_in = evaluate_trace( trace_in,'postEvaluate' );	% evaluate the trace
-end
 
 %Return finished trace:
 trace_out = trace_in;
