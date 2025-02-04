@@ -326,5 +326,5 @@ if ishandle(h)
     close(h);
 end
 
-
+fprintf(1,'   Done reading traces.\n');
 

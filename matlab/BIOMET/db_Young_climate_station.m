@@ -1,13 +1,18 @@
-function db_Young_climate_station_new(fileName,stationName,siteID,inFileNum)
+function db_Young_climate_station(fileName,stationName,siteID,inFileNum)
 % db_Young_climate_station(stationName,fileName)
 %
 % fileName = 'C:\Users\zoran\Downloads\Newdale-Hamiota-Oakburn-Data.xls';
 %
 % Zoran Nesic               File created:       Sep  7, 2022
-%                           Last modification:  Feb 3, 2025
+%                           Last modification:  Feb 4, 2025
 
 %
 % Revisions:
+%
+% Feb 4, 2025 (Rosie)
+%
+%  - Updated to also process substitute data for OHM from Stonewall climate
+%    stations. See below for data filenames.
 %
 % Feb 3, 2025 (Rosie)
 %  - Updated script so no edits are needed if switching between input files;
@@ -42,13 +47,14 @@ function db_Young_climate_station_new(fileName,stationName,siteID,inFileNum)
 
 %stationName = 'Newdale';
 %fileName = 'C:\Users\zoran\Downloads\Newdale-Hamiota-Oakburn-Data.xls';
-
 % arg_default('stationName','Newdale')
 % siteID = 'YOUNG';
-
 % arg_default('fileName','C:\Users\zoran\Downloads\Newdale-Hamiota-Oakburn-Data.xls');
 
-% Input files; as of Jan 2025 we have 5 separate files containing Newdale data 
+%****************************************
+% Input files for Young substitute data *
+%****************************************
+% As of Jan 2025 we have 5 separate files containing Newdale data 
 % covering the period from 1 Jan 2021 - 31 Dec 2024. Some files have different 
 % formatting (e.g. date, StationName vs. Station) and need slightly
 % different processing:
@@ -57,6 +63,14 @@ function db_Young_climate_station_new(fileName,stationName,siteID,inFileNum)
 %   (3) 'Newdale-2022-2023-TScott.xlsx' (15 Sept 2022 - 11 Oct 2023)
 %   (4) 'Newdale-60min-2023.xlsx' (all of 2023)
 %   (5) 'Newdale-60min-2024.xlsx' (all of 2024)
+
+%**************************************
+% Input files for OHM substitute data *
+%**************************************
+% As of 4 Feb 2025 we have 2 files for Stonewall station data, and they use 
+% the same formatting as inFileNum 4 and 5 for Young:
+%   (4) 'Newdale-Stonewall-Hourly2023-AaronG.xlsx' (all of 2023)
+%   (5) 'Newdale-Stonewall-Hourly2024-AaronG.xlsx' (all of 2024)
 
 if strcmpi(fileName,'Newdale-Hamiota-Oakburn-Data.xls - Newdale-Hamiota-Oakburn-Data.csv')
     % File 1: this file has data from 1 Jan 2021 - 5 Sept 2022
@@ -67,10 +81,10 @@ elseif strcmpi(fileName,'Newdale-60min-September2022.xlsx')
 elseif strcmpi(fileName,'Newdale-2022-2023-TScott.xlsx')
     % File 3: this file has data from 15 Sept 2022 - 11 Oct 2023
     inFileNum = 3;
-elseif strcmpi(fileName,'Newdale-60min-2023.xlsx')
+elseif strcmpi(fileName,'Newdale-60min-2023.xlsx') | strcmpi(fileName,'Newdale-Stonewall-Hourly2023-AaronG.xlsx')
     % File 4: this file has a full year of data for 2023
     inFileNum = 4;
-elseif strcmpi(fileName,'Newdale-60min-2024.xlsx')
+elseif strcmpi(fileName,'Newdale-60min-2024.xlsx') | strcmpi(fileName,'Newdale-Stonewall-Hourly2024-AaronG.xlsx')
     % File 5: this file has a full year of data for 2024
     inFileNum = 5;
 else
@@ -82,7 +96,7 @@ end
 fullFilePath = fullfile(biomet_sites_default,siteID,'Met',fileName);
 
 % output path
-dbPath = fullfile(biomet_database_default,'yyyy','Young','Met',stationName); 
+dbPath = fullfile(biomet_database_default,'yyyy',siteID,'Met',stationName); 
 % dbPath = fullfile(biomet_database_default,['yyyy\Young\Met\' stationName]);   % Mac OS didn't like backslashes
 
 % Read the data file
