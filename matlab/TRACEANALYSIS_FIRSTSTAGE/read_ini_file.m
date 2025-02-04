@@ -34,6 +34,9 @@ function trace_str_out = read_ini_file(fid,yearIn,fromRootIniFile)
 
 % Revisions
 %
+% Feb  3, 2025 (Zoran)
+%   - Enforced the rule that the duplicate traces will not be allowed
+%   - Added the Overwrite property for sorting out what to do with the duplicates.
 % Jan 10, 2024 (Zoran)
 %   - Bug fix: Disabled the property globalVars.Instrument.otherTraces
 %     It caused too many issues by overwriting properties of all traces that
@@ -733,17 +736,17 @@ if ~flagRecursiveCall & strcmpi(iniFileType,'first')
                     if flagOverwriteNew == 1
                         % Overwrite the existing trace with the new one
                         fprintf(1,'      Found a duplicate trace: %s \n',currentTrace);
-                        fprintf(1,'        Original  trace line %4d in file: %s\n',trace_str_out(indDuplicate(1)).iniFileLineNum,trace_str_out(indDuplicate(1)).iniFileName);
-                        fprintf(1,'        Duplicate trace line %4d in file: %s\n',trace_str_out(indDuplicate(cntDuplicates)).iniFileLineNum,trace_str_out(indDuplicate(cntDuplicates)).iniFileName);
-                        fprintf(1,'        Overwritting the old trace (#%d) with the duplicate.\n',cntTrace);
+                        fprintf(1,'        Original  trace on line %4d in file: %s\n',trace_str_out(indDuplicate(1)).iniFileLineNum,trace_str_out(indDuplicate(1)).iniFileName);
+                        fprintf(1,'        Duplicate trace on line %4d in file: %s\n',trace_str_out(indDuplicate(cntDuplicates)).iniFileLineNum,trace_str_out(indDuplicate(cntDuplicates)).iniFileName);
+                        fprintf(1,'        Overwritting the original trace (trace: #%d) with the duplicate.\n',cntTrace);
                         trace_str_unique(cntTrace) = trace_str_out(indDuplicate(cntDuplicates));
                     else
                         % Delete the existing trace and add new one at the back 
                         % (this changes order of traces in the output trace_str)
                         fprintf(1,'      Found a duplicate trace: %s \n',currentTrace);
-                        fprintf(1,'        Original  trace line %4d in file: %s\n',trace_str_out(indDuplicate(1)).iniFileLineNum,trace_str_out(indDuplicate(1)).iniFileName);
-                        fprintf(1,'        Duplicate trace line %4d in file: %s\n',trace_str_out(indDuplicate(cntDuplicates)).iniFileLineNum,trace_str_out(indDuplicate(cntDuplicates)).iniFileName);
-                        fprintf(1,'        Deleting the old trace (#%d). Adding this one at the back (#%d).\n',cntTrace,length(trace_str_unique));
+                        fprintf(1,'        Original  trace on line %4d in file: %s\n',trace_str_out(indDuplicate(1)).iniFileLineNum,trace_str_out(indDuplicate(1)).iniFileName);
+                        fprintf(1,'        Duplicate trace on line %4d in file: %s\n',trace_str_out(indDuplicate(cntDuplicates)).iniFileLineNum,trace_str_out(indDuplicate(cntDuplicates)).iniFileName);
+                        fprintf(1,'        Deleting the original trace (trace: #%d). Adding the duplicate at the back (trace: #%d).\n',cntTrace,length(trace_str_unique));
                         % add duplicate to the end of trace_str_unique
                         trace_str_unique(length(trace_str_unique)+1) = trace_str_out(indDuplicate(cntDuplicates));
                         % delete the duplicate 
@@ -754,10 +757,10 @@ if ~flagRecursiveCall & strcmpi(iniFileType,'first')
                     end
                 else       % if flagOverwriteOld >= flagOverwriteNew
                     fprintf(2,'      Found a duplicate trace: %s\n',currentTrace);
-                    fprintf(2,'        Original  trace line %4d in file: %s\n',trace_str_out(indDuplicate(1)).iniFileLineNum,trace_str_out(indDuplicate(1)).iniFileName);
-                    fprintf(2,'        Duplicate trace line %4d in file: %s\n',trace_str_out(indDuplicate(cntDuplicates)).iniFileLineNum,trace_str_out(indDuplicate(cntDuplicates)).iniFileName);
-                    fprintf(2,'        The trace cannot be overwritten. flagOverwriteOld = %d, flagOverwriteNew = %d\n',flagOverwriteOld,flagOverwriteNew);
-                    fprintf(2,'        flagOverwriteOld has to be smaller than flagOverwriteNew. Ignoring the duplicate.\n');                    
+                    fprintf(2,'        Original  trace on line %4d in file: %s\n',trace_str_out(indDuplicate(1)).iniFileLineNum,trace_str_out(indDuplicate(1)).iniFileName);
+                    fprintf(2,'        Duplicate trace on line %4d in file: %s\n',trace_str_out(indDuplicate(cntDuplicates)).iniFileLineNum,trace_str_out(indDuplicate(cntDuplicates)).iniFileName);
+                    fprintf(2,'        The original trace cannot be overwritten. Original Overwrite flag= %d, Duplicate Overwrite flag= %d\n',flagOverwriteOld,flagOverwriteNew);
+                    fprintf(2,'        Original Overwrite''s flag has to be smaller than the duplicate''s Overwrite flag. Ignoring the duplicate.\n');                    
                     % keep the original trace (do nothing)
                 end
             end
