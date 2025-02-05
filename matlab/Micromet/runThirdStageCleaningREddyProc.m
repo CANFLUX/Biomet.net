@@ -59,39 +59,43 @@ function fidLog = runThirdStageCleaningREddyProc(yearIn,siteID,yearsToProcess);
     
     tic;
     tv_start = now; %#ok<TNOW1>
-
-    % Run RScript
-    % concatenate the command line argument
-    CLI_args = sprintf('"%s" --vanilla "%s" "%s" %s %i %i',pthRbin,pthThirdStageR ,strrep(pthDatabase,'\','/'),siteID,startYear,endYear);
-    CLI_args = [CLI_args ' 2> "' pthLogFile '" 1>&2'];
-    % run the command line argument
-    fprintf('Running the following command: %s\n', CLI_args);
-    fprintf('Start time: %s\n\n',datetime)
-    [statusR,cmdOutput] = system(CLI_args);
-    fprintf('End time: %s\n\n',datetime)
-    % When R is finished, print cmdOutput and the footer in the log file
-    fidLog = fopen(pthLogFile,'a');      
-    if fidLog > 0    
-        fprintf(fidLog,'=============================================================\n');
-        if statusR == 0
-            fprintf(fidLog,'Completed running Third Stage Rscript: %s\n',pthRbin);
-        else
-            fprintf(fidLog,'Failed running Third Stage Rscript: %s\n',pthRbin);
-        end
-        fprintf(fidLog,'=============================================================\n');
-        fprintf(fidLog,'\n\nCommand output:\n\n');
-        fprintf(fidLog,cmdOutput);
-        fprintf(fidLog,'\n\n\n\n');
-        fprintf(fidLog,'=============================================================\n');
-        fprintf(fidLog,'Rscript:      %s\n',pthRbin);
-        fprintf(fidLog,'Command line: %s\n',CLI_args);
-        fprintf(fidLog,'Start:        %s\n',datestr(tv_start)); %#ok<DATST>
-        fprintf(fidLog,'End:          %s\n',datestr(now)); %#ok<TNOW1,DATST>
-        fprintf(fidLog,'Elapsed time: %6.1f min\n',toc/60);
-        fprintf(fidLog,'==============================================================\n'); 
-        fclose(fidLog);
-    end
     
+    % Before running ThirdStage.R, check yml file for potential errors
+    kill_3rdstage = basic_error_check_yml_site_config(siteID,yearIn,pthIni);
+    
+    if ~kill_3rdstage
+        % Run RScript
+        % concatenate the command line argument
+        CLI_args = sprintf('"%s" --vanilla "%s" "%s" %s %i %i',pthRbin,pthThirdStageR ,strrep(pthDatabase,'\','/'),siteID,startYear,endYear);
+        CLI_args = [CLI_args ' 2> "' pthLogFile '" 1>&2'];
+        % run the command line argument
+        fprintf('Running the following command: %s\n', CLI_args);
+        fprintf('Start time: %s\n\n',datetime)
+        [statusR,cmdOutput] = system(CLI_args);
+        fprintf('End time: %s\n\n',datetime)
+        % When R is finished, print cmdOutput and the footer in the log file
+        fidLog = fopen(pthLogFile,'a');      
+        if fidLog > 0    
+            fprintf(fidLog,'=============================================================\n');
+            if statusR == 0
+                fprintf(fidLog,'Completed running Third Stage Rscript: %s\n',pthRbin);
+            else
+                fprintf(fidLog,'Failed running Third Stage Rscript: %s\n',pthRbin);
+            end
+            fprintf(fidLog,'=============================================================\n');
+            fprintf(fidLog,'\n\nCommand output:\n\n');
+            fprintf(fidLog,cmdOutput);
+            fprintf(fidLog,'\n\n\n\n');
+            fprintf(fidLog,'=============================================================\n');
+            fprintf(fidLog,'Rscript:      %s\n',pthRbin);
+            fprintf(fidLog,'Command line: %s\n',CLI_args);
+            fprintf(fidLog,'Start:        %s\n',datestr(tv_start)); %#ok<DATST>
+            fprintf(fidLog,'End:          %s\n',datestr(now)); %#ok<TNOW1,DATST>
+            fprintf(fidLog,'Elapsed time: %6.1f min\n',toc/60);
+            fprintf(fidLog,'==============================================================\n'); 
+            fclose(fidLog);
+        end
+    end
 end
 
 

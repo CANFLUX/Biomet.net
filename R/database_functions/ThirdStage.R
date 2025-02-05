@@ -26,7 +26,7 @@
 
 # # Giving database as an input
 # args <- c("C:/Database","siteID",startYear,endYear)
-# args <- c("F:/EcoFlux lab/Database","CA3",2020,2020)
+# args <- c("F:/EcoFlux lab/Database","OHM",2024,2024)
 # source("C:/Biomet.net/R/database_functions/ThirdStage.R")
 
 # # If current directory is the the root of a database
@@ -124,12 +124,14 @@ configure <- function(siteID){
     }
   }
   print(sprintf('Third stage run initialized for %s data in %s',args[2],db_root))
-  #browser()
+  
   # Get the siteID argument and read the site-specific configuration
   siteID <- args[2]
   fn <- sprintf('%s_config.yml',siteID)
   filename <- file.path(db_root,'Calculation_Procedures/TraceAnalysis_ini',siteID,fn)
   site_config <- yaml.load_file(filename)
+  
+  #browser()
   # merge the config files
   config <- merge_nested_lists(site_config,dbase_config)
   
@@ -321,12 +323,16 @@ Standard_Cleaning <- function(){
     if ('P' %in% names(config$Processing$ThirdStage$REddyProc$vars_in)){
       P_varname <- config$Processing$ThirdStage$REddyProc$vars_in$P
     }
+    #browser()
     if (P_varname %in% colnames(input_data)){
-      p_thresh <- config$Processing$ThirdStage$Standard_Cleaning$precipCutOff
-      na_in <- sum(is.na(input_data[[flux_out]]))
-      input_data[[flux_out]][input_data[P_varname]>p_thresh & !is.na(input_data[P_varname])] <- NA
-      na_out <- sum(is.na(input_data[[flux_out]]))
-      print(sprintf('%i values in %s were filtered out by the rain filter',na_out-na_in,flux))
+      # Check whether precipCutoff exists before executing (i.e. was it deactivated by user input of NULL)
+      if ('precipCutOff' %in% names(config$Processing$ThirdStage$Standard_Cleaning)){
+        p_thresh <- config$Processing$ThirdStage$Standard_Cleaning$precipCutOff
+        na_in <- sum(is.na(input_data[[flux_out]]))
+        input_data[[flux_out]][input_data[P_varname]>p_thresh & !is.na(input_data[P_varname])] <- NA
+        na_out <- sum(is.na(input_data[[flux_out]]))
+        print(sprintf('%i values in %s were filtered out by the rain filter',na_out-na_in,flux))
+      }
     }
   }
   
@@ -354,20 +360,37 @@ Add_PI_label <- function(){
 }
 
 Storage_Correction <- function(){
-  #browser()
   suffix_label = 'SC'
   Fluxes <- config$Processing$ThirdStage$Fluxes
   Storage_Terms <- config$Processing$ThirdStage$Storage_Correction
+  
+  missing_storage_term <- false
   for (flux in names(Fluxes)){
     flux_in <- unlist(Fluxes[[flux]])
     storage <- unlist(Storage_Terms[[flux]])
-    flux_out = paste(flux_in,'_',suffix_label,sep="")
-    Fluxes[[flux]] <- flux_out
-    input_data[[flux_out]] <- input_data[[flux_in]]+input_data[[storage]]
+    # Allow script to proceed but ignore all storage correction terms
+    if (sum(!is.na(input_data[[storage]]))==0){
+      print(sprintf('!!! Warning !!!   No data present in %s.',storage))
+      missing_storage_term <- true
+    }
+  }
+  
+  # If one or more storage terms are empty, all storage terms are ignored
+  if (!missing_storage_term){
+    for (flux in names(Fluxes)){
+      flux_in <- unlist(Fluxes[[flux]])
+      storage <- unlist(Storage_Terms[[flux]])
+  
+      flux_out = paste(flux_in,'_',suffix_label,sep="")
+      Fluxes[[flux]] <- flux_out
+      input_data[[flux_out]] <- input_data[[flux_in]]+input_data[[storage]]
+    }
+  } else {
+    print('All storage terms ignored.')
   }
   config$Processing$ThirdStage$Fluxes <- Fluxes
   input_data <- write_traces(input_data[,c('DateTime',unlist(unname(Fluxes)))],Fluxes,unlink=FALSE)    
-  return(list(input_data=input_data,config=config))
+  return(list(input_data=input_data,config=config,missing_storage_term=missing_storage_term))
 }
 
 JS_Moving_Z <- function(){
@@ -421,52 +444,85 @@ Papale_Spike_Removal <- function(){
   # read filtering parameters from config
   window <- config$Processing$ThirdStage$Papale_Spike_Removal$window
   z <- config$Processing$ThirdStage$Papale_Spike_Removal$z_thresh
+  #browser()
+  
+  # Check to make sure SW_varname is in input_data
+  if (!SW_varname %in% names(input_data)){
+    sprintf('%s not found in input_data dataframe.',SW_varname)
+    sprintf('Check the second stage ini file to make sure %s exists.', SW_varname)
+    sprintf('If %s is the wrong variable name, update the site specific yml file accordingly.', SW_varname)
+    sprintf('The key-value pair is found in Processing: ThirdStage: REddyProc: vars_in: Rg: %s', SW_varname)
+    print('Skipping Papale_Spike_Removal due to error!!!')
+    
+    return()
+  }
+  
+  # Check to make sure SW isn't empty
+  NaN_checksum_SW <- sum(!is.na(input_data[SW_varname]))
+  if (NaN_checksum_SW==0){
+    sprintf('input_data$%s is empty. Cannot do Papale_Spike_Removal',SW_varname)
+    sprintf('Check that data is present in %s following Second Stage processing.',SW_varname)
+    print('Skipping Papale_Spike_Removal due to error!!!')
+    
+    return()
+  }
+  
   for (flux in names(Fluxes)){
     flux_in <- unlist(Fluxes[[flux]])
     flux_out = paste(flux_in,'_',suffix_label,sep="")
     input_data[[flux_out]] <- input_data[[flux_in]]
     Fluxes[[flux]] <- flux_out
-    ## MAD algorithm, Papale et al. 2006
-    # D_N <- list()
-    #browser()
-    df <- na.omit(input_data[,c('DateTime',flux_in,SW_varname)])
-    df$DN <- NA
-    df[(df[SW_varname] < 20),'DN'] <- 1
-    df[(df[SW_varname] >= 20),'DN'] <- 2
-    df$di <- c(NA,diff(df[[flux_in]])) - c(diff(df[[flux_in]]),NA)
-    dn <- c('Night','Day')
-    for(i in 1:2){
-      na_in <- sum(is.na(input_data[[flux_in]]))
-      temp <- df[df$DN == i,c(flux_in,'di','DateTime')]
-      temp <- temp %>% mutate(
-        Md = slide_index_dbl(
-          .x=di,
-          .i=DateTime,
-          .before=as.difftime(window,units="days"),
-          .after=as.difftime(window,units="days"),
-          .f=function(x) median(x,na.rm=TRUE),
-          .complete=FALSE)
-      )
-      
-      temp <- temp %>% mutate(
-        MAD_score = slide_index_dbl(
-          .x=di,
-          .i=DateTime,
-          .before=as.difftime(window,units="days"),
-          .after=as.difftime(window,units="days"),
-          .f=function(x) median(abs(x-median(x,na.rm=TRUE)))*z/0.6745,
-          .complete=FALSE)
-      )
-      
-      temp$spike_Flag <- FALSE
-      temp$spike_Flag[(is.na((temp$di)==TRUE)|
-                         temp$di < temp$Md-temp$MAD_score|
-                         temp$di > temp$Md+temp$MAD_score
-      )] <- TRUE
-      input_data[input_data$DateTime %in% temp$DateTime[temp$spike_Flag == TRUE],flux_out] <- NA
-      
-      na_out <- sum(is.na(input_data[[flux_out]]))
-      print(sprintf('%i values in %s were filtered out by %s-time MAD spike filter',na_out-na_in,flux,dn[i]))   
+    
+    # Check to make sure flux isn't empty -- otherwise behaviour na.omit will cause a crash
+    NaN_checksum_flux <- sum(!is.na(input_data[flux_in]))
+    
+    if (NaN_checksum_flux==0){
+      sprintf('There is no data in %s',flux_in)
+      sprintf('Data has been copied from %s to %s, but it is all NaNs',flux_in,flux_out)
+      sprintf('Check %s from second stage to see if all data is missing.',flux_in)
+      sprintf('Check log (above) to see if something else has filtered all data from %s.',flux_in)
+    } else{
+      ## MAD algorithm, Papale et al. 2006
+      # D_N <- list()
+      df <- na.omit(input_data[,c('DateTime',flux_in,SW_varname)])
+      df$DN <- NA
+      df[(df[SW_varname] < 20),'DN'] <- 1
+      df[(df[SW_varname] >= 20),'DN'] <- 2
+      df$di <- c(NA,diff(df[[flux_in]])) - c(diff(df[[flux_in]]),NA)
+      dn <- c('Night','Day')
+      for(i in 1:2){
+        na_in <- sum(is.na(input_data[[flux_in]]))
+        temp <- df[df$DN == i,c(flux_in,'di','DateTime')]
+        temp <- temp %>% mutate(
+          Md = slide_index_dbl(
+            .x=di,
+            .i=DateTime,
+            .before=as.difftime(window,units="days"),
+            .after=as.difftime(window,units="days"),
+            .f=function(x) median(x,na.rm=TRUE),
+            .complete=FALSE)
+        )
+        
+        temp <- temp %>% mutate(
+          MAD_score = slide_index_dbl(
+            .x=di,
+            .i=DateTime,
+            .before=as.difftime(window,units="days"),
+            .after=as.difftime(window,units="days"),
+            .f=function(x) median(abs(x-median(x,na.rm=TRUE)))*z/0.6745,
+            .complete=FALSE)
+        )
+        
+        temp$spike_Flag <- FALSE
+        temp$spike_Flag[(is.na((temp$di)==TRUE)|
+                           temp$di < temp$Md-temp$MAD_score|
+                           temp$di > temp$Md+temp$MAD_score
+        )] <- TRUE
+        input_data[input_data$DateTime %in% temp$DateTime[temp$spike_Flag == TRUE],flux_out] <- NA
+        
+        na_out <- sum(is.na(input_data[[flux_out]]))
+        print(sprintf('%i values in %s were filtered out by %s-time MAD spike filter',na_out-na_in,flux,dn[i]))   
+      }
     }
   }
   config$Processing$ThirdStage$Fluxes <- Fluxes
@@ -579,7 +635,6 @@ Run_REddyProc <- function() {
   }
   
   # Nighttime (MR) and Daytime (GL)
-  #browser()
   if (REddyConfig$Flux_Partitioning$Run){
     EProc$sMRFluxPartitionUStarScens()
     EProc$sGLFluxPartitionUStarScens()
@@ -587,7 +642,7 @@ Run_REddyProc <- function() {
     print('Skipping flux partitioning')
   }
   
- 
+  # *** Examine Reco and GPP naming ***
   
   # Create data frame for REddyProc output
   REddyOutput <- EProc$sExportResults()
@@ -772,19 +827,30 @@ if (config$Processing$ThirdStage$JS_Moving_Z$Run){
   print('Skipping JS_Moving_Z')
 }
 
+# MAD algorithm, Papale et al. 2006
 if (config$Processing$ThirdStage$Papale_Spike_Removal$Run){
-  # MAD algorithm, Papale et al. 2006
   out <- Papale_Spike_Removal()
   input_data <- out$input_data
   config <- out$config
 } else {
   print('Skipping Papale_Spike_Removal')
 }
+
 # Run REddyProc
 if (config$Processing$ThirdStage$REddyProc$Run){
-  out <- Run_REddyProc() 
-  input_data <- out$input_data
-  config <- out$config
+  tryCatch(
+    {
+      out <- Run_REddyProc() 
+      input_data <- out$input_data
+      config <- out$config
+    },error = function(err){
+      print('Error!!! REddyProc crashed!')
+      if (config$Processing$ThirdStage$RF_GapFilling$Run){
+        config$Processing$ThirdStage$RF_GapFilling$Run <- false
+        print('Turning RF_GapFilling off')
+      }
+    }
+  )
 } else {
   print('Skipping Run_REddyProc')
 }
@@ -811,6 +877,11 @@ if (!config$Processing$ThirdStage$REddyProc$Ustar_filtering$run_defaults){
                              Fluxes_trimmed$H,
                              c(AE_variables$SW_IN,AE_variables$G),
                              c(Fluxes$LE,Fluxes$H))
+}
+
+if (missing_storage_term){
+  print('One or more storage terms was missing. No storage terms were added to fluxes.')
+  print('Storage terms can be calculated by re-running EddyPro')
 }
 
 end.time <- Sys.time()
