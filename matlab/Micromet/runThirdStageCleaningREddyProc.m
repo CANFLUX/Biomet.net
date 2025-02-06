@@ -62,6 +62,7 @@ function fidLog = runThirdStageCleaningREddyProc(yearIn,siteID,yearsToProcess);
     
     % Before running ThirdStage.R, check yml file for potential errors
     kill_3rdstage = basic_error_check_yml_site_config(siteID,yearIn,pthIni);
+    kill_3rdstage = false;
     
     if ~kill_3rdstage
         % Run RScript
