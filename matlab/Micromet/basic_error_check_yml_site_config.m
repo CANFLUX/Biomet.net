@@ -1,6 +1,30 @@
-function kill_ThirdStage = basic_error_check_yml_site_config(siteID, yearIn, pthIni)
+function kill_ThirdStage = basic_error_check_yml_site_config(siteID, yearIn, pthIni, pthBiomet)
+%
+% Function description
+%
+% Arguments
+%   siteID          - site ID as a char
+%   yearIn          - year to clean
+%   pthIni          - path which contains the site specific _config.yml
+%   pthBiomet       - Biomet path which contains global_config.yml (optional)
+%
+% Paul Moore                File created:       Jan 29, 2025
+%                           Last modification:  Mmm dd, YYYY
+%
+
+% Revisions
+%
+% Feb 06, 2024 (Paul)
+%   - Bug fixes. Now removes 'Run' if present in storage terms. Now ignores
+%       checking storage terms associated with a flux that has been set to
+%       NULL.
+
 
 fprintf('\n================================= LOG =================================\n')
+
+if nargin<4
+    pthBiomet = findBiometRpath;
+end
 
 if isstring(siteID)
     siteID = char(siteID);
@@ -23,7 +47,7 @@ msg.Error = {};
 
 % Load yml file
 site_config = yaml.loadFile(fullpath);
-global_config = yaml.loadFile('C:\Biomet.net\R\database_functions\global_config.yml');
+global_config = yaml.loadFile(fullfile(pthBiomet,'global_config.yml'));
 
 % Checks for basic Processing: ThirdStage: Fluxes
 bad_format = basicFormatChk(site_config, siteID);
@@ -74,10 +98,8 @@ end
 %--> Get names of trace listed in site_config or global_config
 if check_SC
     if isfield(site_config.Processing.ThirdStage.Storage_Correction,'NEE') & ~global_SC
-        storage = fieldnames(site_config.Processing.ThirdStage.Storage_Correction);
         yml_config = site_config; % Check trace names from site-specific
     elseif isfield(global_config.Processing.ThirdStage.Storage_Correction,'NEE')
-        storage = fieldnames(global_config.Processing.ThirdStage.Storage_Correction);
         yml_config = global_config; % Check trace names from global
     else
         % This should never happen since global_config should not be changed
@@ -86,6 +108,24 @@ if check_SC
         ascii_img = getMushroomCloud;
         fprintf(ascii_img)
     end
+    
+    % Get fieldnames under Storage_Correction
+    storage = fieldnames(yml_config.Processing.ThirdStage.Storage_Correction);
+    %--> Remove 'Run' from storage names
+    storage = storage(~strcmpi(storage,'Run'));
+    %--> Remove any storage terms associated with a flux set to NULL
+    keep_SC = true(length(storage),1);
+    for i=1:length(storage)
+        if isfield(site_config.Processing.ThirdStage.Fluxes,storage{i})
+            flux2check = site_config.Processing.ThirdStage.Fluxes.(storage{i});
+            if strcmpi(class(flux2check),'yaml.Null')
+                keep_SC(i,1) = false;
+            end
+        else
+            % This shouldn't ever happen.
+        end
+    end
+    storage = storage(keep_SC);
 
     % If any storage trace is not found in the database or if a trace is empty, 
     %   then kill_ThirdStage will return as true.
@@ -98,14 +138,25 @@ end
 %--> For now, assume Processing: ThirdStage: REddyProc: is in site_config
 if isfield(site_config.Processing.ThirdStage.REddyProc,'vars_in')
     vars_in = fieldnames(site_config.Processing.ThirdStage.REddyProc.vars_in);
+    yml_config = site_config;
 else
     disp('Improperly formatted site_config.yml')
     disp('Missing -- Processing: ThirdStage: REddyProc: vars_in:')
 end
 
+% Often NEE is actually FC in the second stage
+idx = strcmpi(vars_in,'NEE');
+if ~isempty(idx)
+    replacement_val = yml_config.Processing.ThirdStage.Fluxes.NEE;
+    if ~strcmpi(class(replacement_val),'yaml.Null')
+        yml_config.Processing.ThirdStage.REddyProc.vars_in.NEE = ...
+            char(replacement_val);
+    end
+end
+
 % If any vars_in trace is not found in the database or if a trace is empty, 
 %   then kill_ThirdStage will return as true.
-[msg, kill_ThirdStage] = check4traces(site_config, vars_in, siteID, yearIn,...
+[msg, kill_ThirdStage] = check4traces(yml_config, vars_in, siteID, yearIn,...
     'REddyProc.vars_in', kill_ThirdStage, msg);
 
 
@@ -145,10 +196,12 @@ for i=1:length(varnames)
     end
     
     if strcmpi(class(trace2check),'yaml.Null')
+        % This message doesn't provide the full story!!!
+        
         % The assumption is that this has intentionally been set by the
         %   user, but printing to screen as a placehold operation for now.
         msg.FYI = [msg.FYI;...
-            char(['FYI ------> Processing: ThirdStage: ' regexprep(type,'[.]',': ') ': ' varnames{4} ' set to NULL in site_config.yaml'])];
+            char(['FYI ------> Processing: ThirdStage: ' regexprep(type,'[.]',': ') ': ' varnames{i} ' set to NULL in site_config.yaml'])];
     else
         % Make sure that 'flux2check' is a trace in the second stage
         siteYear_folder = fullfile(biomet_database_default,num2str(yearIn),siteID);
@@ -158,6 +211,12 @@ for i=1:length(varnames)
             if strcmp(type,'REddyProc.vars_in')
                 prefix_str = 'Warning --> ';
                 msg_type = 'Warning';
+                
+                % NEE and season are special cases
+                if strcmpi(trace2check,'season')
+                    prefix_str = 'FYI ------> ';
+                    msg_type = 'FYI';
+                end
             else
                 prefix_str = 'Error ----> ';
                 msg_type = 'Error';
@@ -207,6 +266,13 @@ else
     fprintf(' [Processing:] key not found in %s\n',yml_file)
     bad_format = true;
 end
+
+
+function biometRpath = findBiometRpath
+    funA = which('read_bor');     % First find the path to Biomet.net by looking for a standard Biomet.net functions
+    tstPattern = [filesep 'Biomet.net' filesep];
+    indFirstFilesep=strfind(funA,tstPattern);
+    biometRpath = fullfile(funA(1:indFirstFilesep-1),tstPattern,'R', 'database_functions');
 
 
 %% ASCII images
