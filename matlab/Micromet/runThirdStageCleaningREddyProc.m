@@ -16,6 +16,9 @@ function fidLog = runThirdStageCleaningREddyProc(yearIn,siteID,yearsToProcess);
 
 % Revisions
 %
+% Jan 06, 2025 (Paul)
+%   - Added call to script to do some error checking on siteID_config.yml
+%     before calling ThirdStage.R
 % Dec, 2024 (Paul)
 %   - fidLog added as function output
 % Oct 24, 2024 (Zoran)
@@ -61,9 +64,7 @@ function fidLog = runThirdStageCleaningREddyProc(yearIn,siteID,yearsToProcess);
     tv_start = now; %#ok<TNOW1>
     
     % Before running ThirdStage.R, check yml file for potential errors
-    kill_3rdstage = basic_error_check_yml_site_config(siteID,yearIn,pthIni);
-    kill_3rdstage = false;
-    
+    kill_3rdstage = basic_error_check_yml_site_config(siteID,yearIn,pthIni,pthBiometR);   
     if ~kill_3rdstage
         % Run RScript
         % concatenate the command line argument

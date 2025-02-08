@@ -364,14 +364,14 @@ Storage_Correction <- function(){
   Fluxes <- config$Processing$ThirdStage$Fluxes
   Storage_Terms <- config$Processing$ThirdStage$Storage_Correction
   
-  missing_storage_term <- false
+  missing_storage_term <- FALSE
   for (flux in names(Fluxes)){
     flux_in <- unlist(Fluxes[[flux]])
     storage <- unlist(Storage_Terms[[flux]])
     # Allow script to proceed but ignore all storage correction terms
     if (sum(!is.na(input_data[[storage]]))==0){
       print(sprintf('!!! Warning !!!   No data present in %s.',storage))
-      missing_storage_term <- true
+      missing_storage_term <- TRUE
     }
   }
   
@@ -819,6 +819,7 @@ input_data <- out$input_data
 config <- out$config
 
 # Apply storage correction (if required)
+missing_storage_term <- FALSE
 if (config$Processing$ThirdStage$Storage_Correction$Run){
   out <- Storage_Correction()
   input_data <- out$input_data
@@ -853,7 +854,7 @@ if (config$Processing$ThirdStage$REddyProc$Run){
     },error = function(err){
       print('Error!!! REddyProc crashed!')
       if (config$Processing$ThirdStage$RF_GapFilling$Run){
-        config$Processing$ThirdStage$RF_GapFilling$Run <- false
+        config$Processing$ThirdStage$RF_GapFilling$Run <- FALSE
         print('Turning RF_GapFilling off')
       }
     }
