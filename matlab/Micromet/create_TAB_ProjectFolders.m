@@ -1,4 +1,4 @@
-function create_TAB_ProjectFolders(projectPath,siteID)
+ function create_TAB_ProjectFolders(projectPath,siteID)
 % Create the directory structure for Trace Analysis Biomet (TAB) data projects
 % create_TAB_ProjectFolders ('E:\Projects\My_MicrometSites','Site_1')
 %                           - creates the data tree to be used with TAB projects
@@ -15,10 +15,12 @@ function create_TAB_ProjectFolders(projectPath,siteID)
 %
 %
 % Zoran Nesic           File created:       Aug 23, 2024
-%                       Last modification:  Sep 13, 2024
+%                       Last modification:  Jan 15, 2025
 
 % Revisions
 %
+% Jan 15, 2025 (Zoran)
+%   - Added automatic creation of \Database\Log folder
 % Sep 13, 2024 (Zoran)
 %   - Added a few warning dialogs that can prevent accidental overwriting
 %     of the local ini files.
@@ -51,6 +53,10 @@ if exist(fullfile(projectPath,'Database'),'dir') ...
 end
 
 tmpPath = fullfile(projectPath,'Database');
+if ~exist(tmpPath,'dir')
+    mkdir(tmpPath);
+end
+tmpPath = fullfile(projectPath,'Database','log');
 if ~exist(tmpPath,'dir')
     mkdir(tmpPath);
 end

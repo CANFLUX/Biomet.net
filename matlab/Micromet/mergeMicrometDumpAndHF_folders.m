@@ -11,10 +11,10 @@ function mergeMicrometDumpAndHF_folders
 %
 
 % BC sites
-mergeSmartFluxUSBdata('DSM','2024_Flux');
-mergeSmartFluxUSBdata('RBM','2024_Flux');
-mergeSmartFluxUSBdata('BB','2024_Flux');
-mergeSmartFluxUSBdata('BB2','2024_Flux');
+mergeSmartFluxUSBdata('DSM','2025_Flux');
+mergeSmartFluxUSBdata('RBM','2025_Flux');
+mergeSmartFluxUSBdata('BB','2025_Flux');
+mergeSmartFluxUSBdata('BB2','2025_Flux');
 
 % Manitoba sites
 ManitobaSites = {'HOGG','YOUNG','OHM'};
