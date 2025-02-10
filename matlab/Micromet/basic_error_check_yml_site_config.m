@@ -14,6 +14,10 @@ function kill_ThirdStage = basic_error_check_yml_site_config(siteID, yearIn, pth
 
 % Revisions
 %
+% Feb 10, 2024 (Paul)
+%   - Modified for backwards compatibility. If the original format for 
+%       site-spefic _config.yml is being used, then error checking will
+%       default to evaluating the global_config.yml
 % Feb 06, 2024 (Paul)
 %   - Bug fixes. Now removes 'Run' if present in storage terms. Now ignores
 %       checking storage terms associated with a flux that has been set to
@@ -50,7 +54,13 @@ site_config = yaml.loadFile(fullpath);
 global_config = yaml.loadFile(fullfile(pthBiomet,'global_config.yml'));
 
 % Checks for basic Processing: ThirdStage: Fluxes
-bad_format = basicFormatChk(site_config, siteID);
+[bad_format, old_format] = basicFormatChk(site_config, siteID);
+
+% Site specific _config.yml only contains the [Metadata:] key, so check
+%   database for traces names based on global_config alone.
+if old_format
+    site_config = global_config;
+end
 
 if bad_format
     fprintf(2,'\n Error ----> %s improperly formatted! (see above) \n\n Third Stage processing cannot proceed!!!\n',filename);
@@ -78,26 +88,61 @@ fluxes = fieldnames(site_config.Processing.ThirdStage.Fluxes);
 
 % If there is no Storage_Correction: Run: False in the site specific
 %   configuration file, the default behaviour is to apply the storage
-%   correction terms in the global configuration file.
+%   correction terms listed in the global configuration file.
 check_SC = true;
 global_SC = true;
-if isfield(site_config.Processing.ThirdStage,'Storage_Correction')
+if ~isfield(site_config.Processing.ThirdStage,'Storage_Correction')
+    % basicFormatChk() checks to see if .Storage_Correction exists in the
+    %   site specific _config.yml. If it doesn't exist, either an error is
+    %   thrown which stops execution of the script, or it recognizes that 
+    %   an old format for the _config.yml is being used, so the
+    %   global_config.yml is checked instead of the site specific one.
+    disp('Uh oh! This should never happen...')
+else
     % There might not be site-specific SC terms, but the code will at least
-    %   check there first.
-    global_SC = false;
+    %   check for them in the site-specific _config.yml before defaulting
+    %   to the global_config.yml
+    
     if isfield(site_config.Processing.ThirdStage.Storage_Correction, 'Run')
         if ~site_config.Processing.ThirdStage.Storage_Correction.Run
-            check_SC = false;
+            % If check_SC = false, then it doesn't matter what global_SC
+            %   is, but global_SC is set to false here as a redundancy.
+            global_SC = false;
+            check_SC = false; % When .Run=false;
+        else
+            % .Run=true. If no storage terms are specified, then default to
+            %   checking storage terms in global_config.yml
+            storage = fieldnames(site_config.Processing.ThirdStage.Storage_Correction);
+            storage = storage(~strcmpi(storage,'Run'));
+            if ~isempty(storage)
+                % Storage terms exist in site-specific _config.yml
+                global_SC = false;
+            else
+                % Default
+            end
         end
     else
-        % Run should be there by default
-        disp('Improperly formatted site_config.yml')
+        % Run should be there by default for new site-specific _config.yml,
+        %   so this situation arrises when the old format for site-specific
+        %   _config.yml is being used. Consequently, storage terms from
+        %   global_config.yml will be checked. global_config.yml doesn't
+        %   have 'Run' since the default behaviour of ThirdStage.R is to
+        %   apply the storage correction.
+        
+        % Double check that it is global_config.yml being evaluated
+        if ~isfield(site_config,'Database')
+            % This should not happen and should probably throw an error
+            %   that stops the script.
+            global_SC = false;
+            disp(' Improperly formatted site_config.yml')
+        end
     end
 end
+
 % Check that storage names in yaml file match a trace in the second stage
 %--> Get names of trace listed in site_config or global_config
 if check_SC
-    if isfield(site_config.Processing.ThirdStage.Storage_Correction,'NEE') & ~global_SC
+    if global_SC==false
         yml_config = site_config; % Check trace names from site-specific
     elseif isfield(global_config.Processing.ThirdStage.Storage_Correction,'NEE')
         yml_config = global_config; % Check trace names from global
@@ -241,30 +286,39 @@ end
 
 
 %% Subfunction to check basic formatting
-function bad_format = basicFormatChk(site_config,siteID)
+function [bad_format,old_format] = basicFormatChk(site_config,siteID)
 
-% Default unless an error is detected
+% Default values unless an error is detected
 bad_format = false;
+old_format = false;
 yml_file = char([siteID '_config.yml']);
 
-if isfield(site_config,'Processing')
-    if isfield(site_config.Processing,'ThirdStage')
-        if ~isfield(site_config.Processing.ThirdStage,'Fluxes')
-            fprintf(' [Processing: ThirdStage: Fluxes] key not found in %s\n',yml_file)
-            bad_format = true;
-        end
-
-        if ~isfield(site_config.Processing.ThirdStage,'Storage_Correction')
-            fprintf(' [Processing: ThirdStage: Storage_Correction] key not found in %s\n',yml_file)
+ % Has to have at least the [Metadata:] key
+if ~isfield(site_config,'Metadata')
+    fprintf(' [Metadata:] key not found in %s\n',yml_file)
+    bad_format = true;
+else
+    if isfield(site_config,'Processing')
+        if isfield(site_config.Processing,'ThirdStage')
+            if ~isfield(site_config.Processing.ThirdStage,'Fluxes')
+                fprintf(' [Processing: ThirdStage: Fluxes] key not found in %s\n',yml_file)
+                bad_format = true;
+            end
+    
+            if ~isfield(site_config.Processing.ThirdStage,'Storage_Correction')
+                fprintf(' [Processing: ThirdStage: Storage_Correction] key not found in %s\n',yml_file)
+                bad_format = true;
+            end
+        else
+            fprintf(' [Processing: ThirdStage:] key not found in %s\n',yml_file)
             bad_format = true;
         end
     else
-        fprintf(' [Processing: ThirdStage:] key not found in %s\n',yml_file)
-        bad_format = true;
+        fprintf(' [Processing:] key not found in %s\n',yml_file)
+    
+        fprintf(' Site specific yml file not error checked!!! Defaulting to global_config.yml\n Please make sure to use the new site specific _config.yml template.\n')
+        old_format = 'true';
     end
-else
-    fprintf(' [Processing:] key not found in %s\n',yml_file)
-    bad_format = true;
 end
 
 
