@@ -17,6 +17,9 @@ function [trace_str_out,count]= find_all_dependent(trace_str)
 
 % Revisions
 %
+%  Feb 11, 2025 (Zoran)
+%   - Added testing if the field "trc.data" exists before testing if it's 
+%     empty to avoid errors and crashes.
 %  July 29, 2024 (P.Moore)
 %   - With the development of #include ini files, sometimes trace_str might
 %       contain traces that don't exist in the raw database. To avoid
@@ -34,7 +37,8 @@ trace_str(1).ind_depend = [];
 list_dep = [];
 for ind=1:length(trace_str)   
    trc = trace_str(ind);
-   if isfield(trc.ini,'dependent') & ~isempty(trc.ini.dependent) & ~isempty(trc.data) % Added "& ~isempty(trc.data)" 2024-07-29 (P.Moore) 
+   if (isfield(trc.ini,'dependent') && ~isempty(trc.ini.dependent)) && ...
+      (isfield(trc,'data') && ~isempty(trc.data)) % Added "& ~isempty(trc.data)" 2024-07-29 (P.Moore) 
       trc.ind_depend = ta_get_index_traceList(trc.ini.dependent, trace_str);     
       list_dep = [list_dep ind]; %#ok<*AGROW>
    end
