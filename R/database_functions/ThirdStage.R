@@ -131,7 +131,6 @@ configure <- function(siteID){
   filename <- file.path(db_root,'Calculation_Procedures/TraceAnalysis_ini',siteID,fn)
   site_config <- yaml.load_file(filename)
   
-  #browser()
   # merge the config files
   config <- merge_nested_lists(site_config,dbase_config)
   
@@ -323,7 +322,7 @@ Standard_Cleaning <- function(){
     if ('P' %in% names(config$Processing$ThirdStage$REddyProc$vars_in)){
       P_varname <- config$Processing$ThirdStage$REddyProc$vars_in$P
     }
-    #browser()
+    
     if (P_varname %in% colnames(input_data)){
       # Check whether precipCutoff exists before executing (i.e. was it deactivated by user input of NULL)
       if ('precipCutOff' %in% names(config$Processing$ThirdStage$Standard_Cleaning)){
@@ -444,7 +443,6 @@ Papale_Spike_Removal <- function(){
   # read filtering parameters from config
   window <- config$Processing$ThirdStage$Papale_Spike_Removal$window
   z <- config$Processing$ThirdStage$Papale_Spike_Removal$z_thresh
-  #browser()
   
   # Check to make sure SW_varname is in input_data
   if (!SW_varname %in% names(input_data)){
@@ -637,12 +635,25 @@ Run_REddyProc <- function() {
   # Nighttime (MR) and Daytime (GL)
   if (REddyConfig$Flux_Partitioning$Run){
     EProc$sMRFluxPartitionUStarScens()
-    EProc$sGLFluxPartitionUStarScens()
+    
+    # If daytime partitioning fails, try a fixed E0 for debugging. Use caution when interpreting the results.
+    tryCatch({
+      EProc$sGLFluxPartitionUStarScens()
+    }, error = function(err) {
+      print('')
+      print('Daytime flux partitioning failed!!!')
+      print('Skipping daytime flux partitioning!!!')
+      
+      # Tried running with specified E0 -- doesn't fix the issue...
+      #E0_fixed <- EProc$sTEMP$E_0_uStar[1]
+      #E0_uncert <- 10 #PLACEHOLDER!!!
+      #ctrl <- partGLControl(fixedTempSens = data.frame(E0=E0_fixed,sdE0=E0_uncert))
+      #EProc$sGLFluxPartitionUStarScens(controlGLPart = ctrl)
+    })
+    
   } else {
     print('Skipping flux partitioning')
   }
-  
-  # *** Examine Reco and GPP naming ***
   
   # Create data frame for REddyProc output
   REddyOutput <- EProc$sExportResults()
@@ -652,6 +663,18 @@ Run_REddyProc <- function() {
                    colnames(REddyOutput)[grepl('\\_fqc.', colnames(REddyOutput))])
   if (length(vars_remove)>0){
     REddyOutput <- REddyOutput[, -which(names(REddyOutput) %in% vars_remove)]
+  }
+  
+  # *** Examine Reco and GPP naming ***
+  # Reco_uStar is how REddyProc outputs the nighttime partitioned values as opposed to GPP_uStar_f
+  # It's not clear from the documentation why this is the case -- see: sEddyProc_sMRFluxPartition
+  #--> Should the Reco_u## also have _f appended?
+  if (sum(colnames(REddyOutput)=="GPP_uStar_f")==1){
+    if (sum(colnames(REddyOutput)=="Reco_uStar")==1){
+      renamed_cols <- colnames(REddyOutput)
+      renamed_cols[renamed_cols=="Reco_uStar"] <- "Reco_uStar_f"
+      colnames(REddyOutput) <- renamed_cols
+    }
   }
   
   # Revert to original input name (but maintain ReddyProc modifications that follow first underscore)
@@ -845,7 +868,9 @@ if (config$Processing$ThirdStage$REddyProc$Run){
       input_data <- out$input_data
       config <- out$config
     },error = function(err){
-      print('Error!!! REddyProc crashed!')
+      cat('\nError!!! REddyProc crashed!\n')
+      warnings()
+      #print('Error!!! REddyProc crashed!')
       if (config$Processing$ThirdStage$RF_GapFilling$Run){
         config$Processing$ThirdStage$RF_GapFilling$Run <- FALSE
         print('Turning RF_GapFilling off')
