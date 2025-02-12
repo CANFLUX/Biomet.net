@@ -34,6 +34,9 @@ function trace_str_out = read_ini_file(fid,yearIn,fromRootIniFile)
 
 % Revisions
 %
+% Feb  3, 2025 (Zoran)
+%   - Enforced the rule that the duplicate traces will not be allowed
+%   - Added the Overwrite property for sorting out what to do with the duplicates.
 % Jan 10, 2024 (Zoran)
 %   - Bug fix: Disabled the property globalVars.Instrument.otherTraces
 %     It caused too many issues by overwriting properties of all traces that
@@ -261,6 +264,8 @@ try
             end
         elseif strncmp(tm_line,'[Trace]',7)
             %------------------------------------locate each [TRACE]->[END] block in ini_file
+            % save the line # for error reporting
+            traceFieldLineNum = countLines;
             %update which trace this is(used only for error messages):
             countTraces = countTraces+1;
             %Read the first line inside the [TRACE]->[END] block:
@@ -470,6 +475,8 @@ try
             trace_str(countTraces).Error = 0;
             trace_str(countTraces).Site_name = Site_name;
             trace_str(countTraces).variableName = temp_var.variableName;
+            trace_str(countTraces).iniFileName = iniFileName;
+            trace_str(countTraces).iniFileLineNum = traceFieldLineNum;
             trace_str(countTraces).ini = temp_var;
             trace_str(countTraces).SiteID = SiteID;
             trace_str(countTraces).Year = yearIn;
@@ -521,7 +528,24 @@ try
                     trace_str(countTraces).Last_Updated = char(datetime("now"));
             end
             %---------------Finished reading the trace information between [TRACE]->[END] block
+            
+            % At this point a new trace_str(countTraces) is fully created. This could be a trace with 
+            % a same name as a previously created trace. This could be a mistake (a duplicate trace)
+            % or one could be doing it on purpose with a goal of overwriting a trace defined.
+            % Let's check:
+            %
 
+            % Get the Overwrite status for the trace. If it doesn't exist set it to 0 - can be overwritten                        
+            if isfield(trace_str(countTraces).ini,'Overwrite') & ~isempty(trace_str(countTraces).ini.Overwrite)
+                flagOverwriteNew = trace_str(countTraces).ini.Overwrite;
+            else
+                flagOverwriteNew = 0;
+            end  
+            if ~ismember(flagOverwriteNew,[0 1 2])
+                % flag can have only 3 possible values [0 1 2])
+                error('      Overwrite property value can be only [0 1 3]. Trace: %s has Overwrite = %d\n',trace_str(countTraces).variableName,flagOverwriteNew);
+            end
+            trace_str(countTraces).ini.Overwrite = flagOverwriteNew;
         elseif isletter(tm_line(1))
             %read other variables in the ini_file not between [TRACE]->[END] blocks:
             %These variable need to begin with a character:
@@ -680,7 +704,74 @@ for cntTrace = 1:length(trace_str)
         end
     end
 end
-if ~flagRecursiveCall
-    fprintf('   %d traces read from the ini file. \n',length(trace_str));
-    fprintf('   %d traces that exist in year %d are kept for processing.\n',cntGoodTrace,yearIn);
+if ~flagRecursiveCall & strcmpi(iniFileType,'first')
+    % First stage ONLY: Deal with the duplicate traces. 
+    % Sometimes the duplicates are made in error.
+    % Sometimes we want the duplicate trace to overwrite an existing trace
+    % (Example: siteID_FirstStage.ini [Trace] overwritting a global #include ini file)
+
+    % Loop through all traces
+    allTraceNames = {trace_str_out(:).variableName};
+    [uniqueTraceNames,indUnique] = unique(allTraceNames,'stable');
+    trace_str_unique = trace_str_out(indUnique);
+    for cntTrace = 1:length(uniqueTraceNames)
+        % First find out if the trace is unique. Need at least two traces.
+        currentTrace = char(uniqueTraceNames(cntTrace));
+        indDuplicate = find(ismember(allTraceNames,currentTrace));
+        if length(indDuplicate) > 1
+            % if a duplicate exists, check if the new copy has the property "Overwrite = 1"
+            % new Overwrite had to be > old Overwrite. If not, report an error, 
+            % suggest using "Overwrite = 1" and then ignore the new copy.
+    
+            % get Overwrite status of the original trace. 
+            flagOverwriteOld = trace_str_out(indDuplicate(1)).ini.Overwrite;
+
+            % Now loop through all duplicates
+            for cntDuplicates = 2:length(indDuplicate)
+                % get Overwrite status of the duplicate trace. 
+                flagOverwriteNew = trace_str_out(indDuplicate(cntDuplicates)).ini.Overwrite;
+                % test if the overwritting is allowed
+                if flagOverwriteNew >= 1 && flagOverwriteOld == 0
+                    % All good, trace can be overwritten. Proceed
+                    if flagOverwriteNew == 1
+                        % Overwrite the existing trace with the new one
+                        fprintf(1,'      Found a duplicate trace: %s \n',currentTrace);
+                        fprintf(1,'        Original  trace on line %4d in file: %s\n',trace_str_out(indDuplicate(1)).iniFileLineNum,trace_str_out(indDuplicate(1)).iniFileName);
+                        fprintf(1,'        Duplicate trace on line %4d in file: %s\n',trace_str_out(indDuplicate(cntDuplicates)).iniFileLineNum,trace_str_out(indDuplicate(cntDuplicates)).iniFileName);
+                        fprintf(1,'        Overwritting the original trace (trace: #%d) with the duplicate.\n',cntTrace);
+                        trace_str_unique(cntTrace) = trace_str_out(indDuplicate(cntDuplicates));
+                    else
+                        % Delete the existing trace and add new one at the back 
+                        % (this changes order of traces in the output trace_str)
+                        fprintf(1,'      Found a duplicate trace: %s \n',currentTrace);
+                        fprintf(1,'        Original  trace on line %4d in file: %s\n',trace_str_out(indDuplicate(1)).iniFileLineNum,trace_str_out(indDuplicate(1)).iniFileName);
+                        fprintf(1,'        Duplicate trace on line %4d in file: %s\n',trace_str_out(indDuplicate(cntDuplicates)).iniFileLineNum,trace_str_out(indDuplicate(cntDuplicates)).iniFileName);
+                        fprintf(1,'        Deleting the original trace (trace: #%d). Adding the duplicate at the back (trace: #%d).\n',cntTrace,length(trace_str_unique));
+                        % add duplicate to the end of trace_str_unique
+                        trace_str_unique(length(trace_str_unique)+1) = trace_str_out(indDuplicate(cntDuplicates));
+                        % delete the duplicate 
+                        % Find where the currentTrace is in the trace_str_unique 
+                        % (it may not be at the same location as in trace_str_out so we don't want to delete a wrong trace
+                        indDuplicateInUnique = find(ismember(uniqueTraceNames,currentTrace));
+                        trace_str_unique(indDuplicateInUnique(1)) = [];
+                    end
+                else       % if flagOverwriteOld >= flagOverwriteNew
+                    fprintf(2,'      Found a duplicate trace: %s\n',currentTrace);
+                    fprintf(2,'        Original  trace on line %4d in file: %s\n',trace_str_out(indDuplicate(1)).iniFileLineNum,trace_str_out(indDuplicate(1)).iniFileName);
+                    fprintf(2,'        Duplicate trace on line %4d in file: %s\n',trace_str_out(indDuplicate(cntDuplicates)).iniFileLineNum,trace_str_out(indDuplicate(cntDuplicates)).iniFileName);
+                    fprintf(2,'        The original trace cannot be overwritten. Original Overwrite flag= %d, Duplicate Overwrite flag= %d\n',flagOverwriteOld,flagOverwriteNew);
+                    fprintf(2,'        Original Overwrite''s flag has to be smaller than the duplicate''s Overwrite flag. Ignoring the duplicate.\n');                    
+                    % keep the original trace (do nothing)
+                end
+            end
+        end
+    end
+    % Now store filtered list back into the output structure
+    trace_str_out = trace_str_unique;
+
 end
+
+% Final message after finishing ini file parsing:
+fprintf('   %d traces read from the ini file. \n',length(trace_str));
+fprintf('   %d traces exist in the year %d.\n',cntGoodTrace,yearIn);
+fprintf('   %d unique traces are kept for processing\n',length(trace_str_out));
