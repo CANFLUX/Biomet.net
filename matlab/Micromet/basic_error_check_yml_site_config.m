@@ -12,10 +12,10 @@ function kill_ThirdStage = basic_error_check_yml_site_config(siteID, yearIn, pth
 %                           Last modification:  Mmm dd, YYYY
 %
 
-% Revisions
+% Revisions==
 %
 % Feb 10, 2024 (Paul)
-%   - Modified for backwards compatibility. If the original format for 
+%   - Modified for b-ackwards compatibility. If the original format for 
 %       site-spefic _config.yml is being used, then error checking will
 %       default to evaluating the global_config.yml
 % Feb 06, 2024 (Paul)
@@ -24,7 +24,7 @@ function kill_ThirdStage = basic_error_check_yml_site_config(siteID, yearIn, pth
 %       NULL.
 
 
-fprintf('\n================================= LOG =================================\n')
+fprintf('\n============================ YML error check ============================\n')
 
 if nargin<4
     pthBiomet = findBiometRpath;
@@ -69,7 +69,7 @@ if bad_format
     %   calling function.
     kill_ThirdStage = true;
 
-    fprintf('=======================================================================\n')
+    fprintf('========================= End of YML error check ==========================\n')
     return
 end
 
@@ -222,7 +222,7 @@ if kill_ThirdStage
     fprintf(2,'\n    Third Stage processing cannot proceed!!! [see error(s) above]\n');
 end
 
-fprintf('=======================================================================\n')
+fprintf('========================= End of YML error check ==========================\n')
 
 
 %% Check if traces are in second stage
