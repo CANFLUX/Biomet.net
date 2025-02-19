@@ -323,15 +323,21 @@ function renFields = renameFields(fieldsIn)
     renFields  = strrep(renFields,'''','_');
     renFields  = strrep(renFields,'?','Q');
     % Remove all '_' that a field starts with
-    indStartsWithUnderscore = find(startsWith(renFields,'_'));
-    while ~isempty(indStartsWithUnderscore)
-        for cntFields = 1:length(indStartsWithUnderscore)
-            tmp = char(renFields(indStartsWithUnderscore(cntFields)));
-            renFields{indStartsWithUnderscore(cntFields)} = tmp(2:end);
-        end
+    % do this only for cells
+    if iscell(fieldsIn)
         indStartsWithUnderscore = find(startsWith(renFields,'_'));
+        while ~isempty(indStartsWithUnderscore)
+            for cntFields = 1:length(indStartsWithUnderscore)
+                tmp = char(renFields(indStartsWithUnderscore(cntFields)));
+                if all(tmp=='_')
+                    renFields{indStartsWithUnderscore(cntFields)} = 'dummy';
+                else
+                    renFields{indStartsWithUnderscore(cntFields)} = tmp(2:end);
+                end
+            end
+            indStartsWithUnderscore = find(startsWith(renFields,'_'));
+        end
     end
-    
     % ================================
     % Below section will not be used.
     % Test an alternative renaming
@@ -352,15 +358,17 @@ function renFields = renameFields(fieldsIn)
     renFieldsNew  = replace(renFieldsNew,'?','Q');
 
     %Remove all '_' that a field starts with
-    indStartsWithUnderscore = find(startsWith(renFieldsNew,'_'));
-    while ~isempty(indStartsWithUnderscore)
-        for cntFields = 1:length(indStartsWithUnderscore)
-            tmp = char(renFieldsNew(indStartsWithUnderscore(cntFields)));
-            renFieldsNew{indStartsWithUnderscore(cntFields)} = tmp(2:end);
-        end
+    % do this only for cells
+    if iscell(fieldsIn)
         indStartsWithUnderscore = find(startsWith(renFieldsNew,'_'));
+        while ~isempty(indStartsWithUnderscore)
+            for cntFields = 1:length(indStartsWithUnderscore)
+                tmp = char(renFieldsNew(indStartsWithUnderscore(cntFields)));
+                renFieldsNew{indStartsWithUnderscore(cntFields)} = tmp(2:end);
+            end
+            indStartsWithUnderscore = find(startsWith(renFieldsNew,'_'));
+        end
     end
-
     if ~all(strcmp(renFields,renFieldsNew) == 1)
         fprintf(2,'    New variable renaming strategy not working in fr_read_generic_data_file.m\n');
         indDiffFields = find(~strcmp(renFields,renFieldsNew));
