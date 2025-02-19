@@ -45,11 +45,13 @@ function [EngUnits,Header,tv,outStruct] = fr_read_generic_data_file(fileName,ass
 %                          
 %
 % (c) Zoran Nesic                   File created:       Dec 20, 2023
-%                                   Last modification:  Oct 24, 2024
+%                                   Last modification:  Feb 18, 2025
 %
 
 % Revisions (last one first):
 %
+% Feb 18, 2024 (Zoran)
+%   - Bug fix: function would fail if one of the column/variable names started with an "_".
 % Oct 24, 2024 (Zoran)
 %   - Bug fix: function was not able to automatically select the proper data type ("double") when the first few rows of a column
 %     were empty. It would pick the data type "char" for that column and that would be then converted to all NaNs. This
@@ -320,6 +322,18 @@ function renFields = renameFields(fieldsIn)
     
     renFields  = strrep(renFields,'''','_');
     renFields  = strrep(renFields,'?','Q');
+    % Remove all '_' that a field starts with
+    indStartsWithUnderscore = find(startsWith(renFields,'_'));
+    while ~isempty(indStartsWithUnderscore)
+        for cntFields = 1:length(indStartsWithUnderscore)
+            tmp = char(renFields(indStartsWithUnderscore(cntFields)));
+            renFields{indStartsWithUnderscore(cntFields)} = tmp(2:end);
+        end
+        indStartsWithUnderscore = find(startsWith(renFields,'_'));
+    end
+    
+    % ================================
+    % Below section will not be used.
     % Test an alternative renaming
     % Characters to replace with "_"
     replaceWithUnderscore = {'[','(','-','.','/',' ','°',''''};
@@ -336,10 +350,24 @@ function renFields = renameFields(fieldsIn)
     renFieldsNew  = replace(renFieldsNew,'³','3');
     renFieldsNew  = replace(renFieldsNew,'²','2');
     renFieldsNew  = replace(renFieldsNew,'?','Q');
-    if ~strcmp(renFields,renFieldsNew)
-        fprintf(2,'New variable renaming strategy not working in fr_read_generic_data_file.m\n');
-        fprintf(2,'Old name: %s\n',renFields);
-        fprintf(2,'New name: %s\n',renFieldsNew);
+
+    %Remove all '_' that a field starts with
+    indStartsWithUnderscore = find(startsWith(renFieldsNew,'_'));
+    while ~isempty(indStartsWithUnderscore)
+        for cntFields = 1:length(indStartsWithUnderscore)
+            tmp = char(renFieldsNew(indStartsWithUnderscore(cntFields)));
+            renFieldsNew{indStartsWithUnderscore(cntFields)} = tmp(2:end);
+        end
+        indStartsWithUnderscore = find(startsWith(renFieldsNew,'_'));
+    end
+
+    if ~all(strcmp(renFields,renFieldsNew) == 1)
+        fprintf(2,'    New variable renaming strategy not working in fr_read_generic_data_file.m\n');
+        indDiffFields = find(~strcmp(renFields,renFieldsNew));
+        for diffFields = 1:length(indDiffFields)
+            fprintf(2,'      Old name: %s  ->  ',renFields{indDiffFields(diffFields)});
+            fprintf(2,'New name: %s\n',renFieldsNew{indDiffFields(diffFields)});
+        end       
     end
 end
 
