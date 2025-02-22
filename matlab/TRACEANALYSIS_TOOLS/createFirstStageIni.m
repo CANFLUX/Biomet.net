@@ -23,10 +23,12 @@ function createFirstStageIni(structSetup)
 % structSetup.outputPath = []; % keep it in the local directory
 %
 % Zoran Nesic               File created:           Mar 20, 2024
-%                           Last modification:      Oct 28, 2024
+%                           Last modification:      Feb 21, 2025
 
 % Revisions:
 %
+% Feb 21, 2025 (Zoran)
+%   - Added time-offset info
 % Oct 28, 2024 (Zoran)
 %   - Removed obsolete properties.
 %   - Added instrumentType property
@@ -47,7 +49,8 @@ fid = fopen(outputIniFileName,'w');
 fprintf(fid,'%%\n%% File generated automatically on %s\n%%\n\n',datetime('today'));
 fprintf(fid,'Site_name = ''%s''\n',structSetup.Site_name);
 fprintf(fid,'SiteID = ''%s''\n\n',structSetup.SiteID);
-fprintf(fid,'Difference_GMT_to_local_time = %d   %% hours\n\n',structSetup.Difference_GMT_to_local_time);
+fprintf(fid,'Difference_GMT_to_local_time = %d   %% timezone that your site is located in, in hours (GMT - local time), opposite of what you wrote in config.yml\n',structSetup.Difference_GMT_to_local_time);
+fprintf(fid,'Timezone                     = %d   %% timezone that your data is reported in (UTC, standard time, or daylight saving time), in hours\n\n',structSetup.Difference_GMT_to_local_time);
 
 
 for cntMeasurementTypes = 1:length(structSetup.allMeasurementTypes)
