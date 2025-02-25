@@ -1,4 +1,4 @@
-function createSecondStageIni(siteID,outputPath)
+function createSecondStageIni(structSetup)
 % Create the second stage ini defaults for the given site database 
 % Mainly used for "pass-through" second stage where the database 
 % is going to be created based on some already "clean" data set
@@ -9,23 +9,37 @@ function createSecondStageIni(siteID,outputPath)
 % and creates skeleton [Trace]...[End] for each database 1st stage trace. 
 % User can then edit the file manually.
 %
-% The output ini file will be stored as outputPath/Site_ID_SecondStage_Template.ini. 
-% If the outputPath is [] the file is saved in the current folder.
 %
 %
 % Zoran Nesic               File created:           Feb 21, 2025
-%                           Last modification:      Feb 21, 2025
+%                           Last modification:      Feb 24, 2025
 
 % Revisions:
+%
+% Feb 24, 2025 (Zoran)
+%   - changed the input parametar to be the same as the input to 
+%     createFirstStageIni. 
 
-% default otput is the current folder
-arg_default('outputPath',pwd)
-
+siteID = structSetup.siteID;
 % Read the FirstStage.ini file (year should not matter for the template
 trace_str = readIniFileDirect(2999,siteID,1);
 
-
-outputIniFileName = fullfile(outputPath, [siteID '_SecondStage_Template.ini']);
+if isfield(structSetup,'isTemplate') && ~structSetup.isTemplate
+    outputIniFileName = fullfile(biomet_database_default,...
+                                'Calculation_Procedures\TraceAnalysis_ini',...
+                                structSetup.siteID, ...
+                                [structSetup.siteID '_SecondStage.ini']);
+   if exist(outputIniFileName,'file')
+        ButtonName = questdlg(sprintf('File: %s already exist!',outputIniFileName), ...
+                     'Confirm Overwrite', ...
+                     'Overwrite', 'Cancel',  'Cancel');
+        if strcmpi(ButtonName,'Cancel')
+            error('File already exists. User cancelled the processing.');
+        end
+   end
+else
+    outputIniFileName = fullfile(structSetup.outputPath, [structSetup.siteID '_SecondStage_Template.ini']);
+end
 fprintf('---------------------------\n');
 fprintf('Creating template file: %s\n',outputIniFileName);
 fid = fopen(outputIniFileName,'w');
