@@ -151,6 +151,7 @@ tmpPath = fullfile(projectPath,'Matlab');
 if ~exist(tmpPath,'dir')
     mkdir(tmpPath);
 end
+cd(tmpPath)
 
 % For a TAB project to function it also needs a get_TAB_project_configuration.m file
 % The following code creates the bare minimum version of this file (if it doesn't already exist)
