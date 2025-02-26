@@ -12,10 +12,12 @@ function createSecondStageIni(structSetup)
 %
 %
 % Zoran Nesic               File created:           Feb 21, 2025
-%                           Last modification:      Feb 24, 2025
+%                           Last modification:      Feb 25, 2025
 
 % Revisions:
 %
+% Feb 25, 2025 (Zoran)
+%   - had a hard coded "\" in the path. Fixed it.
 % Feb 24, 2025 (Zoran)
 %   - changed the input parametar to be the same as the input to 
 %     createFirstStageIni. 
@@ -26,7 +28,7 @@ trace_str = readIniFileDirect(2999,siteID,1);
 
 if isfield(structSetup,'isTemplate') && ~structSetup.isTemplate
     outputIniFileName = fullfile(biomet_database_default,...
-                                'Calculation_Procedures\TraceAnalysis_ini',...
+                                'Calculation_Procedures','TraceAnalysis_ini',...
                                 structSetup.siteID, ...
                                 [structSetup.siteID '_SecondStage.ini']);
    if exist(outputIniFileName,'file')

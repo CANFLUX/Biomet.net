@@ -23,10 +23,12 @@ function createFirstStageIni(structSetup)
 % structSetup.outputPath = []; % keep it in the local directory
 %
 % Zoran Nesic               File created:           Mar 20, 2024
-%                           Last modification:      Feb 24, 2025
+%                           Last modification:      Feb 25, 2025
 
 % Revisions:
 %
+% Feb 25, 2025 (Zoran)
+%   - had a hard coded "\" in the path. Fixed it.
 % Feb 24, 2025 (Zoran)
 %   - renamed .SiteID to .siteID.
 % Feb 21, 2025 (Zoran)
@@ -43,7 +45,7 @@ function createFirstStageIni(structSetup)
 
 if isfield(structSetup,'isTemplate') && ~structSetup.isTemplate
     outputIniFileName = fullfile(biomet_database_default,...
-                                'Calculation_Procedures\TraceAnalysis_ini',...
+                                'Calculation_Procedures','TraceAnalysis_ini',...
                                 structSetup.siteID, ...
                                 [structSetup.siteID '_FirstStage.ini']);
    if exist(outputIniFileName,'file')
