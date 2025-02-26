@@ -35,7 +35,7 @@ if isstring(siteID)
 end
 
 arg_default('pthIni',fullfile(biomet_database_default,...
-    'Calculation_Procedures\TraceAnalysis_ini',siteID))
+    'Calculation_Procedures','TraceAnalysis_ini',siteID))
 
 % Temporary defaults
 % siteID = 'OHM';
@@ -172,8 +172,9 @@ if check_SC
     end
     storage = storage(keep_SC);
 
-    % If any storage trace is not found in the database or if a trace is empty, 
-    %   then kill_ThirdStage will return as true.
+    % If any storage trace is not found in the database, then 
+    %   kill_ThirdStage will return as true. ThirdStage.R can now handle
+    %   years with fluxes that are all NaN
     [msg, kill_ThirdStage] = check4traces(yml_config, storage, siteID, yearIn,...
         'Storage_Correction', kill_ThirdStage, msg);
 end
@@ -214,7 +215,7 @@ end
 
 
 % Display messages in command window
-disp([msg.FYI; msg.Warning; msg.Error])
+disp([unique(msg.FYI); unique(msg.Warning); unique(msg.Error)])
 % fprintf('\n')
 
 if kill_ThirdStage
@@ -250,7 +251,7 @@ for i=1:length(varnames)
     else
         % Make sure that 'flux2check' is a trace in the second stage
         siteYear_folder = fullfile(biomet_database_default,num2str(yearIn),siteID);
-        file2check = fullfile(siteYear_folder, 'Clean\SecondStage', trace2check);
+        file2check = fullfile(siteYear_folder, 'Clean', 'SecondStage', trace2check);
         
         if ~isfile(file2check)
             if strcmp(type,'REddyProc.vars_in')
@@ -275,10 +276,10 @@ for i=1:length(varnames)
 
             if sum(~isnan(trace))==0
                 n_char = length(char(trace2check));
-                msg.Error = [msg.Error;...
-                    char(['Error ----> No data in ' char(trace2check) '!' repmat(' ',1,10-n_char) '[' char(file2check) ']'])];
+                msg.Warning = [msg.Warning;...
+                    char(['Warning ----> No data in ' char(trace2check) '!' repmat(' ',1,10-n_char) '[' char(file2check) ']'])];
                 % disp(file2check)
-                kill_ThirdStage = true;
+                % kill_ThirdStage = true;
             end
         end
     end

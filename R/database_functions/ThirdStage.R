@@ -26,7 +26,7 @@
 
 # # Giving database as an input
 # args <- c("C:/Database","siteID",startYear,endYear)
-# args <- c("F:/EcoFlux lab/Database","OHM",2024,2024)
+# args <- c("F:/EcoFlux lab/Database","TMP",2023,2023)
 # source("C:/Biomet.net/R/database_functions/ThirdStage.R")
 
 # # If current directory is the the root of a database
@@ -316,7 +316,7 @@ Standard_Cleaning <- function(){
       na_out <- sum(is.na(input_data[[flux_out]]))
       print(sprintf('%i values in %s were filtered by the wind sector filter',na_out-na_in,flux))
     } else {
-      stop("Error: northOffset missing from you configuration file!")
+      stop("<P2M> Error: northOffset missing from your configuration file! </P2M>")
     }
     P_varname <- 'P_1_1_1'
     if ('P' %in% names(config$Processing$ThirdStage$REddyProc$vars_in)){
@@ -531,9 +531,35 @@ Papale_Spike_Removal <- function(){
 Run_REddyProc <- function() {
   
   suffix_label = 'RP'
-  Fluxes <- config$Processing$ThirdStage$Fluxes
+  Fluxes_ini <- config$Processing$ThirdStage$Fluxes
+  Fluxes <- Fluxes_ini
   # Subset just the config info relevant to REddyProc
   REddyConfig <- config$Processing$ThirdStage$REddyProc
+  Time_Vars <- c("DateTime","Year","DoY","Hour")
+  
+  # Check to make sure there is data in the fluxes to be gap-filled and partitioned
+  #--> The call from Matlab is one year at a time
+  if (length(config$years)==1){
+    start_time <- paste(as.character(config$years),"-01-01 00:00:00",sep='')
+    end_time <- paste(as.character(config$years),"-12-31 23:30:00",sep='')
+    
+    for (v in names(Fluxes_ini)){
+      # Get flux data
+      flx2chck <- input_data[,c(Time_Vars,unlist(Fluxes_ini[v]))]
+      # Filter for current year
+      flx2chck2 <- flx2chck %>% filter(DateTime >= as.POSIXct(start_time, tz = "UTC") & DateTime <= as.POSIXct(end_time, tz = "UTC"))
+      
+      # If all NaN, remove from REdyyProc processing
+      #--> Made threshold 48 in case timezone shift comes into play
+      if (sum(!is.na(flx2chck2[unlist(Fluxes_ini[v])]))<48){
+        Fluxes <- Fluxes[ - which(names(Fluxes)==v)]
+        if (v %in% names(REddyConfig$vars_in)){
+          REddyConfig$vars_in <- REddyConfig$vars_in[ - which(names(REddyConfig$vars_in)==v)]
+        }
+        print(sprintf('<P2M> %s is all NaN in %d, REddyProc will ignore the flux </P2M>',v,config$years))
+      }
+    }
+  }
   
   # Update names for ReddyProc
   for (v in names(REddyConfig$vars_in)){
@@ -648,8 +674,8 @@ Run_REddyProc <- function() {
       EProc$sGLFluxPartitionUStarScens()
     }, error = function(err) {
       print('')
-      print('Daytime flux partitioning failed!!!')
-      print('Skipping daytime flux partitioning!!!')
+      print('<P2M>Daytime flux partitioning failed!!!</P2M>')
+      print('<P2M>Skipping daytime flux partitioning!!!</P2M>')
       
       # Tried running with specified E0 -- doesn't fix the issue...
       #E0_fixed <- EProc$sTEMP$E_0_uStar[1]
@@ -875,7 +901,7 @@ if (config$Processing$ThirdStage$REddyProc$Run){
       input_data <- out$input_data
       config <- out$config
     },error = function(err){
-      cat('\nError!!! REddyProc crashed!\n')
+      cat('\n<P2M>Error!!! REddyProc crashed!</P2M>\n')
       warnings()
       #print('Error!!! REddyProc crashed!')
       if (config$Processing$ThirdStage$RF_GapFilling$Run){
@@ -913,7 +939,7 @@ if (!config$Processing$ThirdStage$REddyProc$Ustar_filtering$run_defaults){
 }
 
 if (missing_storage_term){
-  print('One or more storage terms was missing. No storage terms were added to fluxes.')
+  print('<P2M>One or more storage terms was missing. No storage terms were added to fluxes.</P2M>')
   print('Storage terms can be calculated by re-running EddyPro')
 }
 

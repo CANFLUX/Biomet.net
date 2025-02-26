@@ -1,4 +1,4 @@
-function fidLog = runThirdStageCleaningREddyProc(yearIn,siteID,yearsToProcess)
+function statusR = runThirdStageCleaningREddyProc(yearIn,siteID,yearsToProcess);
 % runThirdStageCleaningREddyProc(yearIn,siteID)
 %
 % This function invokes Micromet third-stage cleaning R-script.
