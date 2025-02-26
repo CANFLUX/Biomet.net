@@ -608,6 +608,13 @@ Run_REddyProc <- function() {
     bySeasonYear <- data_REddyProc %>% group_by(SeasonYear) %>%
       summarise(across(names(REddyConfig$vars_in), ~ sum(!is.na(.)), .names = "countFlag_{col}"))
     # # REddyProc Will Crash if given any season with less than 700 observations
+    
+    # if exists, drop countFlag_FCH4 since it's not uncommon for some years not to have any CH4 data (implememted to avoid filtering the full dataset)
+    if ("countFlag_FCH4" %in% colnames(bySeasonYear)) {
+      bySeasonYear <- bySeasonYear[, !names(bySeasonYear) %in% "countFlag_FCH4"] 
+      print("dropped column 'countFlag_FCH4' from bySeasonYear")
+    } 
+    
     seasonFilter <- bySeasonYear %>%  filter(if_any(starts_with("countFlag_"), ~ . < 700))
     date_Drop <- data_REddyProc %>%  filter(SeasonYear %in% seasonFilter$SeasonYear)
     date_Drop <- date_Drop %>% select(DateTime)

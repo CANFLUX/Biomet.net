@@ -7,15 +7,19 @@ function run_ECCC_climate_station_update(yearsIn,monthsIn,stationIDs,dbase_pth)
 % monthsIn  - range of months to process (default previous and the current
 %             month.
 % stationIDs    - a vector of station IDs. They can be found here:
-%                 https://drive.google.com/drive/folders/1WJCDEU34c60IfOnG4rv5EPZ4IhhW9vZH
+%                 https://collaboration.cmc.ec.gc.ca/cmc/climate/Get_More_Data_Plus_de_donnees/
 %                 File: "Station Inventory EN.csv"
+%
+%                 The old location: https://drive.google.com/drive/folders/1WJCDEU34c60IfOnG4rv5EPZ4IhhW9vZH
 % dbase_pth     - Optional data base path
 %
 % Zoran Nesic                   File created:               2022
-%                               Last modification:  Nov 21, 2024
+%                               Last modification:  Feb  4, 2025
 
 % Revisions
 %
+% Feb 4, 2025 (Zoran)
+%   - updated the comment about the location of the ECCC csv file with station IDs (see above)
 % Nov 21, 2024 (Zoran)
 %   - changed the time period input for db_ECCC_climate_station
 %     from a number (60) to a string ('60MIN')

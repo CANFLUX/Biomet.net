@@ -32,6 +32,9 @@ function data_cleaned = fr_cleaning_siteyear(Year,SiteId,stage,db_ini)
 %
 % Revisions:
 %
+% Feb 3, 2025 (Zoran)
+%   - added postEvaluate field processing. Used the same way as the Evaluate statement but 
+%     it works on the trace *after* it's been 1st stage cleaned.
 % Aug 14, 2024 (Zoran)
 %   - Added year string to SiteId_yyyy_FirstStage_stats.mat otherwise only
 %     the last year's data that's been cleaned would be kept.
@@ -117,6 +120,14 @@ if stage == 1
     end
     data_depend   = clean_traces( data_depend,interp_flag );
     
+    % Run postEvaluate statement for the traces if needed
+    for cntTraces=1:length(data_depend)
+        if isfield(data_depend(cntTraces).ini,'postEvaluate')
+            data_depend = postEvaluate_traces( data_depend);	% postEvaluate traces
+            break
+        end
+    end
+
     if ~isempty(mat)
         %   data_out = compare_trace_str(trace_str,old_structure,lc_path)
         data_cleaned = addManualCleaning(data_depend,mat.trace_str);
