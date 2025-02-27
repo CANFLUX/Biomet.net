@@ -124,14 +124,15 @@ ui <- dashboardPage(skin = 'black', # Begin UI
                                      ), # END FLUID ROW 
                                      
                                      # OUTPUT DIURNAL PLOTS (W/ SPINNER)
-                                     shinycssloaders::withSpinner(plotlyOutput('diurnal', 
-                                                                               width = '100%', height = '60%'),
-                                                                  type = getOption("spinner.type", default = 5),
-                                                                  color = getOption("spinner.color", default = "dodgerblue")),
+                                     shinycssloaders::withSpinner(
+                                       plotlyOutput('diurnal', width = '100%', height = '100%'),  # Increased height to ensure equal panel sizes
+                                       type = getOption("spinner.type", default = 5),
+                                       color = getOption("spinner.color", default = "dodgerblue")
+                                     ),
                                      
                                      br(),
                                      
-                                     h5(em('Plot shows mean (black line) and +- one standard deviation (shading) of half-hourly data by month.'), 
+                                     h5(em('Plot shows mean monthly diurnal variation over the specified period.'), 
                                         align = 'center')
                                      
                             ), # End diurnal cycle tab
@@ -147,7 +148,7 @@ ui <- dashboardPage(skin = 'black', # Begin UI
                                      
                                      # OUTPUT RADIATION PLOTS
                                      shinycssloaders::withSpinner(plotlyOutput('radiation1', # For diurnal plot
-                                                                               width = '100%', height = '60%'),
+                                                                               width = '100%', height = '100%'),
                                                                   type = getOption("spinner.type", default = 5),
                                                                   color = getOption("spinner.color", default = "dodgerblue")),
                                      
@@ -161,7 +162,59 @@ ui <- dashboardPage(skin = 'black', # Begin UI
                                      h5(em('Plot shows mean diurnal radiation pattern and cross correlation between measured radiation and potential radiation'), 
                                         align = 'center')
                                      
-                            ) # End radiation diagnostics tab
+                            ), # End radiation diagnostics tab
+                            
+                            tabPanel( # Begin EBC plots and diagnostics
+                              "Energy balance closure",
+                              
+                              br(),
+                              
+                              fluidRow(column(6, # Make both inputs on same row
+                                              # Input first (one) variable for scatter plot                               
+                                              selectInput('onecol_EBC', 'First variable', ae_columns <- grep("^AE_", colnames(data), value = TRUE))),
+                                       column(6, 
+                                              # Input second (two) variable for scatter plot 
+                                              selectInput('twocol_EBC', 'Second variable', ae_columns <- grep("H_LE", colnames(data), value = TRUE)))),
+                              br(),
+                              
+                              # Output scatter and density plots
+                              shinycssloaders::withSpinner(plotlyOutput('EBC_plots', # For diurnal plot
+                                                                        width = '100%', height = '60%'),
+                                                           type = getOption("spinner.type", default = 5),
+                                                           color = getOption("spinner.color", default = "dodgerblue")),
+                              
+                              shinycssloaders::withSpinner(plotOutput('EBC_diagnostics', # For cross correlation plot
+                                                                      width = '100%', height = "400px")),
+                              # type = getOption("spinner.type", default = 5),
+                              # color = getOption("spinner.color", default = "dodgerblue")),
+                              
+                              br(),
+                              
+                              h5(em('Energy balance closure of half-hourly data.'),
+                                 align = 'center')
+                              
+                            ), # End EBC tab
+                            
+                            tabPanel('Cumulative plots', # Begin cumulative plots
+                                     
+                                     # CREATE VARIABLE INPUTS 
+                                     fluidRow(column(6, selectInput('cumcol', 'Variable', grep("^(NEE|FCH4).*_uStar_f$", colnames(data), value = TRUE)))
+                                     ), # END FLUID ROW 
+                                     
+                                     # OUTPUT DIURNAL PLOTS (W/ SPINNER)
+                                     shinycssloaders::withSpinner(
+                                       plotlyOutput('cumulative', width = '100%', height = '100%'),  # Increased height to ensure equal panel sizes
+                                       type = getOption("spinner.type", default = 5),
+                                       color = getOption("spinner.color", default = "dodgerblue")
+                                     ),
+                                     
+                                     br(),
+                                     
+                                     h5(em('Plot shows cumulative fluxes.'), 
+                                        align = 'center')
+                                     
+                            ) # End cumulative plots tab
+                            
                           ) # End tab panels section
                         ), # End 'Individual Sites' page
                         
@@ -182,7 +235,7 @@ ui <- dashboardPage(skin = 'black', # Begin UI
                                     inline = TRUE,
                                     
                                     br()
-                          ), # End 'All Sites' page
+                          ) # End 'All Sites' page
                         ), # End tab panels section
                         
                         tabItem( # Begin 'About' page
@@ -214,7 +267,7 @@ ui <- dashboardPage(skin = 'black', # Begin UI
                       ), # End all pages         
                       hr(),
                       h5('App designed and developed by Sara Knox, 2024.')
-                    ) # End dashbard body
+                    ) # End dashboard body
 ) # End UI
 
 # 4. Server
@@ -225,6 +278,8 @@ server <- function(input, output, session) { # Begin server
     # Update data 
     yrs <- yrs_included(basepath,input$sites,level)
     data <- read_data_all_years(basepath,yrs,input$sites,level,tv_input)
+    # add EBC columns
+    data <- create_EBC_columns(data)
     data_units <- var_units(colnames(data),UnitCSVFilePath)
     
     # Update Y variable (time series) - find unique variable names
@@ -247,6 +302,15 @@ server <- function(input, output, session) { # Begin server
     
     # Update year (radiation diagnostics)
     updateSelectInput(session, 'site_yr',choices = yrs)
+    
+    # Update X variable (EBC plot)
+    updateSelectInput(session, 'onecol_EBC', choices = grep("^AE_", colnames(data), value = TRUE))
+    
+    # Update Y variable (EBC plot)
+    updateSelectInput(session, 'twocol_EBC',choices = grep("H_LE", colnames(data), value = TRUE))
+    
+    # Update Y variable (cumulative plot)
+    updateSelectInput(session, 'cumcol', choices = grep("^(NEE|FCH4).*_uStar_f$", colnames(data), value = TRUE))
     
     # Update time series limits
     updateSliderInput(inputId = "range",
@@ -274,6 +338,14 @@ server <- function(input, output, session) { # Begin server
     
     selectedDataRadiation <- reactive({ # Radiation diagnostic plots
       data[, c("datetime",input$radcol)] 
+    })
+    
+    selectedDataEBC<- reactive({ # EBC plots
+      data[, c(input$onecol_EBC, input$twocol_EBC)] 
+    })
+    
+    selectedDataCumulative <- reactive({ # Radiation diagnostic plots
+      data[, c("datetime",input$cumcol)] 
     })
     
     # OUTPUTS:  ----- 
@@ -348,23 +420,28 @@ server <- function(input, output, session) { # Begin server
     # d) Diurnal plot
     output$diurnal <- renderPlotly({ 
       
-      dat_names <- input$dicol # Get name of variable selected
+      dat_names <- input$dicol # Get name of selected variable
       ylabel <- paste0(dat_names, ' (', data_units$units[which(data_units$name == dat_names)], ')')
       
       dt <- data$datetime[(data$datetime >= input$range[1]) & (data$datetime <= input$range[2])]
-      DataDiurnal <- data.frame(dt)
-      colnames(DataDiurnal) <- 'datetime'
-      DataDiurnal$Month <- as.numeric(substring(dt, 6, 7))
-      DataDiurnal$Hour <- format(dt, format = "%H%M")
+      DataDiurnal <- data.frame(datetime = dt)
+      DataDiurnal$Month <- as.numeric(format(dt, "%m"))  
+      DataDiurnal$Hour <- as.numeric(format(dt, "%H%M"))  
       
       DataDiurnal$Var <- selectedDataDiurnal()
       
-      data_diurnal <- DataDiurnal %>% group_by(Month, Hour) %>% summarise(Average = mean(Var, na.rm=TRUE))
-      data_diurnal$Hour <- as.numeric(data_diurnal$Hour)
+      data_diurnal <- DataDiurnal %>% 
+        group_by(Month, Hour) %>% 
+        summarise(Average = mean(Var, na.rm = TRUE), .groups = "drop")
       
-      var_sd <- sd(data_diurnal$Average, na.rm = TRUE)
-      data_diurnal$UppSD <- data_diurnal$Average + var_sd
-      data_diurnal$LowSD <- data_diurnal$Average - var_sd
+      # Compute global min/max with a buffer to avoid extreme compression
+      global_min <- min(data_diurnal$Average, na.rm = TRUE)
+      global_max <- max(data_diurnal$Average, na.rm = TRUE)
+      range_buffer <- (global_max - global_min) * 0.1  # Add 10% buffer to limits
+      
+      # Ensure reasonable limits that work across different variable ranges
+      y_min <- global_min - range_buffer
+      y_max <- global_max + range_buffer
       
       month_labs <- c('1' = 'January', '2' = 'February', '3' = 'March',
                       '4' = 'April', '5' = 'May', '6' = 'June',
@@ -373,28 +450,26 @@ server <- function(input, output, session) { # Begin server
       
       month_labeller <- labeller(Month = function(levels) month_labs[as.character(levels)])
       
-      diurnal_plot <- ggplot(data = data_diurnal,
-                             aes(x = Hour, y = Average)) +
-        geom_line() +
-        geom_ribbon(aes(ymax = UppSD, ymin = LowSD),colour = NA,
-                    col = 'dodgerblue4', fill = 'dodgerblue4', alpha = 0.3) +
-        facet_wrap(~ Month, ncol = 4, 
-                   labeller = month_labeller) +
+      diurnal_plot <- ggplot(data = data_diurnal, aes(x = Hour, y = Average)) +
+        geom_line(color = 'black') +
+        facet_wrap(~ Month, nrow = 3, ncol = 4, scales = "fixed", labeller = month_labeller) +  
         scale_x_continuous(breaks = c(0, 600, 1200, 1800, 2330),
-                           labels = c("00:00", "06:00", "12:00", "18:00","24:00")) +
-        scale_y_continuous(limits = c(min(data_diurnal$LowSD),
-                                      max(data_diurnal$UppSD))) +
-        theme_minimal()+
-        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
-        xlab("Hour:Minute")+
-        ylab(ylabel)+
-        theme(panel.spacing.x = unit(3, "mm"),
-              panel.spacing.y = unit(6, "mm"),
-              strip.placement = "outside",
-              strip.background = element_blank())
+                           labels = c("00:00", "06:00", "12:00", "18:00", "24:00")) +
+        scale_y_continuous(limits = c(y_min, y_max), expand = c(0, 0)) +  
+        coord_cartesian(ylim = c(y_min, y_max)) +  # Ensures consistent y-axis scaling
+        theme_minimal() +
+        theme(
+          axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+          panel.spacing.x = unit(3, "mm"),  # Reduce horizontal spacing
+          panel.spacing.y = unit(3, "mm"),  # Reduce vertical spacing
+          strip.text = element_text(size = 12, margin = margin(t = 1, b = 1)),  # Reduce label padding
+          strip.placement = "outside",
+          strip.background = element_blank()
+        ) +  
+        xlab("Hour:Minute") +
+        ylab(ylabel)
       
-      ggplotly(diurnal_plot)  # Set tooltip to display the custom text
-      
+      ggplotly(diurnal_plot)  
     }) # End plot render
     
     # e) radiation plots
@@ -468,41 +543,126 @@ server <- function(input, output, session) { # Begin server
       xcorr_rad(diurnal.composite,rad_name)
     }) # End plot render
     
-  }) 
-  
-  # e) All sites plot
-  output$all_plots <- renderPlotly({ 
-    xlab <- paste(input$xcol_all)
-    ylab <- paste(input$ycol_all)
+    # f) Energy balance closure plots
+    output$EBC_plots <- renderPlotly({ 
+      y_names <- input$twocol_EBC # Get name of variable selected
+      ylabel <- y_names # Could update this
+      
+      x_names <- input$onecol_EBC # Get name of variable selected
+      xlabel <- x_names # Could update this
+      
+      df <- selectedDataEBC()
+      df$year <- year(data$datetime) 
+      
+      scatter_plot_QCQA(df,xlabel,ylabel, xlabel,ylabel,1)
+      
+    }) # End plot render
     
-    if(xlab != 'datetime') {
-      dat_names <- xlab # Get name of variable selected
-      xlab <- paste0(dat_names, ' (', data_units_all$units[which(data_units_all$name == dat_names)], ')')
-    }
+    output$EBC_diagnostics <- renderPlot({ 
+      y_names <- input$twocol_EBC # Get name of variable selected
+      ylabel <- y_names # Could update this
+      
+      x_names <- input$onecol_EBC # Get name of variable selected
+      xlabel <- x_names # Could update this
+      
+      df <- selectedDataEBC()
+      df$year <- year(data$datetime) 
+      
+      R2_slope_QCQA(df,xlabel,ylabel)
+      
+    }) # End plot render
     
-    dat_names2 <- ylab
-    ylab <- paste0(dat_names2, ' (', data_units_all$units[which(data_units_all$name == dat_names2)], ')')
+    # g) Cumulative plot
+    output$cumulative <- renderPlotly({ 
+      
+      # Create conversion factors
+      conv_factor <- data.frame(12.01/(10^6)*(60*30),12.01/(10^9)*(60*30),(60*30)/(10^6))
+      colnames(conv_factor) <- c("CO2","CH4","Energy")
+      
+      # Create string for conversion factor variable names
+      conv_factor_vars <- c("CO2","CH4","Energy")
+      
+      # Create labels for units
+      conv_factor_units_cum <- data.frame("gC m-2","gC m-2","MJ m-2")
+      colnames(conv_factor_units_cum) <- c("CO2","CH4","Energy")
+      
+      cumulative_names <- input$cumcol # Get name of selected variable
+      
+      # Initialize index variable
+      index <- NULL
+      
+      # Check if NEE or FCH4 is in the matching columns and assign index
+      if (grepl("^NEE", cumulative_names) == TRUE) {
+        index <- 1
+      } else if (grepl("^FCH4", cumulative_names) == TRUE) {
+        index <- 2
+      }
+      
+      df <- selectedDataCumulative()
+      colnames(df)[2] <- "var"
+      
+      df$year <- year(data$datetime) 
+      df$DOY <- yday(data$datetime) 
+      
+      cf <- conv_factor[index]
+      units_cf <- conv_factor_units_cum[index]
+      
+      # Determine which years are a full year of data
+      nyrs <- unique(df$year)
+      
+      count_yr <- df %>% 
+        group_by(year) %>%
+        dplyr::summarize(count = sum(!is.na(var)))
+      
+      yrs <- nyrs[count_yr$count >=17520] # Greater or equal to 365 days (i.e. 17520 observations)
+      
+      df2 <- with(df,df[(year >= yrs[1] & year <= yrs[length(yrs)]),])
+      
+      daily.cum <- df2 %>%
+        group_by(year,DOY) %>%
+        dplyr::summarize(var = sum(var*cf), 
+                         DOY = first(DOY),
+                         year = as.factor(first(year)))
+      daily.cum$var_cum <- cumsum(daily.cum$var)
+      
+      p <- ggplot() +
+        geom_line(data = daily.cum, aes(x = DOY, y = var_cum, color = year))+ 
+        ylab(paste0(cumulative_names," (",units_cf,")",sep = ""))
+      ggplotly(p) 
+    }) # End plot render
     
-    p3 <- ggplot(data_all) +
-      geom_point(aes(x = .data[[input$xcol_all]],
-                     y = .data[[input$ycol_all]],
-                     color = .data[['site']],
-                     group = .data[['site']]),
-                 na.rm = T, alpha = 0.3, size = 0.5) + # color of line
-      theme_bw() + # plot theme
-      theme(text=element_text(size=20), #change font size of all text
-            axis.text=element_text(size=15), #change font size of axis text
-            axis.title=element_text(size=15), #change font size of axis titles
-            plot.title=element_text(size=20), #change font size of plot title
-            legend.text=element_text(size=8), #change font size of legend text
-            legend.title=element_text(size=10)) +
-      xlab(xlab) +
-      ylab(ylab)
-    
-    p3 <- ggplotly(p3) %>% toWebGL() 
-  }) # End all sites plot
-  
-}# End server
-
+    # e) All sites plot
+    output$all_plots <- renderPlotly({ 
+      xlab <- paste(input$xcol_all)
+      ylab <- paste(input$ycol_all)
+      
+      if(xlab != 'datetime') {
+        dat_names <- xlab # Get name of variable selected
+        xlab <- paste0(dat_names, ' (', data_units_all$units[which(data_units_all$name == dat_names)], ')')
+      }
+      
+      dat_names2 <- ylab
+      ylab <- paste0(dat_names2, ' (', data_units_all$units[which(data_units_all$name == dat_names2)], ')')
+      
+      p3 <- ggplot(data_all) +
+        geom_point(aes(x = .data[[input$xcol_all]],
+                       y = .data[[input$ycol_all]],
+                       color = .data[['site']],
+                       group = .data[['site']]),
+                   na.rm = T, alpha = 0.3, size = 0.5) + # color of line
+        theme_bw() + # plot theme
+        theme(text=element_text(size=20), #change font size of all text
+              axis.text=element_text(size=15), #change font size of axis text
+              axis.title=element_text(size=15), #change font size of axis titles
+              plot.title=element_text(size=20), #change font size of plot title
+              legend.text=element_text(size=8), #change font size of legend text
+              legend.title=element_text(size=10)) +
+        xlab(xlab) +
+        ylab(ylab)
+      
+      p3 <- ggplotly(p3) %>% toWebGL() 
+    }) # End all sites plot
+  })# End server
+}
 # 5. RUN APP -----
 shinyApp(ui = ui, server = server)

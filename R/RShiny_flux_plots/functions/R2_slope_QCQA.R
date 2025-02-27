@@ -30,7 +30,7 @@ R2_slope_QCQA <-
       df <- data.frame(df[, 1],df)
     }
     
-    colnames(df) <- c("y", "x", "year")
+    colnames(df) <- c("x", "y", "year")
     
     # calculate slope and R2 per year 
     if (length(unique(df$year)) == 1 | length(df$year[df$year == unique(df$year)[2]]) == 1) {
@@ -81,10 +81,10 @@ R2_slope_QCQA <-
       R2Color = "#69b3a2"
       slopeColor = rgb(0.2, 0.6, 0.9, 1)
       
-      p <-   ggplot(df.model.summary, aes(x = year, y = R2)) +
+      p <- ggplot(df.model.summary, aes(x = year, y = R2)) +
         geom_point(aes(color = "R2"), size = 3) +
-        geom_line(aes(color = "R2"))+
-        geom_point(aes(y = Slope/scale, color = "Slope"),size = 3) +
+        geom_line(aes(color = "R2")) +
+        geom_point(aes(y = Slope/scale, color = "Slope"), size = 3) +
         geom_line(aes(y = Slope/scale, color = "Slope")) +
         scale_x_continuous(breaks = seq(df.model.summary$year[1], df.model.summary$year[length(df.model.summary$year)], 1)) +
         scale_y_continuous(
@@ -92,7 +92,7 @@ R2_slope_QCQA <-
           sec.axis = sec_axis(~ . * scale, name = "Slope")  # Adjust the range and label for the secondary y-axis
         ) +
         labs(x = "Year", color = "") +
-        scale_color_manual(values = c(R2Color, slopeColor))+ 
+        scale_color_manual(values = c(R2Color, slopeColor)) + 
         theme(
           axis.title.y = element_text(color = R2Color, size=14),
           axis.title.y.right = element_text(color = slopeColor, size=14),
@@ -101,7 +101,11 @@ R2_slope_QCQA <-
           axis.text.y = element_text(size = 14),
           axis.text.y.right = element_text(size = 14),
           legend.position = "bottom",
-          legend.direction = "horizontal")
+          legend.direction = "horizontal"
+        ) +
+        # Add text for R2 and Slope values next to the points
+        geom_text(aes(x = year, y = R2, label = round(R2, 2)), color = R2Color, vjust = -1, size = 3) +
+        geom_text(aes(x = year, y = Slope/scale, label = round(Slope, 2)), color = slopeColor, vjust = -1, size = 3)
       
       return(p)
   }
