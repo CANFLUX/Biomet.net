@@ -27,7 +27,7 @@ dir_sites <- list.dirs(dir_years, full.names = TRUE, recursive = FALSE)
 sites <- unique(sapply(strsplit(dir_sites, "/"), '[[', length(strsplit(dir_sites, "/")[[1]]))) 
 
 # load all necessary functions
-fx_path <- paste0(arg,'functions',sep ="")
+fx_path <- file.path(arg,'functions')
 p <- sapply(list.files(fx_path,pattern="*.R$", full.names=TRUE), source)
 
 # 2. LOAD DATA ----- 
@@ -36,6 +36,8 @@ site <- sites[1]
 # Find which years are available
 yrs <- yrs_included(basepath,site,level[1])
 data <- read_data_all_years(basepath,yrs,site,level,tv_input)
+# add EBC columns
+data <- create_EBC_columns(data)
 data_units <- var_units(colnames(data),UnitCSVFilePath)
 
 # CREATE DATASET TO PLOT ALL SITES AT ONCE
@@ -103,5 +105,13 @@ yvars <- var_of_interest[-length(var_of_interest)]
 # Load site coordinates
 sites_coordinates <- read_excel(coordinatesXLSXFilePath,sheet=1,col_names= TRUE)
 
+# Define the directory path
+dir_path <- file.path(arg, "data_tmp")
+
+# Create the directory if it doesn't exist
+if (!dir.exists(dir_path)) {
+  dir.create(dir_path, recursive = TRUE)
+}
+
 # save data to app folder
-save(list = ls(), file = paste0(arg,'data_tmp/all_data.RData',sep =""))
+save(list = ls(), file = file.path(arg,'data_tmp/all_data.RData'))
