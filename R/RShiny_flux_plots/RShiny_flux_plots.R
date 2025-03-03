@@ -576,7 +576,7 @@ server <- function(input, output, session) { # Begin server
     output$cumulative <- renderPlotly({ 
       
       # Create conversion factors
-      conv_factor <- data.frame(12.01/(10^6)*(60*30),12.01/(10^9)*(60*30),(60*30)/(10^6))
+      conv_factor <- data.frame(12.01/(10^6)*(60*60*24),12.01/(10^9)*(60*60*24),(60*60*24)/(10^6))
       colnames(conv_factor) <- c("CO2","CH4","Energy")
       
       # Create string for conversion factor variable names
@@ -604,7 +604,7 @@ server <- function(input, output, session) { # Begin server
       df$year <- year(data$datetime) 
       df$DOY <- yday(data$datetime) 
       
-      cf <- conv_factor[index]
+      cf <- as.numeric(conv_factor[index])
       units_cf <- conv_factor_units_cum[index]
       
       # Determine which years are a full year of data
@@ -620,13 +620,19 @@ server <- function(input, output, session) { # Begin server
       
       daily.cum <- df2 %>%
         group_by(year,DOY) %>%
-        dplyr::summarize(var = sum(var*cf), 
+        dplyr::summarize(var = mean(var)*cf, 
                          DOY = first(DOY),
                          year = as.factor(first(year)))
-      daily.cum$var_cum <- cumsum(daily.cum$var)
+      
+      flux.cum <- daily.cum %>%
+        group_by(year) %>%
+        dplyr::summarize(var_cum = cumsum(var),
+                         DOY = DOY)%>%
+        ungroup()
       
       p <- ggplot() +
-        geom_line(data = daily.cum, aes(x = DOY, y = var_cum, color = year))+ 
+        geom_hline(yintercept = 0, linetype = "dotted", color = "grey10", size = 0.1)+
+        geom_line(data = flux.cum, aes(x = DOY, y = var_cum, color = year))+ 
         ylab(paste0(cumulative_names," (",units_cf,")",sep = ""))
       ggplotly(p) 
     }) # End plot render

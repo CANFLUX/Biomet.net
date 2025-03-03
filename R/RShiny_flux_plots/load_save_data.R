@@ -27,7 +27,7 @@ dir_sites <- list.dirs(dir_years, full.names = TRUE, recursive = FALSE)
 sites <- unique(sapply(strsplit(dir_sites, "/"), '[[', length(strsplit(dir_sites, "/")[[1]]))) 
 
 # load all necessary functions
-fx_path <- paste0(arg,'functions',sep ="")
+fx_path <- file.path(arg,'functions')
 p <- sapply(list.files(fx_path,pattern="*.R$", full.names=TRUE), source)
 
 # 2. LOAD DATA ----- 
@@ -114,4 +114,4 @@ if (!dir.exists(dir_path)) {
 }
 
 # save data to app folder
-save(list = ls(), file = paste0(arg,'data_tmp/all_data.RData',sep =""))
+save(list = ls(), file = file.path(arg,'data_tmp/all_data.RData'))

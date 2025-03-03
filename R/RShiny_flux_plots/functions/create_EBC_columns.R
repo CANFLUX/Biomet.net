@@ -15,10 +15,18 @@ create_EBC_columns <- function(data) {
   netrad_index <- grep("^NETRAD(_1_1_1)?$", colnames(data))
   
   # Combine selected indices
-  indices_AE <- c(netrad_index, g_index)
+  if (length(g_index) > 0){
+    indices_AE <- c(netrad_index, g_index)
+  } else {
+    indices_AE <- netrad_index
+  }
   
   # Create AE as sum of selected columns
-  data$AE <- rowSums(data[, indices_AE], na.rm = FALSE)
+  if (length(g_index) > 0){
+    data$AE <- rowSums(data[, indices_AE], na.rm = FALSE)
+  }else{
+    data$AE <- data[, indices_AE]
+  }
   
   # Dynamically rename AE column
   new_AE_name <- "AE"
