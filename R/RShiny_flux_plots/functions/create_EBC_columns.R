@@ -23,7 +23,7 @@ create_EBC_columns <- function(data) {
   
   # Create AE as sum of selected columns
   if (length(g_index) > 0){
-    data$AE <- rowSums(data[, indices_AE], na.rm = FALSE)
+    data$AE <- Reduce('-', data[, indices_AE])
   }else{
     data$AE <- data[, indices_AE]
   }
