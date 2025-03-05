@@ -11,7 +11,7 @@
 # Add RF (MDS)
 
 uncertainty_annual_summary <- function(data,NEE_var,LE_var,H_var,AE_var,H_LE_var) {
-  
+  #browser()
   # Update names for subset and save to main third stage folder
   siteID <- config$Metadata$siteID
   level_out <- config$Database$Paths$AnnualSummary
@@ -30,7 +30,8 @@ uncertainty_annual_summary <- function(data,NEE_var,LE_var,H_var,AE_var,H_LE_var
       dir.create(file.path(dpath,level_out), showWarnings = FALSE)
     }
     
-    df <- data[data$Year.x == year, ]
+    #df <- data[data$Year.x == year, ]
+    df <- data[data$Yearx == year, ]
     
     # NEE uncertainty
     
@@ -347,24 +348,37 @@ uncertainty_annual_summary <- function(data,NEE_var,LE_var,H_var,AE_var,H_LE_var
     
     # Calculate EBC
     # Create new df for EBC
-    if(any(AE_var == "")){
-    AE_total <- df[, which(colnames(df) %in% AE_var[1]), drop = TRUE]} else {
-      AE_total = rowSums(df[, which(colnames(df) %in% AE_var), drop = TRUE])
+    vars_idx <- which(colnames(df) %in% AE_var)
+    vars_found <- length(vars_idx)
+    if (vars_found>0){
+      if(any(AE_var == "") | vars_found==1){
+        AE_total <- df[, which(colnames(df) %in% AE_var[1]), drop = TRUE]} 
+      else {
+        #AE_total = rowSums(df[, which(colnames(df) %in% AE_var), drop = TRUE])
+        Rn <- df[, which(colnames(df) %in% AE_var[1])]
+        G <- df[, which(colnames(df) %in% AE_var[2])]
+        AE_total <- Rn - G
+      }
+      df.EBC <- data.frame(AE = AE_total)
+      df.EBC$H_LE <- rowSums(df[, which(colnames(df) %in% H_LE_var), drop = TRUE])
+         
+      #plot_ly(data = df.EBC, x = ~AE, y = ~H_LE, name = 'filled', type = 'scatter', mode = 'markers',marker = list(size = 3))
+      
+      model <- lm(H_LE ~ AE, data = df.EBC)
+      slope <- coef(model)["AE"]
+      r_squared <- summary(model)$r.squared
+      
+      EBC <- data.frame(slope,r_squared)
+      colnames(EBC) <- c("half hourly EBC", "EBC R2")
+      
+      # Final output file - combine CO2, H, LE uncertainty
+      all_data <- cbind(mean_sdAnnual_gC,LE_sdAnnual_MJ,H_sdAnnual_MJ,EBC)
+    } 
+    else{
+      # Final output file - combine CO2, H, LE uncertainty
+      all_data <- cbind(mean_sdAnnual_gC,LE_sdAnnual_MJ,H_sdAnnual_MJ)
     }
-    df.EBC <- data.frame(AE = AE_total)
-    df.EBC$H_LE <- rowSums(df[, which(colnames(df) %in% H_LE_var), drop = TRUE])
-       
-    #plot_ly(data = df.EBC, x = ~AE, y = ~H_LE, name = 'filled', type = 'scatter', mode = 'markers',marker = list(size = 3))
     
-    model <- lm(H_LE ~ AE, data = df.EBC)
-    slope <- coef(model)["AE"]
-    r_squared <- summary(model)$r.squared
-    
-    EBC <- data.frame(slope,r_squared)
-    colnames(EBC) <- c("half hourly EBC", "EBC R2")
-    
-    # Final output file - combine CO2, H, LE uncertainty
-    all_data <- cbind(mean_sdAnnual_gC,LE_sdAnnual_MJ,H_sdAnnual_MJ,EBC)
     
     write.csv(round(all_data,2), paste0(dpath,'/',level_out,"/annual_summary_",year,"_",format(Sys.time(), "%Y%m%d%H%M%S"),".csv"), row.names = FALSE)
     

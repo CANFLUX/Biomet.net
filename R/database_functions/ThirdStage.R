@@ -26,7 +26,7 @@
 
 # # Giving database as an input
 # args <- c("C:/Database","siteID",startYear,endYear)
-# args <- c("F:/EcoFlux lab/Database","TMP",2023,2023)
+# args <- c("F:/EcoFlux lab/Database","TPAg",2024,2024)
 # source("C:/Biomet.net/R/database_functions/ThirdStage.R")
 
 # # If current directory is the the root of a database
@@ -35,7 +35,7 @@
 # source("C:/Biomet.net/R/database_functions/ThirdStage.R")
 
 # Package names
-packages <- c("fs", "yaml", "REddyProc", "rlist", "zoo", "dplyr", "lubridate", "data.table", "reshape2", "stringr", "tidyverse", "slider", "ranger", "caret", "ggplot2")
+packages <- c("fs", "yaml", "REddyProc", "rlist", "zoo", "dplyr", "lubridate", "data.table", "reshape2", "stringr", "tidyverse", "slider", "ranger", "caret", "ggplot2","lognorm")
 
 # Install packages not yet installed
 installed_packages <- packages %in% rownames(installed.packages())
@@ -45,6 +45,10 @@ if (any(installed_packages == FALSE)) {
 
 # Packages loading
 invisible(lapply(packages, library, character.only = TRUE))
+
+print(version$version.string)
+REddyProc_v <- packageVersion("REddyProc")
+sprintf("ReddyProc version: %s",REddyProc_v)
 
 merge_nested_lists = function(...) {
   # Modified from: https://gist.github.com/joshbode/ed70291253a4b4412026
@@ -916,7 +920,7 @@ if (config$Processing$ThirdStage$RF_GapFilling$Run){
 
 # Calculate uncertainty and annual summaries/statistics if running ThirdStage_Advanced
 if (!config$Processing$ThirdStage$REddyProc$Ustar_filtering$run_defaults){
-  
+  #browser()
   Fluxes <- config$Processing$ThirdStage$Fluxes 
   # Remove final suffix so that uncertainty can calculate different variables
   Fluxes_trimmed <- lapply(Fluxes, function(x) sub("_[^_]+$", "", x))
