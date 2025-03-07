@@ -350,8 +350,8 @@ for cntSites = 1:numOfSites
         %------------------------------------------------------------------
         % 8th stage is the methane-gapfill-ml python pipeline
         %------------------------------------------------------------------
-        if ~isempty(find(stages == 8))
-            stage_str = '8-th';
+        if ~isempty(find(stages == 9))
+            stage_str = '9-th';
             disp(['============== ' stage_str ' stage. Running CH4 gapfilling pipeline: ' siteID ' ' yy_str ' ==============']);
             runThirdStageCleaningMethaneGapfillML(yy,siteID);
             fprintf('============== End of cleaning stage 8 =============\n'); 
@@ -361,8 +361,8 @@ for cntSites = 1:numOfSites
         % 9th stage is export of Micromet (Sara Knox's) sites to AmeriFlux
         % format. The output data is stored to clean/ThirdStage folder
         %------------------------------------------------------------------
-        if ~isempty(find(stages == 9))
-            stage_str = '9-th';
+        if ~isempty(find(stages == 8))
+            stage_str = '8-th';
             disp(['============== ' stage_str ' stage. Exporting AmeriFlux csv file for: ' siteID ' ' yy_str ' ==============']);
             pathAF = fullfile(db_pth,num2str(yy(1)),siteID,'Clean','Ameriflux');
             saveDatabaseToAmeriFluxCSV(siteID,yy(1),pathAF);
