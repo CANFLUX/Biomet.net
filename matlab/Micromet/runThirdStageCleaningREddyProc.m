@@ -62,7 +62,7 @@ function fidLog = runThirdStageCleaningREddyProc(yearIn,siteID,yearsToProcess);
     
     tic;
     tv_start = now; %#ok<TNOW1>
-    
+
     % Before running ThirdStage.R, check yml file for potential errors
     kill_3rdstage = basic_error_check_yml_site_config(siteID,yearIn,pthIni,pthBiometR);   
     if ~kill_3rdstage
@@ -131,7 +131,7 @@ function Rpath = findRPath
         [~,N ]=sort({s(:).name});
         N = N(end);
         Rpath = fullfile(s(N).folder,s(N).name,'bin','Rscript.exe');
-    elseif ismac    % for Mac OS
+    elseif isunix    % for Mac OS or linux
         % look for location of Rscript executable
         [status,outpath] = system('which Rscript');    
         if status   

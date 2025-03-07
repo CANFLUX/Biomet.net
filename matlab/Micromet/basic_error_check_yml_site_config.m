@@ -35,7 +35,7 @@ if isstring(siteID)
 end
 
 arg_default('pthIni',fullfile(biomet_database_default,...
-    'Calculation_Procedures\TraceAnalysis_ini',siteID))
+    'Calculation_Procedures','TraceAnalysis_ini',siteID))
 
 % Temporary defaults
 % siteID = 'OHM';
@@ -250,7 +250,7 @@ for i=1:length(varnames)
     else
         % Make sure that 'flux2check' is a trace in the second stage
         siteYear_folder = fullfile(biomet_database_default,num2str(yearIn),siteID);
-        file2check = fullfile(siteYear_folder, 'Clean\SecondStage', trace2check);
+        file2check = fullfile(siteYear_folder, 'Clean', 'SecondStage', trace2check);
         
         if ~isfile(file2check)
             if strcmp(type,'REddyProc.vars_in')

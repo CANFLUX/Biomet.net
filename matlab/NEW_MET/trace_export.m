@@ -80,7 +80,7 @@ else
                   case 'CH'
                      pathOut = fullfile(file_opts.out_path,'chambers','clean');
                   otherwise
-                     pathOut = fullfile(file_opts.out_path,trc.ini.measurementType,'clean');
+                     pathOut = fullfile(file_opts.out_path,trc.ini.measurementType,'Clean');
                end
            otherwise
               pathOut = [file_opts.out_path];
