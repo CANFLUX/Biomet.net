@@ -335,7 +335,7 @@ for cntSites = 1:numOfSites
 
             % Retrieve R log file and print "P2M" messages
             % folder = 'F:\EcoFlux lab\Database\Calculation_Procedures\TraceAnalysis_ini\TPAG\log\';
-            folder = fullfile(db_pth,'Calculation_Procedures\TraceAnalysis_ini',siteID,'log');
+            folder = fullfile(db_pth,'Calculation_Procedures','TraceAnalysis_ini',siteID,'log');
             filename = char([siteID '_ThirdStageCleaning.log']);
             fid = fopen(fullfile(folder,filename));
             if fid~=-1
@@ -362,7 +362,7 @@ for cntSites = 1:numOfSites
     end
 
     % Remove Derived_Variables path from the path
-    derVarPth = biomet_path('Calculation_Procedures\TraceAnalysis_ini',siteID,'Derived_Variables');
+    derVarPth = fullfile(db_pth,'Calculation_Procedures','TraceAnalysis_ini',siteID,'Derived_Variables');
     if strcmp(derVarPth(end),filesep)
         % remove trailing filesep. "path" does not contain those
         derVarPth = derVarPth(1:end-1);

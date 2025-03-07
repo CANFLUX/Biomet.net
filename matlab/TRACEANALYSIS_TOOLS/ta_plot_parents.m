@@ -19,11 +19,13 @@ function ax = ta_plot_parents(figNum,trace_str,trace_name)
 %
 %       
 % Zoran Nesic                       File created:       Apr 17, 2024
-%                                   Last modification:  Sep  5, 2024
+%                                   Last modification:  Feb 28, 2025
 %
 
 % Revisions:
 %
+% Feb 28, 2025 (Zoran)
+%   - change line thickness for min/max lines from 5 to 2
 % Oct 15, 2024 (Paul)
 %   - Modified legend.
 % Oct 10, 2024 (Paul)
@@ -90,8 +92,8 @@ function ax = ta_plot_parents(figNum,trace_str,trace_name)
     hold on
     % Add minMax
     vAx = xlim;
-    line(vAx, [minMax(1) minMax(1)],'linewidth',5)
-    line(vAx, [minMax(2) minMax(2)],'linewidth',5)
+    line(vAx, [minMax(1) minMax(1)],'linewidth',2)
+    line(vAx, [minMax(2) minMax(2)],'linewidth',2)
     hold off
     legend(p1,'Previous stage','Current stage','Location','eastoutside','Interpreter','none')
     set(gca,'XtickLabel',{})
