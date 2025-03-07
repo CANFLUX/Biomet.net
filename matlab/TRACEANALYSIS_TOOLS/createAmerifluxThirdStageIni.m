@@ -1,4 +1,4 @@
-function thirdStageIni = createAmerifluxThirdStageIni(structProject,countryID,siteID,siteID_origin)
+function thirdStageIni = createAmerifluxThirdStageIni(structProject,dbID,siteID,siteID_origin)
 % Create the third stage YAML defaults for the given Ameriflux data set
 % using the TMP_config.yml template.
 %
@@ -7,7 +7,7 @@ function thirdStageIni = createAmerifluxThirdStageIni(structProject,countryID,si
 %
 % Input:
 %   structProject       - the structure obtained by a call to set_TAB_project
-%   countryID           - 'AMF' for Ameriflux, 'CA' for Canada...
+%   dbID                - 'AMF' for Ameriflux
 %   siteID              - Usually matches Ameriflux SITE_ID but with all caps and without '-'
 %                         Example: 'BR-Npw' => 'BRNPW'
 %   siteID_origin       - Original Ameriflux SITE_ID
@@ -24,7 +24,7 @@ function thirdStageIni = createAmerifluxThirdStageIni(structProject,countryID,si
 %           - AMF_BR-Npw_BASE_HH_1-5.csv
 %           - AMF_BR-Npw_BIF_*.xlsx
 %   First define setup parameters:
-%       countryID = 'AMF';
+%       dbID = 'AMF';
 %       siteID_origin = 'BR-Npw';
 %       siteID = 'BRNPW';
 %       pathProject = 'E:\Pipeline_Projects\Data44';
@@ -38,7 +38,7 @@ function thirdStageIni = createAmerifluxThirdStageIni(structProject,countryID,si
 %   - Set TAB project:
 %       structProject=set_TAB_project(pathProject);
 %   - Call this function:
-%       thirdStageIni = createAmerifluxThirdStageIni(structProject,countryID,siteID,siteID_origin);
+%       thirdStageIni = createAmerifluxThirdStageIni(structProject,dbID,siteID,siteID_origin);
 %   - The yml file (BRNPW_config.yml) is stored under this folder:
 %       'E:\Pipeline_Projects\Data44\Database\Calculation_Procedures\TraceAnalysis_ini\BRNPW'
 %
@@ -52,7 +52,7 @@ function thirdStageIni = createAmerifluxThirdStageIni(structProject,countryID,si
 pathYmlTemplate = fullfile(structProject.databasePath,'Calculation_Procedures','TraceAnalysis_ini','TMP_config.yml');
 pathSiteIni = fullfile(structProject.databasePath,'Calculation_Procedures','TraceAnalysis_ini',siteID,[ siteID '_config.yml']);
 
-siteBADM = fullfile(structProject.sitesPath,siteID,'Flux',[countryID '_' siteID_origin '_BIF_*.xlsx']);
+siteBADM = fullfile(structProject.sitesPath,siteID,'Flux',[dbID '_' siteID_origin '_BIF_*.xlsx']);
 s = dir(siteBADM);
 if isempty(s)
     error('File: %s does not exist!\n',siteBADM);
