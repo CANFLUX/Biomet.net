@@ -66,20 +66,13 @@ def main(args):
     write_database_traces(db_path, methane_data_path, site, gapfill_year, models, config)
 
 
-
-def setup_pipeline_directory(db_path, methane_data_path, site, predictors, config):
-    clean_years = find_clean_site_years(site, db_path)
-
-    with open(methane_data_path / site / 'years.txt', 'w') as f:
-        f.write(','.join(clean_years))
-    with open(methane_data_path / site / 'predictors.txt', 'w') as f:
-        f.write(','.join(predictors))
-    
-    site_df = read_database_traces(site, clean_years, db_path, config)
-    site_df.to_csv(methane_data_path / site / 'raw.csv', index=False)
-
-
 def clean_models_found(db_path, methane_data_path, site, predictors, config) -> bool:
+    """Checks the methane data path to see if there are already trained models for
+    this site, and whether there are any new site-years (in which case it should re-train).
+    
+    Returns False if there is any reason to re-compile the data and retrain.
+    Returns True if the existing models are up-to-date, and we can just reuse the data.
+    """
     if not os.path.exists(methane_data_path / site / 'years.txt') or \
        not os.path.exists(methane_data_path / site / 'predictors.txt'):
         return False
@@ -103,6 +96,21 @@ def clean_models_found(db_path, methane_data_path, site, predictors, config) -> 
     return True
 
 
+
+def setup_pipeline_directory(db_path, methane_data_path, site, predictors, config) -> None:
+    """Creates all necessary files to begin running the ML pipeline"""
+
+    clean_years = find_clean_site_years(site, db_path)
+
+    with open(methane_data_path / site / 'years.txt', 'w') as f:
+        f.write(','.join(clean_years))
+    with open(methane_data_path / site / 'predictors.txt', 'w') as f:
+        f.write(','.join(predictors))
+    
+    site_df = read_database_traces(site, clean_years, db_path, config)
+    site_df.to_csv(methane_data_path / site / 'raw.csv', index=False)
+
+
 def find_clean_site_years(site, db_path) -> List:
     database_years = [d for d in os.listdir(db_path) if d.isnumeric()]
     clean_site_years = []
@@ -113,13 +121,13 @@ def find_clean_site_years(site, db_path) -> List:
 
 
 def read_database_traces(site, years, db_path, config) -> pd.DataFrame:
-    '''Reads binary data for a given site and returns a pandas DataFrame.
+    """Reads binary data for a given site and returns a pandas DataFrame.
     Args:
         site (str): The site identifier for which data is being read.
         years (list of str): List of years to include in the dataset.
         db_path (str): Path to the Database directory
         config (dict): Configuration dictionary
-    '''
+    """
     
     # Timestamps
     ts_cfg = config['dbase_metadata']['timestamp'] # for brevity
@@ -152,8 +160,7 @@ def read_database_traces(site, years, db_path, config) -> pd.DataFrame:
 
 
 def write_database_traces(db_path, methane_data_path, site, year, models, config):
-    '''Writes the gapfilled FCH4 columns to the database.
-    '''
+    """Writes the gapfilled FCH4 columns to the database"""
     output_path = db_path / year / site / 'Clean' / 'ThirdStage'
     os.makedirs(output_path, exist_ok=True)
     existing_ml_traces = [f for f in os.listdir(output_path) if 'FCH4_F_ML' in f]
