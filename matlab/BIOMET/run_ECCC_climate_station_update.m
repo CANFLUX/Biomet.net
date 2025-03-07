@@ -14,10 +14,14 @@ function run_ECCC_climate_station_update(yearsIn,monthsIn,stationIDs,dbase_pth)
 % dbase_pth     - Optional data base path
 %
 % Zoran Nesic                   File created:               2022
-%                               Last modification:  Feb  4, 2025
+%                               Last modification:  Feb 27, 2025
 
 % Revisions
 %
+% Feb 27, 2025 (Zoran)
+%   - removed the special-case folder location for the station 10927
+% Feb 14, 2025 (Zoran)
+%   - Added this station: 27174
 % Feb 4, 2025 (Zoran)
 %   - updated the comment about the location of the ECCC csv file with station IDs (see above)
 % Nov 21, 2024 (Zoran)
@@ -45,7 +49,7 @@ function run_ECCC_climate_station_update(yearsIn,monthsIn,stationIDs,dbase_pth)
 monthRange = monthNow-1:monthNow;
 arg_default('yearsIn',yearNow)
 arg_default('monthsIn',monthRange)
-arg_default('stationIDs',[49088 10927 925 51357 51442 3678 55463] )
+arg_default('stationIDs',[49088 10927 925 51357 51442 3678 55463 27174] )
 arg_default('dbase_pth',db_pth_root);
 
 for cntStations = 1:length(stationIDs)
@@ -54,9 +58,9 @@ for cntStations = 1:length(stationIDs)
         % case 49088
         %     % Burns Bog station
         %     pathECCC = 'yyyy\BB\Met\ECCC';
-        case 10927
-            % Hogg station
-            pathECCC = 'yyyy\Hogg\Met\ECCC';
+        % case 10927
+        %     % Hogg station
+        %     pathECCC = 'yyyy\Hogg\Met\ECCC';
         otherwise
             % Group all other stations under \ECCC\stationID
             pathECCC = fullfile('yyyy','ECCC',num2str(sID));

@@ -327,8 +327,22 @@ for cntSites = 1:numOfSites
             stage_str = '7-th';
             disp(['============== ' stage_str ' stage cleaning ' siteID ' ' yy_str ' ==============']);
             db_dir_ini(yy(1),siteID,db_out,3);
-            runThirdStageCleaningREddyProc(yy(1),siteID,1);  % use only 1 year for gap filling
-            fprintf('Running methane-gapfill-ml');
+            Rstatus = runThirdStageCleaningREddyProc(yy(1),siteID,1);  % use only 1 year for gap filling
+
+            if Rstatus~=0
+                fprintf('Failed running Third Stage Rscript\n');
+            end
+
+            % Retrieve R log file and print "P2M" messages
+            % folder = 'F:\EcoFlux lab\Database\Calculation_Procedures\TraceAnalysis_ini\TPAG\log\';
+            folder = fullfile(db_pth,'Calculation_Procedures','TraceAnalysis_ini',siteID,'log');
+            filename = char([siteID '_ThirdStageCleaning.log']);
+            fid = fopen(fullfile(folder,filename));
+            if fid~=-1
+                fprintf('Retrieving critical messages from Third Stage R log:\n');
+                read_R_log(fid)
+                fclose(fid);
+            end
             
             fprintf('============== End of cleaning stage 7 =============\n');
         end
@@ -360,7 +374,7 @@ for cntSites = 1:numOfSites
     end
 
     % Remove Derived_Variables path from the path
-    derVarPth = biomet_path('Calculation_Procedures\TraceAnalysis_ini',siteID,'Derived_Variables');
+    derVarPth = fullfile(db_pth,'Calculation_Procedures','TraceAnalysis_ini',siteID,'Derived_Variables');
     if strcmp(derVarPth(end),filesep)
         % remove trailing filesep. "path" does not contain those
         derVarPth = derVarPth(1:end-1);

@@ -16,7 +16,13 @@ function cntAllNanFiles = findAllNaNfiles(siteID,yearIn,stageNum)
 %
 %
 % Zoran Nesic                   File Created:      Feb  12, 2025
-%                               Last modification: Feb  12, 2025
+%                               Last modification: Feb  25, 2025
+
+% Revisions
+%
+% Feb 25, 2025 (Zoran)
+%   - Bug fix: There was a hard coded 'DSM' instead of siteID.
+%
 
 if exist(siteID,'dir')
     % if the full file is given instead of a site ID 
@@ -45,7 +51,7 @@ else
         iniFile = sprintf('%s_SecondStage.ini',siteID);
     end
     iniFileName = fullfile(biomet_database_default,'Calculation_Procedures','TraceAnalysis_ini',siteID,iniFile);
-    trace_str = read_data(yearIn, 'DSM',iniFileName);
+    trace_str = read_data(yearIn, siteID,iniFileName);
 end
 
 cntAllNanFiles = 0;

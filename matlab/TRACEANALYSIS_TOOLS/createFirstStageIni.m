@@ -17,16 +17,22 @@ function createFirstStageIni(structSetup)
 % structSetup.endMonth = 12;
 % structSetup.endDay = 31;
 % structSetup.Site_name = 'Delta Site Marsh';
-% structSetup.SiteID = 'DSM';
+% structSetup.siteID = 'DSM';
 % structSetup.allMeasurementTypes = {'MET','Flux'};
 % structSetup.Difference_GMT_to_local_time = 8;  % local+Difference_GMT_to_local_time -> GMT time
 % structSetup.outputPath = []; % keep it in the local directory
 %
 % Zoran Nesic               File created:           Mar 20, 2024
-%                           Last modification:      Oct 28, 2024
+%                           Last modification:      Feb 25, 2025
 
 % Revisions:
 %
+% Feb 25, 2025 (Zoran)
+%   - had a hard coded "\" in the path. Fixed it.
+% Feb 24, 2025 (Zoran)
+%   - renamed .SiteID to .siteID.
+% Feb 21, 2025 (Zoran)
+%   - Added time-offset info
 % Oct 28, 2024 (Zoran)
 %   - Removed obsolete properties.
 %   - Added instrumentType property
@@ -37,8 +43,22 @@ function createFirstStageIni(structSetup)
 %   - Added proper handling of the quality control traces (minMax and dependent fields).
 
 
-
-outputIniFileName = fullfile(structSetup.outputPath, [structSetup.SiteID '_FirstStage_Template.ini']);
+if isfield(structSetup,'isTemplate') && ~structSetup.isTemplate
+    outputIniFileName = fullfile(biomet_database_default,...
+                                'Calculation_Procedures','TraceAnalysis_ini',...
+                                structSetup.siteID, ...
+                                [structSetup.siteID '_FirstStage.ini']);
+   if exist(outputIniFileName,'file')
+        ButtonName = questdlg(sprintf('File: %s already exist!',outputIniFileName), ...
+                     'Confirm Overwrite', ...
+                     'Overwrite', 'Cancel',  'Cancel');
+        if strcmpi(ButtonName,'Cancel')
+            error('File already exists. User cancelled the processing.');
+        end
+   end
+else
+    outputIniFileName = fullfile(structSetup.outputPath, [structSetup.siteID '_FirstStage_Template.ini']);
+end
 fprintf('---------------------------\n');
 fprintf('Creating template file: %s\n',outputIniFileName);
 fid = fopen(outputIniFileName,'w');
@@ -46,8 +66,9 @@ fid = fopen(outputIniFileName,'w');
 % Header output
 fprintf(fid,'%%\n%% File generated automatically on %s\n%%\n\n',datetime('today'));
 fprintf(fid,'Site_name = ''%s''\n',structSetup.Site_name);
-fprintf(fid,'SiteID = ''%s''\n\n',structSetup.SiteID);
-fprintf(fid,'Difference_GMT_to_local_time = %d   %% hours\n\n',structSetup.Difference_GMT_to_local_time);
+fprintf(fid,'SiteID = ''%s''\n\n',structSetup.siteID);
+fprintf(fid,'Difference_GMT_to_local_time = %d   %% timezone that your site is located in, in hours (GMT - local time), opposite of what you wrote in config.yml\n',structSetup.Difference_GMT_to_local_time);
+fprintf(fid,'Timezone                     = %d   %% timezone that your data is reported in (UTC, standard time, or daylight saving time), in hours\n\n',structSetup.Difference_GMT_to_local_time);
 
 
 for cntMeasurementTypes = 1:length(structSetup.allMeasurementTypes)
@@ -55,7 +76,7 @@ for cntMeasurementTypes = 1:length(structSetup.allMeasurementTypes)
     fprintf(fid,'\n\n%%-----------------------------------------\n');
     fprintf(fid,    '%%    Measurement type: %s\n',measurementType);
     fprintf(fid,    '%%-----------------------------------------\n\n');
-    inputFolder = biomet_path(structSetup.startYear,structSetup.SiteID,measurementType);
+    inputFolder = biomet_path(structSetup.startYear,structSetup.siteID,measurementType);
     allFiles = dir(inputFolder);
     fprintf('Processing %d traces in: %s\n',length(allFiles),inputFolder)
     
