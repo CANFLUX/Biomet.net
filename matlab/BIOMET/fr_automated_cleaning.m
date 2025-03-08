@@ -238,8 +238,8 @@ for cntSites = 1:numOfSites
         % Get output paths
         %------------------------------------------------------------------
         pth_out_first  = fullfile(db_out,yy_str,siteID,'');
-        pth_out_second = fullfile(db_out,yy_str,siteID,'clean','SecondStage','');
-        pth_out_third  = fullfile(db_out,yy_str,siteID,'clean','ThirdStage', '');
+        pth_out_second = fullfile(db_out,yy_str,siteID,'Clean','SecondStage','');
+        pth_out_third  = fullfile(db_out,yy_str,siteID,'Clean','ThirdStage', '');
         
         %------------------------------------------------------------------
         % Do first stage cleaning and exporting
@@ -348,7 +348,17 @@ for cntSites = 1:numOfSites
         end
         
         %------------------------------------------------------------------
-        % 8th stage is export of Micromet (Sara Knox's) sites to AmeriFlux
+        % 8th stage is the methane-gapfill-ml python pipeline
+        %------------------------------------------------------------------
+        if ~isempty(find(stages == 9))
+            stage_str = '9-th';
+            disp(['============== ' stage_str ' stage. Running CH4 gapfilling pipeline: ' siteID ' ' yy_str ' ==============']);
+            runThirdStageCleaningMethaneGapfillML(yy,siteID);
+            fprintf('============== End of cleaning stage 8 =============\n'); 
+        end
+        
+        %------------------------------------------------------------------
+        % 9th stage is export of Micromet (Sara Knox's) sites to AmeriFlux
         % format. The output data is stored to clean/ThirdStage folder
         %------------------------------------------------------------------
         if ~isempty(find(stages == 8))
@@ -356,9 +366,11 @@ for cntSites = 1:numOfSites
             disp(['============== ' stage_str ' stage. Exporting AmeriFlux csv file for: ' siteID ' ' yy_str ' ==============']);
             pathAF = fullfile(db_pth,num2str(yy(1)),siteID,'Clean','Ameriflux');
             saveDatabaseToAmeriFluxCSV(siteID,yy(1),pathAF);
-            fprintf('============== End of cleaning stage 8 =============\n'); 
-        end          
+            fprintf('============== End of cleaning stage 9 =============\n'); 
+        end
         clear data_* ini_* pth_* mat_*
+        
+
     end
 
     % Remove Derived_Variables path from the path

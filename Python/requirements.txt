@@ -1,0 +1,4 @@
+fluxgapfill @ git+https://github.com/mjfortier/methane-gapfill-ml.git
+numpy==2.2.3
+pandas==2.2.3
+PyYAML==6.0.2
