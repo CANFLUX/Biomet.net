@@ -1,4 +1,4 @@
- function create_TAB_ProjectFolders(projectPath,siteID)
+function create_TAB_ProjectFolders(projectPath,siteID,flagAddingSiteOnly)
 % Create the directory structure for Trace Analysis Biomet (TAB) data projects
 % create_TAB_ProjectFolders ('E:\Projects\My_MicrometSites','Site_1')
 %                           - creates the data tree to be used with TAB projects
@@ -10,15 +10,22 @@
 % Inputs:
 %   projectPath         - path to the main project folder (parent of Database and Sites folders)
 %   siteID              - short Ameriflux site ID or your site ID. No spaces are allowed.
+%   flagAddingSiteOnly  - when false (default), proceed with full installation
+%                         when true, proceed with a quiet installation 
+%                                   ( this is used for adding a new siteID to an existing project)
 %
 % Output:
 %
 %
 % Zoran Nesic           File created:       Aug 23, 2024
-%                       Last modification:  Jan 15, 2025
+%                       Last modification:  Mar  9, 2025
 
 % Revisions
 %
+% Mar 9, 2025 (Zoran)
+%   - Added the option: flagAddinSiteOnly. If TRUE, it means that the call is just
+%     adding a new site to an existing project. Proceed with a "quiet" siteID creation.
+%     Default is 0 (false)
 % Jan 15, 2025 (Zoran)
 %   - Added automatic creation of \Database\Log folder
 % Sep 13, 2024 (Zoran)
@@ -27,6 +34,8 @@
 % Sep 12, 2024 (Zoran)
 %   - added repo for include files.
 %   (https://github.com/CANFLUX/TAB_include_files.git)
+
+arg_default('flagAddingSiteOnly',0);
 
 if ~exist('projectPath','var')
     error('Missing Project Path.')
@@ -41,9 +50,9 @@ if ~exist(projectPath,'dir')
     mkdir(projectPath);
 end
 
-if exist(fullfile(projectPath,'Database'),'dir') ...
+if ~flagAddingSiteOnly & (exist(fullfile(projectPath,'Database'),'dir') ...
    || exist(fullfile(projectPath,'Sites'),'dir') ...
-   || exist(fullfile(projectPath,'Matlab'),'dir')
+   || exist(fullfile(projectPath,'Matlab'),'dir'))
      selection = questdlg('Project folders already exist! Do you want to overwrite them?', ...
                      'Last warning!', ...
                      'Yes', 'No','No');
@@ -71,25 +80,27 @@ if ~exist(tmpPath,'dir')
     url1 = 'https://github.com/CANFLUX/TAB_Ameriflux_variables.git';
     gitclone(url1,tmpPath,Depth=1);
 else
-    % For repo to be downloaded the folder needs to be empty so first remove it
-    ButtonName = questdlg('AmeriFlux repo folder already exists. If you press OK it will be deleted. Your personalized files will be lost! Do you want to proceed?', ...
-                         'Deleting local files', ...
-                         'Yes', 'No','No');
-    if strcmpi(ButtonName,'Yes')
-        ButtonName = questdlg('Are you sure!', ...
-                     'Last warning!', ...
-                     'Yes', 'No','No');
+    if ~flagAddingSiteOnly
+        % For repo to be downloaded the folder needs to be empty so first remove it
+        ButtonName = questdlg('AmeriFlux repo folder already exists. If you press OK it will be deleted. Your personalized files will be lost! Do you want to proceed?', ...
+                             'Deleting local files', ...
+                             'Yes', 'No','No');
         if strcmpi(ButtonName,'Yes')
-            fprintf('Overwriting AmerFlux local copy.\n\n')
-            rmdir(tmpPath,"s");
-            mkdir(tmpPath);
-            url1 = 'https://github.com/CANFLUX/TAB_Ameriflux_variables.git';
-            gitclone(url1,tmpPath,Depth=1);            
+            ButtonName = questdlg('Are you sure!', ...
+                         'Last warning!', ...
+                         'Yes', 'No','No');
+            if strcmpi(ButtonName,'Yes')
+                fprintf('Overwriting AmerFlux local copy.\n\n')
+                rmdir(tmpPath,"s");
+                mkdir(tmpPath);
+                url1 = 'https://github.com/CANFLUX/TAB_Ameriflux_variables.git';
+                gitclone(url1,tmpPath,Depth=1);            
+            else
+                fprintf('Skipping AmerFlux repo cloning.\n\n')
+            end
         else
             fprintf('Skipping AmerFlux repo cloning.\n\n')
         end
-    else
-        fprintf('Skipping AmerFlux repo cloning.\n\n')
     end
 end
 
@@ -99,25 +110,27 @@ if ~exist(tmpPath,'dir')
     url1 = 'https://github.com/CANFLUX/TAB_include_files.git';
     gitclone(url1,tmpPath,Depth=1);
 else
-    % For repo to be downloaded the folder needs to be empty so first remove it
-    ButtonName = questdlg('TraceAnalisis_ini folder already exists. If you press OK it will be deleted. Your personalized INI files will be lost! Do you want to proceed?', ...
-                         'Deleting local files', ...
-                         'Yes', 'No','No');
-    if strcmpi(ButtonName,'Yes')
-        ButtonName = questdlg('Are you sure!', ...
-                     'Last warning!', ...
-                     'Yes', 'No','No');
+    if ~flagAddingSiteOnly
+        % For repo to be downloaded the folder needs to be empty so first remove it
+        ButtonName = questdlg('TraceAnalisis_ini folder already exists. If you press OK it will be deleted. Your personalized INI files will be lost! Do you want to proceed?', ...
+                             'Deleting local files', ...
+                             'Yes', 'No','No');
         if strcmpi(ButtonName,'Yes')
-            fprintf('Overwriting TraceAnalisis_ini folder.\n\n')
-            rmdir(tmpPath,"s");
-            mkdir(tmpPath);
-            url1 = 'https://github.com/CANFLUX/TAB_include_files.git';
-            gitclone(url1,tmpPath,Depth=1);           
+            ButtonName = questdlg('Are you sure!', ...
+                         'Last warning!', ...
+                         'Yes', 'No','No');
+            if strcmpi(ButtonName,'Yes')
+                fprintf('Overwriting TraceAnalisis_ini folder.\n\n')
+                rmdir(tmpPath,"s");
+                mkdir(tmpPath);
+                url1 = 'https://github.com/CANFLUX/TAB_include_files.git';
+                gitclone(url1,tmpPath,Depth=1);           
+            else
+                fprintf('Skipping TraceAnalisis_ini folder repo cloning.\n\n')
+            end
         else
             fprintf('Skipping TraceAnalisis_ini folder repo cloning.\n\n')
         end
-    else
-        fprintf('Skipping TraceAnalisis_ini folder repo cloning.\n\n')
     end
 end
 
