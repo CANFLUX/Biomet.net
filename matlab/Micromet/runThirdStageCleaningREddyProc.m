@@ -1,4 +1,4 @@
-function statusR = runThirdStageCleaningREddyProc(yearIn,siteID,yearsToProcess);
+function statusR = runThirdStageCleaningREddyProc(yearIn,siteID,yearsToProcess)
 % runThirdStageCleaningREddyProc(yearIn,siteID)
 %
 % This function invokes Micromet third-stage cleaning R-script.
@@ -11,11 +11,14 @@ function statusR = runThirdStageCleaningREddyProc(yearIn,siteID,yearsToProcess);
 %                     for gap-filling even when outputing one year only
 %
 % Zoran Nesic               File created:       Oct 25, 2022
-%                           Last modification:  Feb 24, 2025
+%                           Last modification:  Mar 11, 2025
 %
 
 % Revisions
 %
+% Mar 11, 2025 (Zoran)
+%   - Added code that (in theory) should update libraries properly. Currently set to 
+%     run only on a PC. 
 % Feb 24, 2025 (Zoran)
 %   - This function can now find the location of Rscript executable by running 
 %     the function biomet_Rpath_default.m IF it exists. Otherwise it will search
@@ -68,6 +71,23 @@ function statusR = runThirdStageCleaningREddyProc(yearIn,siteID,yearsToProcess);
     end    
     pthLogFile = fullfile(pthIni,'log',[siteID '_ThirdStageCleaning.log']);
     
+    % ---------------------------------------------
+    % If needed, update all libraries using cloud.r-project.org
+    % This section runs on Windows computers only.
+    % Add Unix/macOS version too.
+    % This 
+    if ispc
+        userPath = extractBefore(tempdir,'\Temp\');
+        rVersion_full = extractBefore(extractAfter(pthRbin,'\R-'),'\bin');
+        indDot = strfind(rVersion_full,'.');
+        rVersion = extractBefore(rVersion_full,indDot(end));
+        pthRlib = strrep(fullfile(userPath,'R','win-library',rVersion),filesep,'/');
+        pthUpdateR = fullfile(pthBiometR,"updateBiometNetPackages.R");
+        pthUpdateR =  strrep(pthUpdateR,filesep,'/');
+        cmd_test=sprintf('"%s" --vanilla -e "options(repos = c(CRAN = \\"https://cloud.r-project.org\\")); .libPaths(\\"%s\\"); source(\\"%s\\") " 2>junk.txt 1>&2',pthRbin,pthRlib,pthUpdateR);
+        [statusR,cmdOutput] = system(cmd_test);
+    end
+    %---------------------------------------------
     tic;
     tv_start = now; %#ok<TNOW1>
 
