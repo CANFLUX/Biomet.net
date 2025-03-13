@@ -77,7 +77,7 @@ def clean_models_found(db_path, methane_data_path, site, predictors, config) -> 
        not os.path.exists(methane_data_path / site / 'predictors.txt'):
         return False
     
-    clean_years = find_clean_site_years(site, db_path)
+    clean_years = find_clean_site_years(site, db_path, config)
     with open(methane_data_path / site / 'years.txt', 'r') as f:
         existing_years = f.read().split(',')
     new_years = [y for y in clean_years if y not in existing_years]
@@ -111,11 +111,17 @@ def setup_pipeline_directory(db_path, methane_data_path, site, predictors, confi
     site_df.to_csv(methane_data_path / site / 'raw.csv', index=False)
 
 
-def find_clean_site_years(site, db_path) -> List:
+def find_clean_site_years(site, db_path, config) -> List:
     database_years = [d for d in os.listdir(db_path) if d.isnumeric()]
     clean_site_years = []
+    required_variable_paths = [Path(v) for v in config['predictor_traces']]
+    required_variable_paths.append(Path(config['methane_trace']))
     for year in sorted(database_years):
-        if os.path.exists(db_path / year / site / 'Clean' / 'SecondStage'):
+        for p in required_variable_paths:
+            if not os.path.exists(db_path / year / site / p):
+                print(f'Cannot find variable {p} in year {year}. Skipping...')
+                break
+        else:
             clean_site_years.append(year)
     return clean_site_years
 
