@@ -10,10 +10,12 @@ function result = convertAmeriflux2TAB(allNewSites,dbID,sourcePath,projectPath)
 %
 %
 % Zoran Nesic               File created:           Mar 12, 2025
-%                           Last modification:      Mar 12, 2025
+%                           Last modification:      Mar 13, 2025
 
 % Revisions:
 %
+% Mar 14, 2025 (Zoran)
+%  - Function will now not work if the output folder already exists.
 
 
 
@@ -22,7 +24,7 @@ missingPointValue = NaN;
 timeUnit= '30MIN';
 
 if exist(projectPath,'dir')
-    rmdir(projectPath,'s');
+    error('The output folder already exists. Exiting...');
 end
 
 
