@@ -23,10 +23,12 @@ function createFirstStageIni(structSetup)
 % structSetup.outputPath = []; % keep it in the local directory
 %
 % Zoran Nesic               File created:           Mar 20, 2024
-%                           Last modification:      Feb 25, 2025
+%                           Last modification:      Mar 12, 2025
 
 % Revisions:
 %
+% Mar 12, 2025 (Zoran)
+%   - Added automatic minMax range and units setup using AF QAQC limits file created by Rosie Howard.
 % Feb 25, 2025 (Zoran)
 %   - had a hard coded "\" in the path. Fixed it.
 % Feb 24, 2025 (Zoran)
@@ -103,7 +105,11 @@ for cntMeasurementTypes = 1:length(structSetup.allMeasurementTypes)
                                                         structSetup.endYear,structSetup.endMonth,structSetup.endDay);
                         
                 fprintf(fid,'    measurementType      = ''%s''\n',measurementType);
-                fprintf(fid,'    units                = ''''\n');
+                if cntFiles <= length(limitsQAQC) && ~isempty(limitsQAQC(cntFiles).units)
+                    fprintf(fid,'    units                = ''%s''\n',char(limitsQAQC(cntFiles).units));
+                else
+                    fprintf(fid,'    units                = ''''\n');
+                end
                 fprintf(fid,'    instrument           = ''''\n');
                 fprintf(fid,'    instrumentSN         = ''''\n');
                 fprintf(fid,'    instrumentType       = ''''\n');
