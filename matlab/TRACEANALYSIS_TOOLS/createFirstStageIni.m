@@ -42,7 +42,6 @@ function createFirstStageIni(structSetup)
 %   - Bug fix: LoggedCalibrations and CurrentCalibrations did not have span and offset include. ([1 0]).
 %   - Added proper handling of the quality control traces (minMax and dependent fields).
 
-
 if isfield(structSetup,'isTemplate') && ~structSetup.isTemplate
     outputIniFileName = fullfile(biomet_database_default,...
                                 'Calculation_Procedures','TraceAnalysis_ini',...
@@ -59,6 +58,10 @@ if isfield(structSetup,'isTemplate') && ~structSetup.isTemplate
 else
     outputIniFileName = fullfile(structSetup.outputPath, [structSetup.siteID '_FirstStage_Template.ini']);
 end
+
+% Find the location of QAQC limits file
+qaqcFileName = fullfile(biomet_database_default,'Calculation_Procedures','AmeriFlux','QAQC_limits_ranges_info.csv');
+
 fprintf('---------------------------\n');
 fprintf('Creating template file: %s\n',outputIniFileName);
 fid = fopen(outputIniFileName,'w');
@@ -78,6 +81,13 @@ for cntMeasurementTypes = 1:length(structSetup.allMeasurementTypes)
     fprintf(fid,    '%%-----------------------------------------\n\n');
     inputFolder = biomet_path(structSetup.startYear,structSetup.siteID,measurementType);
     allFiles = dir(inputFolder);
+
+    % Extract the Ameriflux QAQC limits and units
+    try
+        limitsQAQC = extract_AF_QAQC_LimitRanges({allFiles(:).name},qaqcFileName);
+    catch
+        limitsQAQC =[];
+    end
     fprintf('Processing %d traces in: %s\n',length(allFiles),inputFolder)
     
     for cntFiles = 1:length(allFiles)
@@ -123,8 +133,12 @@ for cntMeasurementTypes = 1:length(structSetup.allMeasurementTypes)
                         fprintf(fid,'    minMax               = [0,1]\n');
                         fprintf(fid,'    dependent            = ''TAU,rand_err_Tau''\n');
                     otherwise
-                        fprintf(fid,'    minMax               = [-Inf,Inf]\n');
-                        fprintf(fid,'    dependent            = ''''\n');
+                        if cntFiles <= length(limitsQAQC) && ~isempty(limitsQAQC(cntFiles).minMaxBuff)
+                            fprintf(fid,'    minMax               = [%f, %f]\n',limitsQAQC(cntFiles).minMaxBuff);
+                        else
+                            fprintf(fid,'    minMax               = [-Inf,Inf]\n');                            
+                        end
+                        fprintf(fid,'    dependent            = ''''\n');                        
                 end
                 fprintf(fid,'    zeroPt               = -9999\n');   
                 fprintf(fid,'[End]\n\n');

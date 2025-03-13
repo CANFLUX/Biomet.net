@@ -1,24 +1,23 @@
+function result = convertAmeriflux2TAB(allNewSites,dbID,sourcePath,projectPath)
+% Convert Ameriflux BASE+BIF files into TAB database project
+%
+% Example:
+%    allNewSites = {'BR-Npw','CA-BOU'};
+%    dbID = 'AMF';
+%    sourcePath = 'E:\Pipeline_Projects\Ameriflux_raw';
+%    projectPath = 'E:\Pipeline_Projects\Ameriflux_CH4_v2'
+%    result = convertAmeriflux2TAB(allNewSites,dbID,sourcePath,projectPath);
+%
+%
+% Zoran Nesic               File created:           Mar 12, 2025
+%                           Last modification:      Mar 12, 2025
 
-% ==========================================================
-%  Setup parameters
-
-kill
-cd E:\Pipeline_Projects
-% ------------
-% The input parameters
-allNewSites = {'BR-Npw','CA-BOU'};
-dbID = 'AMF';
-sourcePath = 'E:\Pipeline_Projects\Ameriflux_raw';
-projectPath = 'E:\Pipeline_Projects\Ameriflux_CH4_v2';
-%-----------------------------------------------------
-result = convertAmeriflux2TAB(allNewSites,dbID,sourcePath,projectPath);
-
-
-
-return
+% Revisions:
+%
 
 
-%%
+
+result = 1; %#ok<NASGU>
 missingPointValue = NaN;
 timeUnit= '30MIN';
 
@@ -83,7 +82,7 @@ for cntSites = 1:length(allNewSites)
     createSecondStageIni(structSetup)    
 end
 
-
+result = 0;
 
 
 
