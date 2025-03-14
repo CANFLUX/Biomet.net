@@ -6,7 +6,7 @@ kill
 cd E:\Pipeline_Projects
 % ------------
 % The input parameters
-allNewSites = {'BR-Npw','CA-BOU'};
+allNewSites = {'BR-Npw','CA-BOU','BRT-Npw'};
 dbID = 'AMF';
 sourcePath = 'E:\Pipeline_Projects\Ameriflux_raw';
 projectPath = 'E:\Pipeline_Projects\Ameriflux_CH4_v2';
@@ -68,7 +68,11 @@ for cntSites = 1:length(allNewSites)
     structSetup.endYear = 2999;
     structSetup.endMonth = 12;
     structSetup.endDay = 31;
-    structSetup.Site_name = 'Long name here';
+    if isfield(thirdStageIni,'siteName')
+        structSetup.Site_name = thirdStageIni.siteName;
+    else
+        structSetup.Site_name = 'Long name here';
+    end
     structSetup.siteID = siteID;
     structSetup.allMeasurementTypes = {'Flux'};
     structSetup.Difference_GMT_to_local_time = ...

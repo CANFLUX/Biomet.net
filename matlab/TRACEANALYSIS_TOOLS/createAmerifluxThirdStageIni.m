@@ -47,7 +47,13 @@ function thirdStageIni = createAmerifluxThirdStageIni(structProject,dbID,siteID,
 %
 %
 % Zoran Nesic               File created:           Mar  6, 2025
-%                           Last modification:      Mar  6, 2025
+%                           Last modification:      Mar 14, 2025
+
+% Revisions
+%
+% Mar 14, 2025 (Zoran)
+%   
+
 
 pathYmlTemplate = fullfile(structProject.databasePath,'Calculation_Procedures','TraceAnalysis_ini','TMP_config.yml');
 pathSiteIni = fullfile(structProject.databasePath,'Calculation_Procedures','TraceAnalysis_ini',siteID,[ siteID '_config.yml']);
@@ -63,11 +69,35 @@ siteBADM = fullfile(s(1).folder,s(1).name);
 metaData = readtable(siteBADM);
 % Extract info from metaData 
 % Extract startYear
-rowDate = find(strcmpi(metaData.VARIABLE,'location_date_start'));
-startYear = char(table2array(metaData(rowDate,5)));
-thirdStageIni.startYear = str2double(startYear(1:4));
-thirdStageIni.startMonth = str2double(startYear(5:6));
-thirdStageIni.startDay = str2double(startYear(7:8));
+% This information could be in a few different fields. 
+% Try them one at the time.
+rowDate = find(strcmpi(metaData.VARIABLE,'LOCATION_DATE_START'));
+if isempty(rowDate)
+    rowDate = find(strcmpi(metaData.VARIABLE,'FLUX_MEASUREMENTS_DATE_START'));
+end
+if isempty(rowDate)
+    % Couldn't find the date when the measurements started. 
+    % Default to 1900
+    startYear = '19000101';
+end
+try
+    startYear = char(table2array(metaData(rowDate(1),5)));    
+    thirdStageIni.startYear = str2double(startYear(1:4));
+    if length(startYear)>= 8
+        thirdStageIni.startMonth = str2double(startYear(5:6));
+        thirdStageIni.startDay = str2double(startYear(7:8));
+    else
+        fprintf(2,'Month and date of the site start date not found. Using Jan 1.\n');
+        thirdStageIni.startMonth = 1;
+        thirdStageIni.startDay = 1;
+    end
+
+catch
+    fprintf(2,'There was an issue trying to find the site start date. Using 1900-01-01.\n');
+    thirdStageIni.startYear = 1900;
+    thirdStageIni.startMonth = 1;
+    thirdStageIni.startDay = 1;
+end    
 %
 % Extract lat & long
 rowDate = find(strcmpi(metaData.VARIABLE,'LOCATION_LAT'));
@@ -82,6 +112,15 @@ thirdStageIni.long = str2double(locLONG);
 rowDate = find(strcmpi(metaData.VARIABLE,'UTC_OFFSET'));
 UTC_offset = char(table2array(metaData(rowDate,5)));
 thirdStageIni.GMT_offset = str2double(UTC_offset);
+
+% Extract SITE_NAME
+rowDate = find(strcmpi(metaData.VARIABLE,'SITE_NAME'));
+if isempty(rowDate)
+    siteName = [];
+else
+    siteName = char(table2array(metaData(rowDate(1),5)));
+    thirdStageIni.siteName = siteName;
+end
 
 fprintf('---------------------------\n');
 fprintf('Creating template file: %s\n',pathSiteIni);

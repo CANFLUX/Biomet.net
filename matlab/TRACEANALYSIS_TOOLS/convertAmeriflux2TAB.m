@@ -10,12 +10,14 @@ function result = convertAmeriflux2TAB(allNewSites,dbID,sourcePath,projectPath)
 %
 %
 % Zoran Nesic               File created:           Mar 12, 2025
-%                           Last modification:      Mar 13, 2025
+%                           Last modification:      Mar 14, 2025
 
 % Revisions:
 %
 % Mar 14, 2025 (Zoran)
 %  - Function will now not work if the output folder already exists.
+%  - siteName will be used if found in BIF file
+%
 
 
 
@@ -44,6 +46,7 @@ for cntSites = 1:length(allNewSites)
 
     % Create the ThirdStage ini file and extract site info from the BIF file
     thirdStageIni = createAmerifluxThirdStageIni(structProject,dbID,siteID,siteID_origin);
+    disp(thirdStageIni);
     %% ====================================================================================
     %  Convert raw files
     %  ---------------------------------------------------------------------------
@@ -69,7 +72,11 @@ for cntSites = 1:length(allNewSites)
     structSetup.endYear = 2999;
     structSetup.endMonth = 12;
     structSetup.endDay = 31;
-    structSetup.Site_name = 'Long name here';
+    if isfield(thirdStageIni,'siteName')
+        structSetup.Site_name = thirdStageIni.siteName;
+    else
+        structSetup.Site_name = 'Long name here';
+    end
     structSetup.siteID = siteID;
     structSetup.allMeasurementTypes = {'Flux'};
     structSetup.Difference_GMT_to_local_time = ...
