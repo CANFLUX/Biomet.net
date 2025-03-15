@@ -30,19 +30,12 @@ function thirdStageIni = createAmerifluxThirdStageIni(structProject,dbID,siteID,
 %       pathProject = 'E:\Pipeline_Projects\Data44';
 %       dataFileName = 'AMF_BR-Npw_BASE_HH_1-5.csv';
 %
-%   - The create the project folder:
-%       create_TAB_ProjectFolders(pathProject,siteID);
-%   - Copy those two Ameriflux files to this folder 
-%     (the folder was created automatically in the previous step):
-%        'E:\Pipeline_Projects\Data44\Sites\BRNPW\Flux'
-%   - Set TAB project:
-%       structProject=set_TAB_project(pathProject);
-%   - Call this function:
-%       thirdStageIni = createAmerifluxThirdStageIni(structProject,dbID,siteID,siteID_origin);
-%   - The yml file (BRNPW_config.yml) is stored under this folder:
-%       'E:\Pipeline_Projects\Data44\Database\Calculation_Procedures\TraceAnalysis_ini\BRNPW'
+%   Call main function:
+%       result = convertAmeriflux2TAB(allNewSites,dbID,sourcePath,projectPath);
 %
-% The user can then edit the newly created yml file manually, if needed.
+% Notes
+% This function is meant to get the user quickly starte. Some ini and yml files
+% may need manual editing for better tuning.
 %
 %
 %
@@ -52,7 +45,11 @@ function thirdStageIni = createAmerifluxThirdStageIni(structProject,dbID,siteID,
 % Revisions
 %
 % Mar 14, 2025 (Zoran)
-%   
+%   - added better testing for startDate. The function now checks two different
+%     variables: 'LOCATION_DATE_START' and 'FLUX_MEASUREMENTS_DATE_START'
+%     Better handling of missing month and day fields. 
+%     If multiple 'FLUX_MEASUREMENTS_DATE_START' rows are found, use only the first one!
+%     If there are no valid start date fields, use the default 19000101 (Jan 1, 1900)
 
 
 pathYmlTemplate = fullfile(structProject.databasePath,'Calculation_Procedures','TraceAnalysis_ini','TMP_config.yml');
