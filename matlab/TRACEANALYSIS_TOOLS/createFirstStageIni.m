@@ -23,10 +23,16 @@ function createFirstStageIni(structSetup)
 % structSetup.outputPath = []; % keep it in the local directory
 %
 % Zoran Nesic               File created:           Mar 20, 2024
-%                           Last modification:      Mar 12, 2025
+%                           Last modification:      Mar 19, 2025
 
 % Revisions:
 %
+% Mar 19, 2025 (Zoran)
+%   - Proper handling of minMax using Ameriflux defaults.
+%   - Proper setting of dependencies for a few QC Ameriflux files. See below.
+%   - Added an error message when the source database folder does not contain any files
+%     Sometimes this happens if the user hasn't downloaded the site's first year data.
+%     Users should always download all the Ameriflux data for the target site.
 % Mar 12, 2025 (Zoran)
 %   - Added automatic minMax range and units setup using AF QAQC limits file created by Rosie Howard.
 % Feb 25, 2025 (Zoran)
@@ -83,6 +89,12 @@ for cntMeasurementTypes = 1:length(structSetup.allMeasurementTypes)
     fprintf(fid,    '%%-----------------------------------------\n\n');
     inputFolder = biomet_path(structSetup.startYear,structSetup.siteID,measurementType);
     allFiles = dir(inputFolder);
+    if length(allFiles) <1
+        fprintf(2,'There is no raw database files in this folder: %s\n',inputFolder);
+        fprintf(2,'Make sure that the source csv file contains these data.\n')
+        fprintf(2,'This conversion procedure uses the first year of measurements (%d) to collect the trace names.\n',structSetup.startYear);
+        error('Exiting...');
+    end
 
     % Extract the Ameriflux QAQC limits and units
     try
@@ -120,30 +132,27 @@ for cntMeasurementTypes = 1:length(structSetup.allMeasurementTypes)
                                                         structSetup.startYear,structSetup.startMonth,structSetup.startDay,...
                                                         structSetup.endYear,structSetup.endMonth,structSetup.endDay);
                 fprintf(fid,'    comments             = ''''\n');
-                % If this is a standard QC variable, then create known minMax and dependency fields
+
+                % Fill in minMax from limitsQAQC
+                if cntFiles <= length(limitsQAQC) && ~isempty(limitsQAQC(cntFiles).minMaxBuff)
+                    fprintf(fid,'    minMax               = [%f, %f]\n',limitsQAQC(cntFiles).minMaxBuff);
+                else
+                    fprintf(fid,'    minMax               = [-Inf,Inf]\n');                            
+                end                
+                % If this is a standard QC variable, then create dependency fields
                 % Otherwise use defaults
                 switch upper(variableName)
                     case {'FC_SSITC_TEST','QC_CO2_FLUX'}                
-                        fprintf(fid,'    minMax               = [0,1]\n');
                         fprintf(fid,'    dependent            = ''FC,rand_err_co2_flux''\n');
                     case {'FCH4_SSITC_TEST','QC_CH4_FLUX'}
-                        fprintf(fid,'    minMax               = [0,1]\n');
                         fprintf(fid,'    dependent            = ''FCH4,rand_err_co2_flux''\n');
                     case {'H_SSITC_TEST','QC_H'}
-                        fprintf(fid,'    minMax               = [0,1]\n');
                         fprintf(fid,'    dependent            = ''H,rand_err_H''\n');
                     case {'LE_SSITC_TEST','QC_LE'}
-                        fprintf(fid,'    minMax               = [0,1]\n');
                         fprintf(fid,'    dependent            = ''LE,rand_err_LE''\n');
                     case {'TAU_SSITC_TEST','QC_TAU'}
-                        fprintf(fid,'    minMax               = [0,1]\n');
                         fprintf(fid,'    dependent            = ''TAU,rand_err_Tau''\n');
                     otherwise
-                        if cntFiles <= length(limitsQAQC) && ~isempty(limitsQAQC(cntFiles).minMaxBuff)
-                            fprintf(fid,'    minMax               = [%f, %f]\n',limitsQAQC(cntFiles).minMaxBuff);
-                        else
-                            fprintf(fid,'    minMax               = [-Inf,Inf]\n');                            
-                        end
                         fprintf(fid,'    dependent            = ''''\n');                        
                 end
                 fprintf(fid,'    zeroPt               = -9999\n');   

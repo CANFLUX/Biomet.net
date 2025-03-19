@@ -9,7 +9,7 @@ cd E:\Pipeline_Projects
 allNewSites = {'BR-Npw','CA-BOU'};
 dbID = 'AMF';
 sourcePath = 'E:\Pipeline_Projects\Ameriflux_raw';
-projectPath = 'E:\Pipeline_Projects\Ameriflux_CH4_partial';
+projectPath = 'E:\Pipeline_Projects\Ameriflux_CH4_full';
 flagNewSites = false;
 result = convertAmeriflux2TAB(allNewSites,dbID,sourcePath,projectPath,flagNewSites);
 
@@ -19,7 +19,7 @@ return
 allNewSites = {'BRT-Npw'};
 dbID = 'AMF';
 sourcePath = 'E:\Pipeline_Projects\Ameriflux_raw';
-projectPath = 'E:\Pipeline_Projects\Ameriflux_CH4_partial';
+projectPath = 'E:\Pipeline_Projects\Ameriflux_CH4_full';
 flagNewSites = true;
 result = convertAmeriflux2TAB(allNewSites,dbID,sourcePath,projectPath,flagNewSites);
 
@@ -31,7 +31,7 @@ return
 allNewSites = {'CA-Mer'};
 dbID = 'AMF';
 sourcePath = 'E:\Pipeline_Projects\Ameriflux_raw';
-projectPath = 'E:\Pipeline_Projects\Ameriflux_CH4_partial';
+projectPath = 'E:\Pipeline_Projects\Ameriflux_CH4_full';
 flagNewSites = true;
 result = convertAmeriflux2TAB(allNewSites,dbID,sourcePath,projectPath,flagNewSites);
 
