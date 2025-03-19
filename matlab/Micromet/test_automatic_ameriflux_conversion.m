@@ -14,7 +14,7 @@ flagNewSites = false;
 result = convertAmeriflux2TAB(allNewSites,dbID,sourcePath,projectPath,flagNewSites);
 
 return
-%-----------------------------------------
+%% -----------------------------------------
 % Add one more site
 allNewSites = {'BRT-Npw'};
 dbID = 'AMF';
@@ -25,3 +25,16 @@ result = convertAmeriflux2TAB(allNewSites,dbID,sourcePath,projectPath,flagNewSit
 
 
 return
+
+%% -----------------------------------------
+% Add one more site
+allNewSites = {'CA-Mer'};
+dbID = 'AMF';
+sourcePath = 'E:\Pipeline_Projects\Ameriflux_raw';
+projectPath = 'E:\Pipeline_Projects\Ameriflux_CH4_partial';
+flagNewSites = true;
+result = convertAmeriflux2TAB(allNewSites,dbID,sourcePath,projectPath,flagNewSites);
+
+
+return
+

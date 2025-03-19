@@ -36,6 +36,9 @@ function [data,tv, loadError] = read_db(Years,SiteId,pth_subdir,var_name,warn_fl
 
 % Revisions
 % 
+% Mar 18, 2025 (Zoran)
+%   - Added legacySites variable and made sure that special handling of legacy issues 
+%     for Biomet-UBC data for year < 1999 is done only for those sites. All others get override_1999=1.
 % Jul 29, 2024 (P.Moore)
 %   - Added an additional function output (loadError) so that the 
 %       information could be passed to the calling function when the 
@@ -64,6 +67,8 @@ function [data,tv, loadError] = read_db(Years,SiteId,pth_subdir,var_name,warn_fl
 %   -modified to handle tv's of non-standard (hhour) frequency
 
 arg_default('warn_flag',1);
+legacySites = {'BS','PA','JP','CR','UBC_TOTEM'}; % These are sites that are handled differently for yyyy < 1999
+
 
 tv = [datenum(Years(1),1,1,0,30,0):1/48:datenum(Years(end)+1,1,1)]';
 tv = round(tv.*48)./48;
@@ -76,13 +81,14 @@ pth_subdir = setFolderSeparator(pth_subdir);
 % 1. Find year storage mode (override_99 flag)
 % -------------------------------------------------------------------------
 pth_yyyy  = biomet_path('yyyy',SiteId,pth_subdir);
-if Years <= 1999 ...
-        & ((( ~isempty(strfind(lower(pth_yyyy),[filesep 'flux' filesep])) & isempty(strfind(lower(pth_yyyy),['flux' filesep 'clean']))) ...
-        | (~isempty(strfind(lower(pth_yyyy),[filesep 'climate' filesep])) & isempty(strfind(lower(pth_yyyy),['climate' filesep 'clean'])))))...
-        & ~strcmpi(SiteId,'UBC_TOTEM') %#ok<*OR2,*AND2,*STREMP>
-    override_99 = 0;
-else
-    override_99 = 1;
+override_99 = 1;
+if ismember(upper(SiteId),legacySites)
+    if Years <= 1999 ...
+            & ((( ~isempty(strfind(lower(pth_yyyy),[filesep 'flux' filesep])) & isempty(strfind(lower(pth_yyyy),['flux' filesep 'clean']))) ...
+            | (~isempty(strfind(lower(pth_yyyy),[filesep 'climate' filesep])) & isempty(strfind(lower(pth_yyyy),['climate' filesep 'clean'])))))...
+            & ~strcmpi(SiteId,'UBC_TOTEM') %#ok<*OR2,*AND2,*STREMP>
+        override_99 = 0;
+    end
 end
 
 % -------------------------------------------------------------------------

@@ -31,7 +31,7 @@ function thirdStageIni = createAmerifluxThirdStageIni(structProject,dbID,siteID,
 %       dataFileName = 'AMF_BR-Npw_BASE_HH_1-5.csv';
 %
 %   Call main function:
-%       result = convertAmeriflux2TAB(allNewSites,dbID,sourcePath,projectPath);
+%       thirdStageIni = createAmerifluxThirdStageIni(structProject,dbID,siteID,siteID_origin);
 %
 % Notes
 % This function is meant to get the user quickly starte. Some ini and yml files

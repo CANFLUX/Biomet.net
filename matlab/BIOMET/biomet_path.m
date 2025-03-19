@@ -16,11 +16,17 @@ function DBASE_PATH = biomet_path(yearIn,siteID,type_of_measurements)
 % '\\annex001\database'
 %
 % (c) Zoran Nesic               File created:             , 1998
-%                               Last modification:  Aug 26, 2022
+%                               Last modification:  Mar 18, 2025
 %
 
 % Revisions:
 %
+%   Mar 18, 2025 (Zoran)
+%     - Bug fix: for the files that contained data from before 1999 the program 
+%       handled the database structure differently (all data before 1999 was pushed into a 
+%       one folder == 1999). This settings should've applied only for the 
+%       legacy Biomet sites. See the variable "legacySites" below.
+%       That is how it works now. The setting does not apply for any other sites.
 %   Aug 26, 2022 (Zoran)
 %    - fixed both this function and arg_default so they can work together.
 %    - cleaned up syntax
@@ -45,19 +51,23 @@ function DBASE_PATH = biomet_path(yearIn,siteID,type_of_measurements)
 %    type_of_measurements = ''; 
 % end
 arg_default('type_of_measurements','')
+legacySites = {'BS','PA','JP','CR','UBC_TOTEM'}; % These are sites that are handled differently for yyyy < 1999
+
 [yearNow,~,~]=datevec(now);
 arg_default('yearIn',yearNow)
 arg_default('siteID',fr_current_siteID); % if SiteID is missing/empty assume siteID
 
-if ~ischar(yearIn)
-    if yearIn < 1996 & ~strcmpi(siteID,'UBC_TOTEM') %#ok<*AND2>
-        error 'Wrong input: (year<1996)'
-    elseif yearIn <= 1999 & strcmpi(type_of_measurements,'HIGH_LEVEL') == 0 ...
-                       & ~strcmpi(siteID,'UBC_TOTEM')
-        yearIn = 1999;                        % for non high level and years 1997 -> 1999 use year 1999
+if ismember(upper(siteID),legacySites)
+    % if this is one of the legacy sites do the special processing
+    if ~ischar(yearIn)
+        if yearIn < 1996 & ~strcmpi(siteID,'UBC_TOTEM') %#ok<*AND2>
+            error 'Wrong input: (year<1996)'
+        elseif yearIn <= 1999 & strcmpi(type_of_measurements,'HIGH_LEVEL') == 0 ...
+                           & ~strcmpi(siteID,'UBC_TOTEM')
+            yearIn = 1999;                        % for non high level and years 1997 -> 1999 use year 1999
+        end
     end
 end
-
 
 if exist('biomet_database_default','file')
    DBASE_DISK = biomet_database_default;
