@@ -35,6 +35,7 @@ def main(args):
         fluxgapfill.preprocess(sites=args.site, 
             na_values=-9999,
             split_method='random',
+            n_train=config['num_splits'],
             data_dir=str(methane_data_path)
         )
 
@@ -100,7 +101,7 @@ def clean_models_found(db_path, methane_data_path, site, predictors, config) -> 
 def setup_pipeline_directory(db_path, methane_data_path, site, predictors, config) -> None:
     """Creates all necessary files to begin running the ML pipeline"""
 
-    clean_years = find_clean_site_years(site, db_path)
+    clean_years = find_clean_site_years(site, db_path, config)
 
     with open(methane_data_path / site / 'years.txt', 'w') as f:
         f.write(','.join(clean_years))
@@ -118,7 +119,8 @@ def find_clean_site_years(site, db_path, config) -> List:
     required_variable_paths.append(Path(config['methane_trace']))
     for year in sorted(database_years):
         for p in required_variable_paths:
-            if not os.path.exists(db_path / year / site / p):
+            if not os.path.exists(db_path / year / site / 'Clean' / p):
+                print(db_path / year / site / 'Clean' / p)
                 print(f'Cannot find variable {p} in year {year}. Skipping...')
                 break
         else:
