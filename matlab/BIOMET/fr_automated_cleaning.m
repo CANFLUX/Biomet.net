@@ -354,7 +354,7 @@ for cntSites = 1:numOfSites
             stage_str = '9-th';
             disp(['============== ' stage_str ' stage. Running CH4 gapfilling pipeline: ' siteID ' ' yy_str ' ==============']);
             runThirdStageCleaningMethaneGapfillML(yy,siteID);
-            fprintf('============== End of cleaning stage 8 =============\n'); 
+            fprintf('============== End of cleaning stage 9 =============\n'); 
         end
         
         %------------------------------------------------------------------
