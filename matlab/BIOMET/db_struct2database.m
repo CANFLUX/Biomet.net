@@ -43,10 +43,12 @@ function [structIn,dbFileNames, dbFieldNames,errCode] = db_struct2database(struc
 %
 %
 % (c) Zoran Nesic               File created:       Sep 28, 2023
-%                               Last modification:  Feb 13, 2025
+%                               Last modification:  Mar 22, 2025
 
 % Revisions:
 % 
+% Mar 22, 2025 (Zoran)
+%   - Improved try-catch error reporting
 % Feb 13, 2025 (Zoran)
 %   - Bug fix: All contains() tests should be case-insensitive. Add ",'IgnoreCase',true" to all of those.
 %
@@ -502,7 +504,8 @@ function errCode = saveAll(statsNew,fileNamesIn,fieldNamesIn,currentTv,inputTv,m
         end
     catch ME
         disp(ME);
-        error('\n\nUnhandled error in db_struct2database.m\n')
+        disp(ME.stack(1));
+        error('Unhandled error in db_struct2database.m')
     end
       
 

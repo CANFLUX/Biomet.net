@@ -33,13 +33,18 @@ function [numOfFilesProcessed,numOfDataPointsProcessed] = fr_EddyPro_database(wi
 %                                 more info. Default = [];
 %
 % Zoran Nesic                   File Created:      Feb  16, 2024
-%                               Last modification: Jan   4, 2025
+%                               Last modification: Mar  22, 2025
 
 % Created based on fr_SmartFlux_database.m
 
 %
 % Revisions:
 %
+% Mar 22, 2025 (Zoran)
+%   - Now using sort_EdduPro_files instead of simple dir(). This call returnes a list
+%     of files that match the wildCardPath in the ascending order of their time stamps.
+%     See sort_EddyPro_files() for more details.
+%   - renamed a few variables to make code easier to read ("i","j"...)
 % Jan 4, 2025 (Zoran)
 %   - Improvement: the function now checks if the input file is empty (h(i).bytes == 0) before tryint to process it.
 %     In case the file is empty, the program will report that it's skipping it and it will mark it as processed.
@@ -54,13 +59,14 @@ arg_default('timeUnit','30MIN'); %
 arg_default('missingPointValue',0); %   % default missing point code is 0
 arg_default('optionsFileRead',[]);
 
-flagRefreshChan = 0;
+% append filesep on the end of databasePath
+% some legacy programs expect it
+databasePath = fullfile(databasePath,filesep);
 
-h = dir(wildCardPath);
-x = strfind(wildCardPath,filesep);
-y = strfind(wildCardPath,'.*');
+%allFiles = dir(wildCardPath);
+allFiles = sort_EddyPro_files(wildCardPath);
 
-pth = wildCardPath(1:x(end));
+pth = fileparts(wildCardPath); 
 
 if exist(processProgressListPath) %#ok<*EXIST> * do not use 'var' option  here. It does not work correctly
     load(processProgressListPath,'filesProcessProgressList');
@@ -78,29 +84,29 @@ warning_state = warning;
 warning('off') %#ok<*WNOFF>
 hnd_wait = waitbar(0,'Updating database...');
 
-for i=1:length(h)
+for cntFiles=1:length(allFiles)
     try 
-        waitbar(i/length(h),hnd_wait,{sprintf('Processing: %s',h(i).name),sprintf('In folder: %s ',pth)})
+        waitbar(cntFiles/length(allFiles),hnd_wait,{sprintf('Processing: %s',allFiles(cntFiles).name),sprintf('In folder: %s ',pth)})
     catch  %#ok<*CTCH>
-        waitbar(i/length(h),hnd_wait)
+        waitbar(cntFiles/length(allFiles),hnd_wait)
     end
 
     % Find the current file in the fileProcessProgressList
-    j = findFileInProgressList(h(i).name, filesProcessProgressList);
+    indProgressList = findFileInProgressList(allFiles(cntFiles).name, filesProcessProgressList);
     % if it doesn't exist add a new value
-    if j > length(filesProcessProgressList)
-        filesProcessProgressList(j).Name = h(i).name; %#ok<*AGROW>
-        filesProcessProgressList(j).Modified = 0;      % datenum(h(i).date);
+    if indProgressList > length(filesProcessProgressList)
+        filesProcessProgressList(indProgressList).Name = allFiles(cntFiles).name; %#ok<*AGROW>
+        filesProcessProgressList(indProgressList).Modified = 0;      % datenum(h(i).date);
     end
     % if the file modification data change since the last processing then
     % reprocess it
-    if filesProcessProgressList(j).Modified < datenum(h(i).date)
+    if filesProcessProgressList(indProgressList).Modified < datenum(allFiles(cntFiles).date)
         try
             % when a file is found that hasn't been processed try
             % to load it. fr_read_EddyPro_file is able to read
             % full_output, _biomet_ and EP-Summary files
-            fileName = fullfile(pth,h(i).name);
-            if h(i).bytes == 0 
+            fileName = fullfile(pth,allFiles(cntFiles).name);
+            if allFiles(cntFiles).bytes == 0 
                 % If file is of zero-length, skip processing but add it to the progress list
                 tv = [];
                 Stats = [];
@@ -114,21 +120,21 @@ for i=1:length(h)
             % if there is no errors update records
             numOfFilesProcessed = numOfFilesProcessed + 1;
             numOfDataPointsProcessed = numOfDataPointsProcessed + length(tv);
-            filesProcessProgressList(j).Modified = datenum(h(i).date);
+            filesProcessProgressList(indProgressList).Modified = datenum(allFiles(cntFiles).date);
         catch ME
             fprintf(2,'\nError processing file: %s. \n',fileName);
             fprintf(2,'%s\n',ME.message);
             fprintf(2,'Error on line: %d in %s\n\n',ME.stack(1).line,ME.stack(1).file);
         end % of try
 
-    end %  if filesProcessProgressList(j).Modified < datenum(h(i).date)
-end % for i=1:length(h)
+    end %  filesProcessProgressList(indProgressList).Modified < datenum(allFiles(cntFiles).date)
+end % cntFiles=1:length(allFiles)
 % Close progress bar
 close(hnd_wait)
 % Return warning state 
 try  %#ok<TRYNC>
-   for i = 1:length(warning_state)
-      warning(warning_state(i).identifier,warning_state(i).state)
+   for cntState = 1:length(warning_state)
+      warning(warning_state(cntState).identifier,warning_state(cntState).state)
    end
 end
 
@@ -140,12 +146,12 @@ save(processProgressListPath,'filesProcessProgressList')
 function ind = findFileInProgressList(fileName, filesProcessProgressList)
 
     ind = [];
-    for j = 1:length(filesProcessProgressList)
-        if strcmp(fileName,filesProcessProgressList(j).Name)
-            ind = j;
+    for cntList = 1:length(filesProcessProgressList)
+        if strcmp(fileName,filesProcessProgressList(cntList).Name)
+            ind = cntList;
             break
-        end %  if strcmp(fileName,filesProcessProgressList(j).Name)
-    end % for j = 1:length(filesProcessProgressList)
+        end %  strcmp(fileName,filesProcessProgressList(cntList).Name)
+    end % cntList = 1:length(filesProcessProgressList)
     if isempty(ind)
         ind = length(filesProcessProgressList)+1;
     end 
