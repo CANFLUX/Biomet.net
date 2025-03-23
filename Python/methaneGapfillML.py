@@ -11,13 +11,18 @@ os.chdir(os.path.split(__file__)[0])
 CONFIG_PATH = Path('./config_files')
 
 def main(args):
+    # Get config defaults
     with open(CONFIG_PATH / 'config.yml', 'r') as f:
         config = yaml.safe_load(f)
-
     with open(CONFIG_PATH / 'methane_gapfill_ml.yml', 'r') as f:
         config.update(yaml.safe_load(f))
 
     db_path = Path(args.db_path)
+    custom_config_path = db_path / 'Calculation_Procedures' / 'TraceAnalysis_ini' / 'CH4_ML_Gapfilling.yml'
+    if os.path.exists(custom_config_path):
+        with open(custom_config_path, 'r') as f:
+            config.update(yaml.safe_load(f))
+    
     methane_data_path = db_path / 'methane_gapfill_ml'
     models = config['models']
     site = args.site
@@ -35,6 +40,7 @@ def main(args):
         fluxgapfill.preprocess(sites=args.site, 
             na_values=-9999,
             split_method='random',
+            n_train=config['num_splits'],
             data_dir=str(methane_data_path)
         )
 
@@ -77,7 +83,7 @@ def clean_models_found(db_path, methane_data_path, site, predictors, config) -> 
        not os.path.exists(methane_data_path / site / 'predictors.txt'):
         return False
     
-    clean_years = find_clean_site_years(site, db_path)
+    clean_years = find_clean_site_years(site, db_path, config)
     with open(methane_data_path / site / 'years.txt', 'r') as f:
         existing_years = f.read().split(',')
     new_years = [y for y in clean_years if y not in existing_years]
@@ -100,7 +106,7 @@ def clean_models_found(db_path, methane_data_path, site, predictors, config) -> 
 def setup_pipeline_directory(db_path, methane_data_path, site, predictors, config) -> None:
     """Creates all necessary files to begin running the ML pipeline"""
 
-    clean_years = find_clean_site_years(site, db_path)
+    clean_years = find_clean_site_years(site, db_path, config)
 
     with open(methane_data_path / site / 'years.txt', 'w') as f:
         f.write(','.join(clean_years))
@@ -111,11 +117,18 @@ def setup_pipeline_directory(db_path, methane_data_path, site, predictors, confi
     site_df.to_csv(methane_data_path / site / 'raw.csv', index=False)
 
 
-def find_clean_site_years(site, db_path) -> List:
+def find_clean_site_years(site, db_path, config) -> List:
     database_years = [d for d in os.listdir(db_path) if d.isnumeric()]
     clean_site_years = []
+    required_variable_paths = [Path(v) for v in config['predictor_traces']]
+    required_variable_paths.append(Path(config['methane_trace']))
     for year in sorted(database_years):
-        if os.path.exists(db_path / year / site / 'Clean' / 'SecondStage'):
+        for p in required_variable_paths:
+            if not os.path.exists(db_path / year / site / 'Clean' / p):
+                print(db_path / year / site / 'Clean' / p)
+                print(f'Cannot find variable {p} in year {year}. Skipping...')
+                break
+        else:
             clean_site_years.append(year)
     return clean_site_years
 
