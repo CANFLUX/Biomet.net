@@ -26,7 +26,7 @@
 
 # # Giving database as an input
 # args <- c("C:/Database","siteID",startYear,endYear)
-# args <- c("F:/EcoFlux lab/Database","TPAg",2024,2024)
+# args <- c("F:/EcoFlux lab/Database","DSM",2021,2021)
 # source("C:/Biomet.net/R/database_functions/ThirdStage.R")
 
 # # If current directory is the the root of a database
@@ -40,7 +40,7 @@ packages <- c("fs", "yaml", "REddyProc", "rlist", "zoo", "dplyr", "lubridate", "
 # Install packages not yet installed
 installed_packages <- packages %in% rownames(installed.packages())
 if (any(installed_packages == FALSE)) {
-  install.packages(packages[!installed_packages])
+  install.packages(packages[!installed_packages],repos="https://cloud.r-project.org")
 }
 
 # Packages loading
