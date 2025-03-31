@@ -698,11 +698,15 @@ Run_REddyProc <- function() {
   # *** Examine Reco and GPP naming ***
   # Reco_uStar is how REddyProc outputs the nighttime partitioned values as opposed to GPP_uStar_f
   # It's not clear from the documentation why this is the case -- see: sEddyProc_sMRFluxPartition
-  #--> Should the Reco_u## also have _f appended?
   if (sum(colnames(REddyOutput)=="GPP_uStar_f")==1){
     if (sum(colnames(REddyOutput)=="Reco_uStar")==1){
+      ustar_suffixes <-colnames(EProc$sGetUstarScenarios())[-1]
       renamed_cols <- colnames(REddyOutput)
-      renamed_cols[renamed_cols=="Reco_uStar"] <- "Reco_uStar_f"
+      for (i in 1:length(MDS_Ustar)){
+        orig_str <- paste0("Reco_",ustar_suffixes[i])
+        new_str <- paste0("Reco_",ustar_suffixes[i],"_f")
+        renamed_cols[renamed_cols==orig_str] <- new_str
+      }
       colnames(REddyOutput) <- renamed_cols
     }
   }
@@ -920,7 +924,6 @@ if (config$Processing$ThirdStage$RF_GapFilling$Run){
 
 # Calculate uncertainty and annual summaries/statistics if running ThirdStage_Advanced
 if (!config$Processing$ThirdStage$REddyProc$Ustar_filtering$run_defaults){
-  #browser()
   Fluxes <- config$Processing$ThirdStage$Fluxes 
   # Remove final suffix so that uncertainty can calculate different variables
   Fluxes_trimmed <- lapply(Fluxes, function(x) sub("_[^_]+$", "", x))
