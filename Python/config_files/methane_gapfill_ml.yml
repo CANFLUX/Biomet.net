@@ -1,3 +1,15 @@
+dbase_metadata:
+  timestamp: 
+    name: clean_tv
+    dtype: float64
+    precision: 8
+    base: 719529
+    base_unit: D
+    resolution: 30min
+  traces:
+    dtype: float32
+    precision: 4
+
 methane_trace: ThirdStage/FCH4_PI_SC_JSZ_MAD_RP_uStar_orig
 predictor_traces:
   - ThirdStage/H_PI_SC_JSZ_MAD_RP_uStar_f
@@ -8,3 +20,5 @@ models:
   - rf
   - ann
 num_splits: 10
+split_method: artificial # chosen from ['random', 'artificial']
+imputation_method: model # chosen from ['mean', 'model']
