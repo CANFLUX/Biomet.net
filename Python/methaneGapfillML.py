@@ -123,6 +123,7 @@ def get_stages_to_run(db_path, dfs_by_year, config) -> list:
 
 
 def is_train_run_complete(path, model, num_splits) -> bool:
+    '''Checks if a given site has a full set of trained models'''
     for i in range(num_splits):
         if not os.path.exists(path / 'models' / model / f'{model}{i}.pkl'):
             return False
