@@ -10,7 +10,7 @@ import os
 import json
 
 os.chdir(os.path.split(__file__)[0])
-DEFAULT_CONFIG_FILE = Path('./config_files/methane_gapfill_ml.yml')
+DEFAULT_CONFIG_FILE = Path('./config_files/CH4_ML_Gapfill_default.yml')
 
 # Aliases
 PREPROCESS = 1
@@ -23,7 +23,7 @@ def main(args):
         config = yaml.safe_load(f)
     
     db_path = Path(args.db_path)
-    custom_config_path = db_path / 'Calculation_Procedures' / 'TraceAnalysis_ini' / 'CH4_ML_Gapfilling.yml'
+    custom_config_path = db_path / 'Calculation_Procedures' / 'TraceAnalysis_ini' / 'CH4_ML_Gapfill.yml'
     if os.path.exists(custom_config_path):
         with open(custom_config_path, 'r') as custom_ml_comfig_file:
             config.update(yaml.safe_load(custom_ml_comfig_file))
