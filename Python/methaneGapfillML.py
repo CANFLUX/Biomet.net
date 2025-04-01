@@ -3,150 +3,161 @@ import numpy as np
 import argparse
 import fluxgapfill
 from pathlib import Path
-from typing import List
+import shutil
+import hashlib
 import pandas as pd
 import os
+import json
 
 os.chdir(os.path.split(__file__)[0])
-CONFIG_PATH = Path('./config_files')
+DEFAULT_CONFIG_FILE = Path('./config_files/CH4_ML_Gapfill_default.yml')
+
+# Aliases
+PREPROCESS = 1
+TRAIN = 2
+TEST = 3
+GAPFILL = 4
 
 def main(args):
-    # Get config defaults
-    with open(CONFIG_PATH / 'config.yml', 'r') as f:
+    with open(DEFAULT_CONFIG_FILE, 'r') as f:
         config = yaml.safe_load(f)
-    with open(CONFIG_PATH / 'methane_gapfill_ml.yml', 'r') as f:
-        config.update(yaml.safe_load(f))
-
+    
     db_path = Path(args.db_path)
-    custom_config_path = db_path / 'Calculation_Procedures' / 'TraceAnalysis_ini' / 'CH4_ML_Gapfilling.yml'
+    custom_config_path = db_path / 'Calculation_Procedures' / 'TraceAnalysis_ini' / 'CH4_ML_Gapfill.yml'
     if os.path.exists(custom_config_path):
-        with open(custom_config_path, 'r') as f:
-            config.update(yaml.safe_load(f))
-    
-    methane_data_path = db_path / 'methane_gapfill_ml'
-    models = config['models']
-    site = args.site
-    gapfill_year = args.year
-    predictors = [Path(trace).stem for trace in config['predictor_traces']]
-
-
-    os.makedirs(methane_data_path / site, exist_ok=True)
-    
-    if clean_models_found(db_path, methane_data_path, site, predictors, config):
-        print(f'Using existing models for site {site}.')
+        with open(custom_config_path, 'r') as custom_ml_comfig_file:
+            config.update(yaml.safe_load(custom_ml_comfig_file))
     else:
-        print(f'Preprocessing and training new models.')
-        setup_pipeline_directory(db_path, methane_data_path, site, predictors, config)
-        fluxgapfill.preprocess(sites=args.site, 
-            na_values=-9999,
-            split_method='random',
-            n_train=config['num_splits'],
-            data_dir=str(methane_data_path)
-        )
+        print('No custom config found, proceeding with defaults...')
+    config['site'] = args.site
 
-        fluxgapfill.train(
-            sites=args.site,
-            data_dir=str(methane_data_path),
-            models=models,
-            predictors=predictors + ['temporal'],
-            overwrite_existing_models=True
-        )
+    dfs_by_year = read_database_traces(db_path, config)
+    stages_to_run = get_stages_to_run(db_path, dfs_by_year, config)
+    df_all = pd.concat(list(dfs_by_year.values()), axis=0).sort_index()
+    site_path = db_path / 'methane_gapfill_ml' / args.site
 
-        fluxgapfill.test(
-            sites=args.site,
-            data_dir=str(methane_data_path),
-            models=models,
-            predictors=predictors + ['temporal'],
-            split='test',
-            distribution='laplace',
-            overwrite_results=True
-        )
-
-        fluxgapfill.gapfill(
-            sites=args.site,
-            data_dir=str(methane_data_path),
-            models=models,
-            predictors=predictors + ['temporal']
-        )
-
-    write_database_traces(db_path, methane_data_path, site, gapfill_year, models, config)
-
-
-def clean_models_found(db_path, methane_data_path, site, predictors, config) -> bool:
-    """Checks the methane data path to see if there are already trained models for
-    this site, and whether there are any new site-years (in which case it should re-train).
+    if PREPROCESS in stages_to_run:
+        setup_and_preprocess(site_path, dfs_by_year, config)
     
-    Returns False if there is any reason to re-compile the data and retrain.
-    Returns True if the existing models are up-to-date, and we can just reuse the data.
-    """
-    if not os.path.exists(methane_data_path / site / 'years.txt') or \
-       not os.path.exists(methane_data_path / site / 'predictors.txt'):
-        return False
-    
-    clean_years = find_clean_site_years(site, db_path, config)
-    with open(methane_data_path / site / 'years.txt', 'r') as f:
-        existing_years = f.read().split(',')
-    new_years = [y for y in clean_years if y not in existing_years]
-    if len(new_years) > 0:
-        return False
-    
-    with open(methane_data_path / site / 'predictors.txt', 'r') as f:
-        existing_predictors = f.read().split(',')
-    if sorted(predictors) != sorted(existing_predictors):
-        return False
+    if TRAIN in stages_to_run:
+        predictors = [str(Path(p).stem) for p in config['predictor_traces']]
+        fluxgapfill.train(site_path, df_all, config['models'], predictors)
+
+    if TEST in stages_to_run:
+        fluxgapfill.test(site_path, df_all, config['models'])
     
     for model in config['models']:
-        for split in range(1,config['num_splits']+1):
-            if not os.path.exists(methane_data_path / site / 'models' / model / 'predictors' / f'model{split}.pkl'):
-                return False
+        df_gapfilled = fluxgapfill.gapfill(site_path, dfs_by_year[args.year], [model])
+        fch4_f = df_gapfilled['FCH4_F'].values
+        fch4_f_u = df_gapfilled['FCH4_F_UNCERTAINTY'].values
+
+        fch4_f.tofile(db_path / args.year / args.site / 'Clean' / 'ThirdStage' / f'FCH4_F_ML_{model.upper()}')
+        fch4_f_u.tofile(db_path / args.year / args.site / 'Clean' / 'ThirdStage' / f'FCH4_F_ML_{model.upper()}_UNCERTAINTY')
+
+        # Put scatter plots out? Not sure how well this would work, as the will still
+        # be separated by year and model. Maybe do this after the test phase?
+
+
+def setup_and_preprocess(site_path, dfs_by_year, config):
+    '''Creates the run directory and caches the config as JSON, then runs preprocess'''
+    os.makedirs(site_path / 'indices')
+    hash_df = lambda df: hashlib.sha256(df.to_json().encode('utf-8')).hexdigest()
+    hashes = {year: hash_df(df) for year, df in dfs_by_year.items()}
+    with open(site_path / 'run_info.json', 'w') as f:
+        json.dump({ 'config': config, 'hashes': hashes }, f)
+
+    all_df = pd.concat(list(dfs_by_year.values()), axis=0).sort_index()
+    fluxgapfill.preprocess(site_path, all_df, split_method=config['split_method'], n_train=config['num_splits'])
+
+
+def get_stages_to_run(db_path, dfs_by_year, config) -> list:
+    '''Smart procedure for determining how much of the pipeline needs to
+       be rerun for a given site. Returns a list of stages to run
+    '''
+    stages = [PREPROCESS, TRAIN, TEST, GAPFILL]
+    site_path = db_path / 'methane_gapfill_ml' / args.site
+
+    # Preprocess
+    try:
+        with open(site_path / 'run_info.json', 'r') as f:
+            run_info = json.load(f)
+        
+        hash_df = lambda df: hashlib.sha256(df.to_json().encode('utf-8')).hexdigest()
+        hashes = {year: hash_df(df) for year, df in dfs_by_year.items()}
+        assert run_info['config'] == config
+        assert run_info['hashes'] == hashes
+
+        for i in range(config['num_splits']):
+            assert os.path.exists(site_path / 'indices' / f'train{i}.npy')
+            assert os.path.exists(site_path / 'indices' / f'val{i}.npy')
+        assert os.path.exists(site_path / 'indices' / 'test.npy')
+        stages.remove(PREPROCESS)
+    except Exception as e:
+        # Data has changed, or some other fundamental part of the config.
+        # Scrap the entire directory and start over.
+        if os.path.exists(site_path):
+            shutil.rmtree(site_path)
+        print('Running pipeline from preprocess')
+        return stages
+
+    # Train
+    try:
+        for model in config['models']:
+            assert is_train_run_complete(site_path, model, config['num_splits'])
+        stages.remove(TRAIN)
+    except Exception as e:
+        print('Running pipeline from train')
+        return stages
+
+    # Test
+    try:
+        for model in config['models']:
+            assert os.path.exists(site_path / 'models' / model / 'test_metrics.csv')
+            assert os.path.exists(site_path / 'models' / model / 'test_predictions.csv')
+        stages.remove(TEST)
+    except Exception as e:
+        print('Running pipeline from test')
+        return stages
+    
+    return stages
+
+
+def is_train_run_complete(path, model, num_splits) -> bool:
+    '''Checks if a given site has a full set of trained models'''
+    for i in range(num_splits):
+        if not os.path.exists(path / 'models' / model / f'{model}{i}.pkl'):
+            return False
+    if not os.path.exists(path / 'models' / model / 'val_metrics.csv'):
+        return False
     return True
 
 
-
-def setup_pipeline_directory(db_path, methane_data_path, site, predictors, config) -> None:
-    """Creates all necessary files to begin running the ML pipeline"""
-
-    clean_years = find_clean_site_years(site, db_path, config)
-
-    with open(methane_data_path / site / 'years.txt', 'w') as f:
-        f.write(','.join(clean_years))
-    with open(methane_data_path / site / 'predictors.txt', 'w') as f:
-        f.write(','.join(predictors))
-    
-    site_df = read_database_traces(site, clean_years, db_path, config)
-    site_df.to_csv(methane_data_path / site / 'raw.csv', index=False)
-
-
-def find_clean_site_years(site, db_path, config) -> List:
-    database_years = [d for d in os.listdir(db_path) if d.isnumeric()]
-    clean_site_years = []
-    required_variable_paths = [Path(v) for v in config['predictor_traces']]
-    required_variable_paths.append(Path(config['methane_trace']))
-    for year in sorted(database_years):
-        for p in required_variable_paths:
-            if not os.path.exists(db_path / year / site / 'Clean' / p):
-                print(db_path / year / site / 'Clean' / p)
-                print(f'Cannot find variable {p} in year {year}. Skipping...')
-                break
-        else:
-            clean_site_years.append(year)
-    return clean_site_years
-
-
-def read_database_traces(site, years, db_path, config) -> pd.DataFrame:
+def read_database_traces(db_path, config) -> dict:
     """Reads binary data for a given site and returns a pandas DataFrame.
     Args:
-        site (str): The site identifier for which data is being read.
-        years (list of str): List of years to include in the dataset.
         db_path (str): Path to the Database directory
-        config (dict): Configuration dictionary
+        config (dict): Configuration dictionary (contains the site)
     """
-    
+    dfs_by_year = {}
+    database_years = [d for d in os.listdir(db_path) if d.isnumeric()]
+    for year in database_years:
+        try:
+            dfs_by_year[year] = read_database_trace_by_year(db_path, year, config)
+        except FileNotFoundError as _:
+            print(f'Variables not found for year {year}. Skipping...')
+    return dfs_by_year
+
+
+def read_database_trace_by_year(db_path, year, config) -> pd.DataFrame:
+    """Reads binary data for a given site and year, and returns a pandas DataFrame.
+    Args:
+        db_path (str): Path to the Database directory
+        year (int): The year read in the Database
+        config (dict): Configuration dictionary (contains the site)
+    """
     # Timestamps
     ts_cfg = config['dbase_metadata']['timestamp'] # for brevity
-    timestamp_raw = np.concatenate([
-            np.fromfile(db_path / year / site / 'Clean' / 'SecondStage' / ts_cfg['name'], dtype=ts_cfg['dtype'])
-        for year in years ])
+    timestamp_raw = np.fromfile(db_path / year / config['site'] / 'Clean' / 'SecondStage' / ts_cfg['name'], dtype=ts_cfg['dtype'])
     timestamp_end = pd.to_datetime(timestamp_raw - ts_cfg['base'], unit=ts_cfg['base_unit']).round('s')
     timestamp_start = timestamp_end - pd.Timedelta(minutes=30)
     timestamp_end_ameriflux = timestamp_end.strftime('%Y%m%d%H%M')
@@ -158,36 +169,13 @@ def read_database_traces(site, years, db_path, config) -> pd.DataFrame:
     for trace in config['predictor_traces']:
         trace_path = Path(trace)
         trace_name = trace_path.stem
-        trace_values = np.concatenate([
-                np.fromfile(db_path / year / site / 'Clean' / trace_path, dtype=trace_dtype)
-            for year in years ])
+        trace_values = np.fromfile(db_path / year / config['site'] / 'Clean' / trace_path, dtype=trace_dtype)
         df[trace_name] = trace_values
 
     # Methane
-    methane_values = np.concatenate([
-        np.fromfile(db_path / year / site / 'Clean' / Path(config['methane_trace']), dtype=trace_dtype)
-    for year in years ])
+    methane_values = np.fromfile(db_path / year / config['site'] / 'Clean' / Path(config['methane_trace']), dtype=trace_dtype)
     df['FCH4'] = methane_values
-
     return df
-
-
-def write_database_traces(db_path, methane_data_path, site, year, models, config):
-    """Writes the gapfilled FCH4 columns to the database"""
-    output_path = db_path / year / site / 'Clean' / 'ThirdStage'
-    os.makedirs(output_path, exist_ok=True)
-    existing_ml_traces = [f for f in os.listdir(output_path) if 'FCH4_F_ML' in f]
-    for trace in existing_ml_traces:
-        if os.path.exists(output_path / trace):
-            os.remove(output_path / trace)
-    
-    trace_dtype = config['dbase_metadata']['traces']['dtype']
-    for model in models:
-        df = pd.read_csv(methane_data_path / site / 'gapfilled' / f'{model}_predictors_laplace.csv')
-        df = df[df['Year'] == int(year)]
-        trace = df['FCH4_F'].values.squeeze().astype(trace_dtype)
-        trace.tofile(output_path / f'FCH4_F_ML_{model.upper()}')
-    return
 
 
 if __name__ == "__main__":
