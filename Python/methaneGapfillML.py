@@ -89,7 +89,8 @@ def get_stages_to_run(db_path, dfs_by_year, config) -> list:
         assert os.path.exists(site_path / 'indices' / 'test.npy')
         stages.remove(PREPROCESS)
     except Exception as e:
-        shutil.rmtree(site_path)
+        if os.path.exists(site_path):
+            shutil.rmtree(site_path)
         print('Running pipeline from preprocess')
         return stages
 
