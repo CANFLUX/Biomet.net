@@ -59,6 +59,7 @@ def main(args):
 
 
 def setup_and_preprocess(site_path, dfs_by_year, config):
+    '''Creates the run directory and caches the config as JSON, then runs preprocess'''
     os.makedirs(site_path / 'indices')
     hash_df = lambda df: hashlib.sha256(df.to_json().encode('utf-8')).hexdigest()
     hashes = {year: hash_df(df) for year, df in dfs_by_year.items()}
@@ -70,6 +71,9 @@ def setup_and_preprocess(site_path, dfs_by_year, config):
 
 
 def get_stages_to_run(db_path, dfs_by_year, config) -> list:
+    '''Smart procedure for determining how much of the pipeline needs to
+       be rerun for a given site. Returns a list of stages to run
+    '''
     stages = [PREPROCESS, TRAIN, TEST, GAPFILL]
     site_path = db_path / 'methane_gapfill_ml' / args.site
 
@@ -89,6 +93,8 @@ def get_stages_to_run(db_path, dfs_by_year, config) -> list:
         assert os.path.exists(site_path / 'indices' / 'test.npy')
         stages.remove(PREPROCESS)
     except Exception as e:
+        # Data has changed, or some other fundamental part of the config.
+        # Scrap the entire directory and start over.
         if os.path.exists(site_path):
             shutil.rmtree(site_path)
         print('Running pipeline from preprocess')
