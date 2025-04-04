@@ -37,8 +37,8 @@ end
 tempFileName = fullfile(pathToMatlabTemp,'junk9999.csv');  % temp file name
 
 for yearIn = yearRange
-    fprintf('Processing: StationID = %d, Year = %d\n',stationID,yearIn);
-    urlDataSource = sprintf('https://www.ncei.noaa.gov/data/global-hourly/access/%d/%d.csv',...
+    fprintf('Processing: StationID = %s, Year = %d\n',stationID,yearIn);
+    urlDataSource = sprintf('https://www.ncei.noaa.gov/data/global-hourly/access/%d/%s.csv',...
                             yearIn,stationID);
     options = weboptions('Timeout',20);     % set timeout for websave to 20 seconds (default is 5)
     
@@ -50,32 +50,50 @@ for yearIn = yearRange
     delete(tempFileName);
     
     % Adjust time 
+    TimeVector = get_stats_field(Stats,'TimeVector') + UTC2local./24;
+    % Get reporting time interval
+    dt = 1440 .* median(diff(TimeVector),'omitnan');
+    if dt>29 && dt<31
+        interval_round = '30min';
+    elseif dt>59 && dt<61
+        interval_round = 'hour';
+    end
     % Note: The Pullman Moscow station reports at 58 minutes past the hour
     %   so it seems reasonable to just round to the nearest hour. However,
     %   whether this applies to all weather station data needs to be
     %   assessed.
-    TimeVector = get_stats_field(Stats,'TimeVector') + UTC2local./24;
     for cnt = 1:length(TimeVector)
-        Stats(cnt).TimeVector = fr_round_time(TimeVector(cnt),'hour',1);
+        Stats(cnt).TimeVector = fr_round_time(TimeVector(cnt),interval_round,1);
     end
+
+    % Remove creation of duplicates
+    TimeVector = get_stats_field(Stats,'TimeVector');
+    idx = 1440 .* diff([0;TimeVector])>0;
+    Stats = Stats(idx);
 
     datetimeTV = datetime(TimeVector,'convertfrom','datenum');
     years = unique(year(datetimeTV));
     for currentYear = years(1):years(end)
-        % fprintf('Processing: StationID = %d, Year = %d\n',stationID,currentYear);
-        fprintf('Saving 60-min data to %s folder.\n',dbPath);
-
-        db_struct2database(Stats,dbPath,0,[],timeUnit,NaN,0,1);
-        % now interpolate data from 60- to 30- min time periods
-        % and shift it by 30 min forward.
-        % generic TimeVector for GMT time
-        TimeVector30min = fr_round_time(datenum(currentYear,1,1,0,30,0):1/48:datenum(currentYear+1,1,1));
-        Stats30min = interp_Struct(Stats,TimeVector30min);
-        db30minPath = fullfile(dbPath,'30min');
-                    
-        fprintf('Saving 30-min data to %s folder.\n',db30minPath);
-        %db_save_struct(Stats30min,db30minPath,[],[],30,NaN);
-        db_struct2database(Stats30min,db30minPath,0,[],'30MIN',NaN,0,1);
+        if strcmp(interval_round,'hour')
+            % fprintf('Processing: StationID = %d, Year = %d\n',stationID,currentYear);
+            fprintf('Saving 60-min data to %s folder.\n',dbPath);
+    
+            db_struct2database(Stats,dbPath,0,[],timeUnit,NaN,0,1);
+            % now interpolate data from 60- to 30- min time periods
+            % and shift it by 30 min forward.
+            % generic TimeVector for GMT time
+            TimeVector30min = fr_round_time(datenum(currentYear,1,1,0,30,0):1/48:datenum(currentYear+1,1,1));
+            Stats30min = interp_Struct(Stats,TimeVector30min);
+            db30minPath = fullfile(dbPath,'30min');
+                        
+            fprintf('Saving 30-min data to %s folder.\n',db30minPath);
+            %db_save_struct(Stats30min,db30minPath,[],[],30,NaN);
+            db_struct2database(Stats30min,db30minPath,0,[],'30MIN',NaN,0,1);
+        elseif strcmp(interval_round,'30min')
+            db30minPath = fullfile(dbPath,'30min');
+            fprintf('Saving 30-min data to %s folder.\n',db30minPath);
+            db_struct2database(Stats,dbPath,0,[],timeUnit,NaN,0,1);
+        end
     end
 end
 
