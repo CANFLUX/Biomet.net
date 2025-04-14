@@ -48,8 +48,8 @@ def main(args):
     
     for model in config['models']:
         df_gapfilled = fluxgapfill.gapfill(site_path, dfs_by_year[args.year], [model])
-        fch4_f = df_gapfilled['FCH4_F'].values
-        fch4_f_u = df_gapfilled['FCH4_F_UNCERTAINTY'].values
+        fch4_f = df_gapfilled['FCH4_F'].values.astype(config['dbase_metadata']['traces']['dtype'])
+        fch4_f_u = df_gapfilled['FCH4_F_UNCERTAINTY'].values.astype(config['dbase_metadata']['traces']['dtype'])
 
         fch4_f.tofile(db_path / args.year / args.site / 'Clean' / 'ThirdStage' / f'FCH4_F_ML_{model.upper()}')
         fch4_f_u.tofile(db_path / args.year / args.site / 'Clean' / 'ThirdStage' / f'FCH4_F_ML_{model.upper()}_UNCERTAINTY')
