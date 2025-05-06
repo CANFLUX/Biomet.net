@@ -26,13 +26,11 @@
 
 # # Giving database as an input
 # args <- c("C:/Database","siteID",startYear,endYear)
-# args <- c("F:/EcoFlux lab/Database","DSM",2021,2021)
 # source("C:/Biomet.net/R/database_functions/ThirdStage.R")
 
 # # If current directory is the the root of a database
 # setwd(C:/Database)
 # args <- c("siteID",startYear,endYear)
-# source("C:/Biomet.net/R/database_functions/ThirdStage.R")
 
 # Package names
 packages <- c("fs", "yaml", "REddyProc", "rlist", "zoo", "dplyr", "lubridate", "data.table", "reshape2", "stringr", "tidyverse", "slider", "ranger", "caret", "ggplot2","lognorm")
@@ -611,13 +609,14 @@ Run_REddyProc <- function() {
     data_REddyProc[month(data_REddyProc$DateTime)==12 & day(data_REddyProc$DateTime)==1 & data_REddyProc$Hour==0,'SeasonYear'] = data_REddyProc[month(data_REddyProc$DateTime)==12 & day(data_REddyProc$DateTime)==1 & data_REddyProc$Hour==0,'SeasonYear'] - 1
     bySeasonYear <- data_REddyProc %>% group_by(SeasonYear) %>%
       summarise(across(names(REddyConfig$vars_in), ~ sum(!is.na(.)), .names = "countFlag_{col}"))
+    
     # # REddyProc Will Crash if given any season with less than 700 observations
     
-    # if exists, drop countFlag_FCH4 since it's not uncommon for some years not to have any CH4 data (implememted to avoid filtering the full dataset)
+    # if exists, drop countFlag_FCH4 since it's not uncommon for some years not to have any CH4 data (implemented to avoid filtering the full dataset)
     if ("countFlag_FCH4" %in% colnames(bySeasonYear)) {
-      bySeasonYear <- bySeasonYear[, !names(bySeasonYear) %in% "countFlag_FCH4"] 
+      bySeasonYear <- bySeasonYear[, !names(bySeasonYear) %in% "countFlag_FCH4"]
       print("dropped column 'countFlag_FCH4' from bySeasonYear")
-    } 
+    }
     
     seasonFilter <- bySeasonYear %>%  filter(if_any(starts_with("countFlag_"), ~ . < 700))
     date_Drop <- data_REddyProc %>%  filter(SeasonYear %in% seasonFilter$SeasonYear)
@@ -709,7 +708,7 @@ Run_REddyProc <- function() {
     if (sum(colnames(REddyOutput)=="Reco_uStar")==1){
       ustar_suffixes <-colnames(EProc$sGetUstarScenarios())[-1]
       renamed_cols <- colnames(REddyOutput)
-      for (i in 1:length(MDS_Ustar)){
+      for (i in 1:length(ustar_suffixes)){
         orig_str <- paste0("Reco_",ustar_suffixes[i])
         new_str <- paste0("Reco_",ustar_suffixes[i],"_f")
         renamed_cols[renamed_cols==orig_str] <- new_str
@@ -909,9 +908,11 @@ if (config$Processing$ThirdStage$REddyProc$Run){
       input_data <- out$input_data
       config <- out$config
     },error = function(err){
-      cat('\n<P2M>Error!!! REddyProc crashed!</P2M>\n')
       warnings()
-      #print('Error!!! REddyProc crashed!')
+      cat('\n<P2M>Error!!! REddyProc crashed!</P2M>\n')
+      cat('\n<P2M> Search the log file for "abc123". Error that caused crash printed below </P2M>\n')
+      print(err)
+      
       if (config$Processing$ThirdStage$RF_GapFilling$Run){
         config$Processing$ThirdStage$RF_GapFilling$Run <- FALSE
         print('Turning RF_GapFilling off')
