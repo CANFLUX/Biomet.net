@@ -28,12 +28,20 @@ function y = read_bor(fileName,data_type, flagLen,yearIn,indOut,override_1999)
 %
 %   Written by Peter Blanken, July 8, 1995
 %
-%   Last Rev.:   Feb 15, 2024
+%   Last Rev.:   Mar 18, 2025
 %******************************************************************************
 
 %
 % Revisions:
 %
+%   Mar 18, 2025 (Zoran)
+%       - Bug fix: the special case handling of database setup for Biomet-UBC for year < 1999 had been
+%         messing up the databases created for other groups that had data from before 1999.
+%         Added a check if the siteID belongs to one of the legacy Biomet-UBC sites and, if not,
+%         the program would treat every year the same way (override_1999 = 1). 
+%       - replaced the obsolete findstr with strfind.
+%       - replaced datevec(now) with yearIn = year(datetime)
+%       - replaced obsolete setstr() with char()
 %   Feb 15, 2024 (Zoran)
 %       - profiled this function and improved a few bottlenecks.
 %         Mainly added arg_default instead of individual testion
@@ -58,22 +66,37 @@ function y = read_bor(fileName,data_type, flagLen,yearIn,indOut,override_1999)
 %       -   changed type "char" to type "uchar" for data_type(s) 2 and 3
 %
 
+% Make sure that the input fileName has all file separators set correctly (Win: '\', Unix: '/')
+fileName = fullfile(fileName);
+
+% Create site path patterns for legacy sites. It will be used for special handling of years < 1999
+% for the Biomet group's legacy sites (BS, PA, CR, UBC_TOTEM)
+legacySites = {[filesep 'BS' filesep],[filesep 'PA' filesep],...
+               [filesep 'JP' filesep],[filesep 'CR' filesep],...
+               [filesep 'UBC_TOTEM' filesep]}; % These are sites that are handled differently for yyyy < 1999
+
 if ~exist('data_type','var') || isempty(data_type)
     data_type = 1;
 end
-if ~exist('override_1999','var') || isempty(override_1999)
-    override_1999 = 0;
+
+if contains(upper(fileName),legacySites)
+    if ~exist('override_1999','var') || isempty(override_1999)
+        override_1999 = 0;
+    end
+else
+    % if this site is not one of the legacy sites override the special handling of 1999
+    override_1999 = 1;
 end
+
 if ~exist('indOut','var') 
     indOut = [];
 end
 
 if  ~exist('yearIn','var')  || isempty(yearIn)  
-    yearIn = datevec(now);
-    yearIn = yearIn(1);
+    yearIn = year(datetime);
 end
 
-ind=findstr(lower(fileName),'yyyy');
+ind=strfind(lower(fileName),'yyyy');
 if isempty(ind) & length(yearIn) > 1
     error 'Multiple years require a wildcard: yyyy!'
 end
@@ -88,14 +111,14 @@ if any(yearIn>=1996 & yearIn <=1999) && override_1999 == 0
 	% if user has requested years 1996->1999
 	% convert them all to 1999
    ind1 = find(yearIn>=1996 & yearIn <=1999);
-   yearIn(ind1) = 1999;
+   yearIn(ind1) = 1999; %#ok<FNDSB>
    % keep only one of 1999s
    yearIn = unique(yearIn);
 end
 
 y = [];
 for i = 1:length(yearIn)    
-        if ~isempty(ind) & length(ind) == 1            
+        if ~isempty(ind) & isscalar(ind)            
             fileName(ind:ind+3) = num2str(yearIn(i));
         end
         fid = fopen(fileName);
@@ -126,12 +149,12 @@ for i = 1:length(yearIn)
                 if i == 1 
                     fseek(fid,indSkip*10,'bof');
                 end
-                x = setstr( fread(fid,[ 10 Inf ],'char')' );
+                x = char( fread(fid,[ 10 Inf ],'char')' );
             elseif data_type == 5
                 if i == 1 
                     fseek(fid,indSkip*8,'bof');
                 end
-                x = setstr( fread(fid,[ 8 Inf ],'char')' );
+                x = char( fread(fid,[ 8 Inf ],'char')' );
             elseif data_type == 6
                 if i == 1 
                     fseek(fid,indSkip*2,'bof');
@@ -152,7 +175,7 @@ for i = 1:length(yearIn)
             end
             fclose(fid);
         end 
-        y = [y ;x ];
+        y = [y ;x ]; %#ok<AGROW>
 end
 if ~isempty(indOut) 
     y = y(indOut-indOut(1)+1);

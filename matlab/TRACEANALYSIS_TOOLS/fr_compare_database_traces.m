@@ -205,7 +205,7 @@ arg_default('flagIgnore9999',0);
                         % The above will not plot NaNs in x_new. So plot 'x' at 0 for
                         % those
                         x_new_isnan = find(isnan(x_new(indDiff))& ~isnan(x_old(indDiff)));
-                        plot(ah,tv_dt(indDiff(x_new_isnan)),zeros(size(indDiff(x_new_isnan))),'xg','MarkerSize',8,'linewidth',3)
+                        plot(ah,tv_dt(indDiff(x_new_isnan)),zeros(size(indDiff(x_new_isnan))),'x','MarkerSize',9,'linewidth',4,'color','#6B4C9A')                        
                         grid(ah,'on')
                         zoom(ah,'on')
                         title(ah,sprintf('Year: %d       Trace: %s;      # of diff: %d ',...

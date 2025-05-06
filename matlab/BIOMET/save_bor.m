@@ -49,7 +49,7 @@ end
 
 fid = fopen(file_name ,'w');
 if fid == -1 
-    error('*** Error! File: "%s" cannot be opened!\n',fileName);
+    error('*** Error! File: "%s" cannot be opened!\n',file_name);
 else
     if data_type == 1
         f1 = fwrite(fid, data, 'float32');

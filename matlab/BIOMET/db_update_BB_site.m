@@ -100,7 +100,10 @@ for cntYears=1:length(yearIn)
                    fr_site_met_database(fullfile('p:\sites\', siteID,['\MET\BB_MET.' num2str(yearIn(cntYears)) '*']), ...
                                         [],[],[],progressList_30min_Pth,outputPath,2,0,5,[],missingPointValue);
             fprintf('  %s_MET:  Number of files processed = %d, Number of 5-minute periods = %d\n',siteID,numOfFilesProcessed,numOfDataPointsProcessed);
-
+            [numOfFilesProcessed,numOfDataPointsProcessed] = ...
+                   fr_site_met_database(fullfile('p:\sites\', siteID,['\MET\BB_MET.dat']), ...
+                                        [],[],[],progressList_30min_Pth,outputPath,2,0,5,[],missingPointValue);
+            fprintf('  %s_MET:  Number of files processed = %d, Number of 5-minute periods = %d\n',siteID,numOfFilesProcessed,numOfDataPointsProcessed);
             % convert 5-minute files into 30-min files
             BB_5min_2_30min(yearIn(cntYears), siteID);
 
@@ -110,17 +113,28 @@ for cntYears=1:length(yearIn)
                 [],[],[],progressList_30min_Pth,outputPath,2,0,30,[],missingPointValue);
             fprintf('  %s_MET:  Number of files processed = %d, Number of 5-minute periods = %d\n',siteID,numOfFilesProcessed,numOfDataPointsProcessed);
 
+            [numOfFilesProcessed,numOfDataPointsProcessed] = fr_site_met_database(...
+                fullfile('p:\sites\', siteID, 'MET', [siteID '_MET.dat']), ...
+                [],[],[],progressList_30min_Pth,outputPath,2,0,30,[],missingPointValue);
+            fprintf('  %s_MET:  Number of files processed = %d, Number of 5-minute periods = %d\n',siteID,numOfFilesProcessed,numOfDataPointsProcessed);            
+
        elseif strcmp(siteID,'DSM')||strcmp(siteID,'RBM')
             % RAW Table
             [numOfFilesProcessed,numOfDataPointsProcessed] = fr_site_met_database(...
                 fullfile('p:\sites\', siteID,'MET', [siteID '_RAW.' num2str(yearIn(cntYears)) '*']),...
                 [],[],[],progressList_RAW30min_Pth,outputPath,2,0,30,[],missingPointValue);
             fprintf('  %s_RAW:  Number of files processed = %d, Number of 30-minute periods = %d\n',siteID,numOfFilesProcessed,numOfDataPointsProcessed);
+
             % MET Table
             [numOfFilesProcessed,numOfDataPointsProcessed] = fr_site_met_database(...
                     fullfile('p:\sites\',siteID,'MET', [siteID '_MET.' num2str(yearIn(cntYears)) '*']),...
                     [],[],[],progressList_30min_Pth,outputPath,2,0,30,[],missingPointValue);          
             fprintf('  %s_MET:  Number of files processed = %d, Number of 30-minute periods = %d\n',siteID,numOfFilesProcessed,numOfDataPointsProcessed);
+
+            [numOfFilesProcessed,numOfDataPointsProcessed] = fr_site_met_database(...
+                    fullfile('p:\sites\',siteID,'MET', [siteID '_MET.dat']),...
+                    [],[],[],progressList_30min_Pth,outputPath,2,0,30,[],missingPointValue);          
+            fprintf('  %s_MET:  Number of files processed = %d, Number of 30-minute periods = %d\n',siteID,numOfFilesProcessed,numOfDataPointsProcessed);            
         end
 
         %=====================================

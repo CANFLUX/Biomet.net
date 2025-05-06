@@ -1,4 +1,4 @@
-function statusR = runThirdStageCleaningREddyProc(yearIn,siteID,yearsToProcess);
+function statusR = runThirdStageCleaningREddyProc(yearIn,siteID,yearsToProcess)
 % runThirdStageCleaningREddyProc(yearIn,siteID)
 %
 % This function invokes Micromet third-stage cleaning R-script.
@@ -11,10 +11,21 @@ function statusR = runThirdStageCleaningREddyProc(yearIn,siteID,yearsToProcess);
 %                     for gap-filling even when outputing one year only
 %
 % Zoran Nesic               File created:       Oct 25, 2022
-%                           Last modification:  Oct 24, 2024
+%                           Last modification:  Mar 11, 2025
 %
 
 % Revisions
+%
+% Mar 11, 2025 (Zoran)
+%   - Added code that (in theory) should update libraries properly. Currently set to 
+%     run only on a PC. 
+% Feb 24, 2025 (Zoran)
+%   - This function can now find the location of Rscript executable by running 
+%     the function biomet_Rpath_default.m IF it exists. Otherwise it will search
+%     default locations for it.
+%       Example of the function biomet_Rpath_default.m:
+%           function folderSites = biomet_Rpath_default
+%           folderSites = 'C:\Program Files\R\R-4.4.1\bin\Rscript.exe';
 %
 % Jan 06, 2025 (Paul)
 %   - Added call to script to do some error checking on siteID_config.yml
@@ -60,12 +71,28 @@ function statusR = runThirdStageCleaningREddyProc(yearIn,siteID,yearsToProcess);
     end    
     pthLogFile = fullfile(pthIni,'log',[siteID '_ThirdStageCleaning.log']);
     
+    % ---------------------------------------------
+    % If needed, update all libraries using cloud.r-project.org
+    % This section runs on Windows computers only.
+    % Add Unix/macOS version too.
+    % This 
+    if ispc
+        userPath = extractBefore(tempdir,'\Temp\');
+        rVersion_full = extractBefore(extractAfter(pthRbin,'\R-'),'\bin');
+        indDot = strfind(rVersion_full,'.');
+        rVersion = extractBefore(rVersion_full,indDot(end));
+        pthRlib = strrep(fullfile(userPath,'R','win-library',rVersion),filesep,'/');
+        pthUpdateR = fullfile(pthBiometR,"updateBiometNetPackages.R");
+        pthUpdateR =  strrep(pthUpdateR,filesep,'/');
+        cmd_test=sprintf('"%s" --vanilla -e "options(repos = c(CRAN = \\"https://cloud.r-project.org\\")); .libPaths(\\"%s\\"); source(\\"%s\\") " 2>junk.txt 1>&2',pthRbin,pthRlib,pthUpdateR);
+        [statusR,cmdOutput] = system(cmd_test);
+    end
+    %---------------------------------------------
     tic;
     tv_start = now; %#ok<TNOW1>
-    
+
     % Before running ThirdStage.R, check yml file for potential errors
-    kill_3rdstage = basic_error_check_yml_site_config(siteID,yearIn,pthIni,pthBiometR);
-    
+    kill_3rdstage = basic_error_check_yml_site_config(siteID,yearIn,pthIni,pthBiometR);   
     if ~kill_3rdstage
         % Run RScript
         % concatenate the command line argument
@@ -122,40 +149,46 @@ end
 
 function Rpath = findRPath
     if ispc     % for PCs
-        pathMatlab = matlabroot;
-        indY = strfind(upper(pathMatlab),[filesep 'MATLAB']);
-        pathBin = fullfile(pathMatlab(1:indY-1));
-        s = dir(fullfile(pathBin,'R','R-*'));
-        if length(s) < 1
-            error ('Cannot find location of R inside of %s\n',pathBin);
+        if exist("biomet_Rpath_default.m",'file')
+            Rpath = biomet_Rpath_default;
+        else
+            pathMatlab = matlabroot;
+            indY = strfind(upper(pathMatlab),[filesep 'MATLAB']);
+            pathBin = fullfile(pathMatlab(1:indY-1));
+            s = dir(fullfile(pathBin,'R','R-*'));
+            if length(s) < 1
+                error ('Cannot find location of R inside of %s\n',pathBin);
+            end
+            [~,N ]=sort({s(:).name});
+            N = N(end);
+            Rpath = fullfile(s(N).folder,s(N).name,'bin','Rscript.exe');
         end
-        [~,N ]=sort({s(:).name});
-        N = N(end);
-        Rpath = fullfile(s(N).folder,s(N).name,'bin','Rscript.exe');
-    elseif ismac    % for Mac OS
-        % look for location of Rscript executable
-        [status,outpath] = system('which Rscript');    
-        if status   
-            % can't find Rscript, need to modify system path to include 
-            % where Rscript is installed (e.g. '/usr/local/bin/')
-            % this might appear redundant but works with approach to use UNIX
-            % "which" command, and so we don't assume path to Rscript is
-            % same on every Mac
-            Rloc = '/usr/local/bin';    % likely path to Rscript
-            path = getenv('PATH');
-            newpath = [path ':' Rloc];
-            setenv('PATH',newpath);
-            [~,outpath] = system('which R');
-        end   
-        indY = strfind(outpath,[filesep 'R']);
-        pathBin = fullfile(outpath(1:indY-1));
-        Rpath = fullfile(pathBin,'Rscript'); 
-          
-        % check 
-        if ~isfile(Rpath)
-            error ('Cannot find R in %s\n',pathBin);
-        end
-
+    elseif isunix    % for Mac OS or linux
+        if exist("biomet_Rpath_default.m",'file')
+            Rpath = biomet_Rpath_default;
+        else        
+            % look for location of Rscript executable
+            [status,outpath] = system('which Rscript');    
+            if status   
+                % can't find Rscript, need to modify system path to include 
+                % where Rscript is installed (e.g. '/usr/local/bin/')
+                % this might appear redundant but works with approach to use UNIX
+                % "which" command, and so we don't assume path to Rscript is
+                % same on every Mac
+                Rloc = '/usr/local/bin';    % likely path to Rscript
+                path = getenv('PATH');
+                newpath = [path ':' Rloc];
+                setenv('PATH',newpath);
+                [~,outpath] = system('which R');
+            end   
+            indY = strfind(outpath,[filesep 'R']);
+            pathBin = fullfile(outpath(1:indY-1));
+            Rpath = fullfile(pathBin,'Rscript'); 
+            % check 
+            if ~isfile(Rpath)
+                error ('Cannot find R in %s\n',pathBin);
+            end
+        end        
     end
 end
         

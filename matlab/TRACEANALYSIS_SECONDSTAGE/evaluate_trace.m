@@ -1,19 +1,24 @@
-function trace_out = evaluate_trace(trace_in)
+function trace_out = evaluate_trace(trace_in,evalType)
 % evaluate_trace - runs Evaluate statements from 1st and 2nd stage ini files
 %
 %
 %
 % various authors                   File created:      probably 2002
-%                                   Last modification:  Apr 30, 2024
+%                                   Last modification:  Feb  1, 2025
 %
 
 % Revisions:
 %
+% Feb 1, 2025 (Zoran)
+%   - added an option parameter evalType so the same function can be used for 
+%     processing Evaluate and postEvaluate fields. 
+%     Default is 'Evaluate'
 % Apr 30, 2024 (Zoran)
 %   - Added this header
 %   - removed an unused input parameter from the function call (countTraces)
 %   - improved error handling and cleaned up syntax
 
+arg_default('evalType','Evaluate')
 
 %Get all the field names from the ini file
 allFields = fieldnames( trace_in.ini );
@@ -22,7 +27,7 @@ allFields = fieldnames( trace_in.ini );
 for cntFields =1:length(allFields)
     cFieldName = char(allFields(cntFields));
     %Execute only the Evaluate commands
-    if startsWith(cFieldName,'Evaluate','IgnoreCase',true)   %strncmp( char(allFields(cntFields)) , 'Evaluate', 8 )
+    if startsWith(cFieldName,evalType,'IgnoreCase',true)   %strncmp( char(allFields(cntFields)) , 'Evaluate', 8 )
         commandLine = getfield( trace_in.ini, cFieldName);    %get the command line
 
         %Process the command line

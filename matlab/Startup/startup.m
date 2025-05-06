@@ -15,16 +15,16 @@ fPath = fileparts(fPath);
 ind = find(fPath==filesep);
 bnFolder = fPath(1:ind(end)); 
 
-addpath(fullfile(bnFolder,'TraceAnalysis_FCRN_THIRDSTAGE'));
-addpath(fullfile(bnFolder,'TraceAnalysis_Tools'));
-addpath(fullfile(bnFolder,'TraceAnalysis_SecondStage'));
-addpath(fullfile(bnFolder,'TraceAnalysis_FirstStage'));
-addpath(fullfile(bnFolder,'soilchambers')); 
+addpath(fullfile(bnFolder,'TRACEANALYSIS_FCRN_THIRDSTAGE'));
+addpath(fullfile(bnFolder,'TRACEANALYSIS_TOOLS'));
+addpath(fullfile(bnFolder,'TRACEANALYSIS_SECONDSTAGE'));
+addpath(fullfile(bnFolder,'TRACEANALYSIS_FIRSTSTAGE'));
+addpath(fullfile(bnFolder,'SoilChambers')); 
 addpath(fullfile(bnFolder,'BOREAS'));
 addpath(fullfile(bnFolder,'BIOMET'));      
-addpath(fullfile(bnFolder,'new_met'));      
-addpath(fullfile(bnFolder,'met'));    
-addpath(fullfile(bnFolder,'new_eddy')); 
+addpath(fullfile(bnFolder,'NEW_MET'));      
+addpath(fullfile(bnFolder,'MET'));    
+addpath(fullfile(bnFolder,'New_eddy')); 
 addpath(fullfile(bnFolder,'SystemComparison'));         % use this line on the workstations
 addpath(fullfile(bnFolder,'Micromet'));
 

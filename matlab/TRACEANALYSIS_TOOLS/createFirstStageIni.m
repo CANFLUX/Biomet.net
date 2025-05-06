@@ -17,16 +17,30 @@ function createFirstStageIni(structSetup)
 % structSetup.endMonth = 12;
 % structSetup.endDay = 31;
 % structSetup.Site_name = 'Delta Site Marsh';
-% structSetup.SiteID = 'DSM';
+% structSetup.siteID = 'DSM';
 % structSetup.allMeasurementTypes = {'MET','Flux'};
 % structSetup.Difference_GMT_to_local_time = 8;  % local+Difference_GMT_to_local_time -> GMT time
 % structSetup.outputPath = []; % keep it in the local directory
 %
 % Zoran Nesic               File created:           Mar 20, 2024
-%                           Last modification:      Oct 28, 2024
+%                           Last modification:      Mar 19, 2025
 
 % Revisions:
 %
+% Mar 19, 2025 (Zoran)
+%   - Proper handling of minMax using Ameriflux defaults.
+%   - Proper setting of dependencies for a few QC Ameriflux files. See below.
+%   - Added an error message when the source database folder does not contain any files
+%     Sometimes this happens if the user hasn't downloaded the site's first year data.
+%     Users should always download all the Ameriflux data for the target site.
+% Mar 12, 2025 (Zoran)
+%   - Added automatic minMax range and units setup using AF QAQC limits file created by Rosie Howard.
+% Feb 25, 2025 (Zoran)
+%   - had a hard coded "\" in the path. Fixed it.
+% Feb 24, 2025 (Zoran)
+%   - renamed .SiteID to .siteID.
+% Feb 21, 2025 (Zoran)
+%   - Added time-offset info
 % Oct 28, 2024 (Zoran)
 %   - Removed obsolete properties.
 %   - Added instrumentType property
@@ -36,9 +50,26 @@ function createFirstStageIni(structSetup)
 %   - Bug fix: LoggedCalibrations and CurrentCalibrations did not have span and offset include. ([1 0]).
 %   - Added proper handling of the quality control traces (minMax and dependent fields).
 
+if isfield(structSetup,'isTemplate') && ~structSetup.isTemplate
+    outputIniFileName = fullfile(biomet_database_default,...
+                                'Calculation_Procedures','TraceAnalysis_ini',...
+                                structSetup.siteID, ...
+                                [structSetup.siteID '_FirstStage.ini']);
+   if exist(outputIniFileName,'file')
+        ButtonName = questdlg(sprintf('File: %s already exist!',outputIniFileName), ...
+                     'Confirm Overwrite', ...
+                     'Overwrite', 'Cancel',  'Cancel');
+        if strcmpi(ButtonName,'Cancel')
+            error('File already exists. User cancelled the processing.');
+        end
+   end
+else
+    outputIniFileName = fullfile(structSetup.outputPath, [structSetup.siteID '_FirstStage_Template.ini']);
+end
 
+% Find the location of QAQC limits file
+qaqcFileName = fullfile(biomet_database_default,'Calculation_Procedures','AmeriFlux','QAQC_limits_ranges_info.csv');
 
-outputIniFileName = fullfile(structSetup.outputPath, [structSetup.SiteID '_FirstStage_Template.ini']);
 fprintf('---------------------------\n');
 fprintf('Creating template file: %s\n',outputIniFileName);
 fid = fopen(outputIniFileName,'w');
@@ -46,8 +77,9 @@ fid = fopen(outputIniFileName,'w');
 % Header output
 fprintf(fid,'%%\n%% File generated automatically on %s\n%%\n\n',datetime('today'));
 fprintf(fid,'Site_name = ''%s''\n',structSetup.Site_name);
-fprintf(fid,'SiteID = ''%s''\n\n',structSetup.SiteID);
-fprintf(fid,'Difference_GMT_to_local_time = %d   %% hours\n\n',structSetup.Difference_GMT_to_local_time);
+fprintf(fid,'SiteID = ''%s''\n\n',structSetup.siteID);
+fprintf(fid,'Difference_GMT_to_local_time = %d   %% timezone that your site is located in, in hours (GMT - local time), opposite of what you wrote in config.yml\n',structSetup.Difference_GMT_to_local_time);
+fprintf(fid,'Timezone                     = %d   %% timezone that your data is reported in (UTC, standard time, or daylight saving time), in hours\n\n',structSetup.Difference_GMT_to_local_time);
 
 
 for cntMeasurementTypes = 1:length(structSetup.allMeasurementTypes)
@@ -55,8 +87,21 @@ for cntMeasurementTypes = 1:length(structSetup.allMeasurementTypes)
     fprintf(fid,'\n\n%%-----------------------------------------\n');
     fprintf(fid,    '%%    Measurement type: %s\n',measurementType);
     fprintf(fid,    '%%-----------------------------------------\n\n');
-    inputFolder = biomet_path(structSetup.startYear,structSetup.SiteID,measurementType);
+    inputFolder = biomet_path(structSetup.startYear,structSetup.siteID,measurementType);
     allFiles = dir(inputFolder);
+    if length(allFiles) <1
+        fprintf(2,'There is no raw database files in this folder: %s\n',inputFolder);
+        fprintf(2,'Make sure that the source csv file contains these data.\n')
+        fprintf(2,'This conversion procedure uses the first year of measurements (%d) to collect the trace names.\n',structSetup.startYear);
+        error('Exiting...');
+    end
+
+    % Extract the Ameriflux QAQC limits and units
+    try
+        limitsQAQC = extract_AF_QAQC_LimitRanges({allFiles(:).name},qaqcFileName);
+    catch
+        limitsQAQC =[];
+    end
     fprintf('Processing %d traces in: %s\n',length(allFiles),inputFolder)
     
     for cntFiles = 1:length(allFiles)
@@ -72,7 +117,11 @@ for cntMeasurementTypes = 1:length(structSetup.allMeasurementTypes)
                                                         structSetup.endYear,structSetup.endMonth,structSetup.endDay);
                         
                 fprintf(fid,'    measurementType      = ''%s''\n',measurementType);
-                fprintf(fid,'    units                = ''''\n');
+                if cntFiles <= length(limitsQAQC) && ~isempty(limitsQAQC(cntFiles).units)
+                    fprintf(fid,'    units                = ''%s''\n',char(limitsQAQC(cntFiles).units));
+                else
+                    fprintf(fid,'    units                = ''''\n');
+                end
                 fprintf(fid,'    instrument           = ''''\n');
                 fprintf(fid,'    instrumentSN         = ''''\n');
                 fprintf(fid,'    instrumentType       = ''''\n');
@@ -83,27 +132,28 @@ for cntMeasurementTypes = 1:length(structSetup.allMeasurementTypes)
                                                         structSetup.startYear,structSetup.startMonth,structSetup.startDay,...
                                                         structSetup.endYear,structSetup.endMonth,structSetup.endDay);
                 fprintf(fid,'    comments             = ''''\n');
-                % If this is a standard QC variable, then create known minMax and dependency fields
+
+                % Fill in minMax from limitsQAQC
+                if cntFiles <= length(limitsQAQC) && ~isempty(limitsQAQC(cntFiles).minMaxBuff)
+                    fprintf(fid,'    minMax               = [%f, %f]\n',limitsQAQC(cntFiles).minMaxBuff);
+                else
+                    fprintf(fid,'    minMax               = [-Inf,Inf]\n');                            
+                end                
+                % If this is a standard QC variable, then create dependency fields
                 % Otherwise use defaults
                 switch upper(variableName)
                     case {'FC_SSITC_TEST','QC_CO2_FLUX'}                
-                        fprintf(fid,'    minMax               = [0,1]\n');
                         fprintf(fid,'    dependent            = ''FC,rand_err_co2_flux''\n');
                     case {'FCH4_SSITC_TEST','QC_CH4_FLUX'}
-                        fprintf(fid,'    minMax               = [0,1]\n');
                         fprintf(fid,'    dependent            = ''FCH4,rand_err_co2_flux''\n');
                     case {'H_SSITC_TEST','QC_H'}
-                        fprintf(fid,'    minMax               = [0,1]\n');
                         fprintf(fid,'    dependent            = ''H,rand_err_H''\n');
                     case {'LE_SSITC_TEST','QC_LE'}
-                        fprintf(fid,'    minMax               = [0,1]\n');
                         fprintf(fid,'    dependent            = ''LE,rand_err_LE''\n');
                     case {'TAU_SSITC_TEST','QC_TAU'}
-                        fprintf(fid,'    minMax               = [0,1]\n');
                         fprintf(fid,'    dependent            = ''TAU,rand_err_Tau''\n');
                     otherwise
-                        fprintf(fid,'    minMax               = [-Inf,Inf]\n');
-                        fprintf(fid,'    dependent            = ''''\n');
+                        fprintf(fid,'    dependent            = ''''\n');                        
                 end
                 fprintf(fid,'    zeroPt               = -9999\n');   
                 fprintf(fid,'[End]\n\n');

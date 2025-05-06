@@ -43,10 +43,15 @@ function [structIn,dbFileNames, dbFieldNames,errCode] = db_struct2database(struc
 %
 %
 % (c) Zoran Nesic               File created:       Sep 28, 2023
-%                               Last modification:  Jan  2, 2025
+%                               Last modification:  Mar 22, 2025
 
 % Revisions:
 % 
+% Mar 22, 2025 (Zoran)
+%   - Improved try-catch error reporting
+% Feb 13, 2025 (Zoran)
+%   - Bug fix: All contains() tests should be case-insensitive. Add ",'IgnoreCase',true" to all of those.
+%
 % Jan 2, 2025 (Zoran)
 %   - Fixed the bug that caused the program to avoid processing SmartFlux data file that starts
 %     with a midnight point on Jan 1 (YYYY-01-01 00:00). Search below for 20240102 for more info.
@@ -374,7 +379,7 @@ function errCode = saveAll(statsNew,fileNamesIn,fieldNamesIn,currentTv,inputTv,m
                         % chamber needs to be aligned in time with the previous chambers. That means that
                         % the trace has to get the NaN-s for all the samples before its first measurement 
                         % happened.
-                        if contains(fileName,'TimeVector')
+                        if contains(fileName,'TimeVector','IgnoreCase',true)
                             save_bor(fileName,8,newTv);
                         else
                             % this chamber (fileName) was added to the set of measurements
@@ -384,9 +389,9 @@ function errCode = saveAll(statsNew,fileNamesIn,fieldNamesIn,currentTv,inputTv,m
                             if ~isempty(newDataInd)
                                 dataOut(newDataInd) = dataIn;
                             end                    
-                            if contains(fileName,'RecalcTime') ...
-                                      || contains(fileName,'sample_tv')...
-                                      || contains(fileName,'clean_tv')
+                            if contains(fileName,'RecalcTime','IgnoreCase',true) ...
+                                      || contains(fileName,'sample_tv','IgnoreCase',true)...
+                                      || contains(fileName,'clean_tv','IgnoreCase',true)
                                 save_bor(fileName,8,dataOut);
                             else
                                 save_bor(fileName,1,dataOut);
@@ -398,10 +403,10 @@ function errCode = saveAll(statsNew,fileNamesIn,fieldNamesIn,currentTv,inputTv,m
                         % add the new data in
                         % save it back
         
-                        if contains(fileName,'RecalcTime') ...
-                                || contains(fileName,'TimeVector') ...
-                                || contains(fileName,'sample_tv') ...
-                                || contains(fileName,'clean_tv')
+                        if contains(fileName,'RecalcTime','IgnoreCase',true) ...
+                                || contains(fileName,'TimeVector','IgnoreCase',true) ...
+                                || contains(fileName,'sample_tv','IgnoreCase',true) ...
+                                || contains(fileName,'clean_tv','IgnoreCase',true)
                             oldTrace = read_bor(fileName,8);
                         else                    
                             oldTrace = read_bor(fileName);
@@ -415,10 +420,10 @@ function errCode = saveAll(statsNew,fileNamesIn,fieldNamesIn,currentTv,inputTv,m
                             dataOut(newDataInd) = dataIn;
                         end
                         % Save the new combined trace
-                        if contains(fileName,'RecalcTime') ...
-                                || contains(fileName,'TimeVector') ...
-                                || contains(fileName,'sample_tv')...
-                                || contains(fileName,'clean_tv')
+                        if contains(fileName,'RecalcTime','IgnoreCase',true) ...
+                                || contains(fileName,'TimeVector','IgnoreCase',true) ...
+                                || contains(fileName,'sample_tv','IgnoreCase',true)...
+                                || contains(fileName,'clean_tv','IgnoreCase',true)
                             save_bor(fileName,8,dataOut);
                         else
                             save_bor(fileName,1,dataOut);
@@ -452,10 +457,10 @@ function errCode = saveAll(statsNew,fileNamesIn,fieldNamesIn,currentTv,inputTv,m
         for cntAllFiles=1:length(allFiles)
             fileName = fullfile(allFiles(cntAllFiles).folder,allFiles(cntAllFiles).name);
             if ~allFiles(cntAllFiles).isdir ...
-               && ~strcmpi(allFiles(cntAllFiles).name,'TimeVector') ...
+               && ~contains(allFiles(cntAllFiles).name,'TimeVector','IgnoreCase',true) ...
                && ~contains(allFiles(cntAllFiles).name,'.mat','IgnoreCase',true) ...
-               && ~contains(allFiles(cntAllFiles).name,'.DS_Store') ...
-               && ~contains(allFiles(cntAllFiles).name,'clean_tv')
+               && ~contains(allFiles(cntAllFiles).name,'.DS_Store','IgnoreCase',true) ...
+               && ~contains(allFiles(cntAllFiles).name,'clean_tv','IgnoreCase',true)
                 
                 foundFile = false;                      % Default: the file does not exist in fileNamesIn  
                 % search for fileName in fileNamesIn
@@ -472,10 +477,10 @@ function errCode = saveAll(statsNew,fileNamesIn,fieldNamesIn,currentTv,inputTv,m
                     % if the fileName wasn't found in fileNamesIn
                     % it needs to be updated by adding missingPointValue to it.
                     % Start by loading the file up                  
-                    if contains(fileName,'RecalcTime') ...
-                            || contains(fileName,'TimeVector') ...
-                            || contains(fileName,'sample_tv') ...
-                            || contains(fileName,'clean_tv')
+                    if contains(fileName,'RecalcTime','IgnoreCase',true) ...
+                            || contains(fileName,'TimeVector','IgnoreCase',true) ...
+                            || contains(fileName,'sample_tv','IgnoreCase',true) ...
+                            || contains(fileName,'clean_tv','IgnoreCase',true)
                         oldTrace = read_bor(fileName,8);
                     else
                         oldTrace = read_bor(fileName);
@@ -486,10 +491,10 @@ function errCode = saveAll(statsNew,fileNamesIn,fieldNamesIn,currentTv,inputTv,m
                         dataOut(oldDataInd) = oldTrace;
                     end
                     % Save the new combined trace
-                    if contains(fileName,'RecalcTime') ...
-                            || contains(fileName,'TimeVector') ...
-                            || contains(fileName,'sample_tv') ...
-                            || contains(fileName,'clean_tv')
+                    if contains(fileName,'RecalcTime','IgnoreCase',true) ...
+                            || contains(fileName,'TimeVector','IgnoreCase',true) ...
+                            || contains(fileName,'sample_tv','IgnoreCase',true) ...
+                            || contains(fileName,'clean_tv','IgnoreCase',true)
                         save_bor(fileName,8,dataOut);
                     else
                         save_bor(fileName,1,dataOut);
@@ -499,7 +504,8 @@ function errCode = saveAll(statsNew,fileNamesIn,fieldNamesIn,currentTv,inputTv,m
         end
     catch ME
         disp(ME);
-        error('\n\nUnhandled error in db_struct2database.m\n')
+        disp(ME.stack(1));
+        error('Unhandled error in db_struct2database.m')
     end
       
 
