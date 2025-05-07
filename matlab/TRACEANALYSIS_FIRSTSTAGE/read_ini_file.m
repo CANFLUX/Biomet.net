@@ -34,6 +34,10 @@ function trace_str_out = read_ini_file(fid,yearIn,fromRootIniFile)
 
 % Revisions
 %
+% May 7, 2025 (Zoran)
+%   - Bug fix: program was using a wrong way of confirming if the inputFileName_dates
+%              belong in the current year. Fixed it by creating variable "tvYear" 
+%              and using "if any(...)" (see below)
 % Feb  3, 2025 (Zoran)
 %   - Enforced the rule that the duplicate traces will not be allowed
 %   - Added the Overwrite property for sorting out what to do with the duplicates.
@@ -669,8 +673,9 @@ end
 % in this Year are left in trace_str_out. (added Feb 11, 2023, Zoran)
 
 cntGoodTrace = 0;
-strYearDate = datenum(yearIn,1,1,0,30,0);
+strYearDate = datenum(yearIn,1,1,0,30,0); %#ok<*DATNM>
 endYearDate = datenum(yearIn+1,1,1,0,0,0);
+tvYear = fr_round_time(strYearDate:1/48:endYearDate); % contains all 30-min points in the current year
 for cntTrace = 1:length(trace_str)
     % logic test. True if inputFileName_dates field doesn't exists or it's empty.
     bool_no_inputFileName_dates = (~isfield(trace_str(cntTrace).ini,'inputFileName_dates') ...
@@ -688,11 +693,10 @@ for cntTrace = 1:length(trace_str)
         datesMatrix = trace_str(cntTrace).ini.inputFileName_dates;
 
         for cntRows = 1:size(datesMatrix,1)
-            % if start of the year belongs to a period in
-            % inputFileName_dates or the end of the year does then keep the
-            % trace
-            if   (datesMatrix(cntRows,1) < strYearDate && strYearDate < datesMatrix(cntRows,2)) ...
-                    || (datesMatrix(cntRows,1) < endYearDate && endYearDate < datesMatrix(cntRows,2))
+            % if any of the data points beween one of input_FileName_dates pairs
+            % belong to the current year then keep the trace
+            if   any(tvYear > trace_in.ini.inputFileName_dates(cntRows,1) & ...
+                tvYear <= trace_in.ini.inputFileName_dates(cntRows,2)) 
                 bool_validTrace = 1;
                 break
             end
