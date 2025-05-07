@@ -2,6 +2,9 @@ function [Corrected_WTD] = BB_WTD_Corrections(SiteID,db_year,well_number,inspect
 
     % Written by June Skeeter
     % Get WT data from derived variables or run correction if they don't exist
+    % Edited by Rosie Howard (29 April 2025)
+    % Fixed bug by adding condition to exit for years prior to 2016 (for BB) where WTD
+    % and PH data does not exist
 
     current_year = year(datetime);
 
@@ -18,15 +21,23 @@ function [Corrected_WTD] = BB_WTD_Corrections(SiteID,db_year,well_number,inspect
     PH_man = [];
     PH_name = strcat('Pipe_Height_',num2str(well_number),'_1_1');
 
-    % Default is 2015 for now
+    % Default is 2016 for now
     if strcmp(SiteID,'BB')
-        start_year = 2015;
+        start_year = 2016;
     else
-        start_year = 2020;
+        start_year = 2023;
     end
     % Read all data available
     for i=start_year:current_year
         [a,clean_tv] = read_db(i,SiteID,'Met/Clean',WTH_name);
+        % data only begins for WTD and PH in 2016 for BB, and in 2020 for BB2, exit function with NaNs for earlier years
+        if strcmp(SiteID,'BB') & db_year < 2016
+            Corrected_WTD = NaN(1,length(clean_tv));
+            return
+        elseif strcmp(SiteID,'BB2') & db_year < 2023
+            Corrected_WTD = NaN(1,length(clean_tv));
+            return
+        end
         if i == db_year
             db_year_clean_tv = clean_tv;
         end
