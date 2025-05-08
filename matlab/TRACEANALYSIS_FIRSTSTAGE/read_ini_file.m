@@ -695,8 +695,8 @@ for cntTrace = 1:length(trace_str)
         for cntRows = 1:size(datesMatrix,1)
             % if any of the data points beween one of input_FileName_dates pairs
             % belong to the current year then keep the trace
-            if   any(tvYear > trace_in.ini.inputFileName_dates(cntRows,1) & ...
-                tvYear <= trace_in.ini.inputFileName_dates(cntRows,2)) 
+            if   any(tvYear > trace_str(cntTrace).ini.inputFileName_dates(cntRows,1) & ...
+                tvYear <= trace_str(cntTrace).ini.inputFileName_dates(cntRows,2)) 
                 bool_validTrace = 1;
                 break
             end
