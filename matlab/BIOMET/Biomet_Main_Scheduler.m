@@ -9,10 +9,12 @@ function Biomet_Main_Scheduler
 %
 %
 % Zoran Nesic           File created:       Feb 12, 2024
-%                       Last modification:  Jan 15, 2025
+%                       Last modification:  May  9, 2025
 
 % Revisions:
 %
+% May 9, 2025 (Zoran)
+%   - Added processing of AB1 site
 % Jan 15, 2025 (Zoran)
 %   - Commented out YF data processing. Site has been shut down Jan 11,
 %     2025.
@@ -154,7 +156,17 @@ cd('d:\')
         fprintf(fid,'%s\n',datetime);
         fprintf(fid,'======= End of MPB1 data processing (%s)    ========\n',datetime);
     end
-    
+
+    %------------------------
+    %  AB1 site: data processing
+    if ismember(minuteX,[4 34])
+        fprintf(fid,'======= AB1 data processing (%s) ========\n',datetime);
+        fprintf(fid,'%s\n',datetime);
+        run_AB1_db_update;
+        fprintf(fid,'%s\n',datetime);
+        fprintf(fid,'======= End of AB1 data processing (%s)    ========\n',datetime);
+    end
+
     %--------------------------
     % Picarro data processing
     % 
