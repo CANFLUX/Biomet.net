@@ -159,10 +159,10 @@ cd('d:\')
 
     %------------------------
     %  AB1 site: data processing
-    if ismember(minuteX,[4 34])
+    if ismember(minuteX,[12 52])
         fprintf(fid,'======= AB1 data processing (%s) ========\n',datetime);
         fprintf(fid,'%s\n',datetime);
-        run_AB1_db_update;
+        system('d:\Scripts\AB1_AutomaticProcessing.bat');
         fprintf(fid,'%s\n',datetime);
         fprintf(fid,'======= End of AB1 data processing (%s)    ========\n',datetime);
     end

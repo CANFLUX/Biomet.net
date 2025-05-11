@@ -27,10 +27,13 @@ function structProject = set_TAB_project(projectPath,flagSetUserData,localPath)
 %       we finalize the format of structProject.
 %
 % Zoran Nesic           File created:       May 15, 2024
-%                       Last modification:  Aug 22, 2024
+%                       Last modification:  May  9, 2025
 
 % Revisions
 %
+% May 9, 2025 (Zoran)
+%   - made setting up the default paths for Sites and Database folder
+%     completely controllable by get_TAB_project_configuration()
 % Aug 22, 2024 (Zoran)
 %   - changed the name of the function that loads yaml file to get_TAB_project_configuration.
 % Aug 20, 2024 (Zoran)
@@ -91,7 +94,7 @@ fid = fopen('biomet_database_default.m','w');
 if fid > 0
     fprintf(fid,'%s\n','function folderDatabase = biomet_database_default');
     fprintf(fid,'%s(''%s'')\n','% This file is generated automatically by set_TAB_project.m',projectPath);
-    dbPth = fullfile(projectPath,'Database');
+    dbPth = structProject.databasePath;
     fprintf(fid,'%s\n',['folderDatabase = '''  dbPth ''';']);
     fclose(fid);
 end
@@ -100,7 +103,7 @@ fid = fopen('biomet_sites_default.m','w');
 if fid > 0
     fprintf(fid,'%s\n','function folderSites = biomet_sites_default');
     fprintf(fid,'%s(''%s'')\n','% This file is generated automatically by set_TAB_project',projectPath);
-    sitesPth = fullfile(projectPath,'Sites');
+    sitesPth = structProject.sitesPath;
     fprintf(fid,'%s\n',['folderSites = '''  sitesPth ''';']);
     fclose(fid);
 end
