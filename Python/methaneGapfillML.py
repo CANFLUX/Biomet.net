@@ -46,13 +46,15 @@ def main(args):
     if TEST in stages_to_run:
         fluxgapfill.test(site_path, df_all, config['models'])
     
+    ml_dir = db_path / args.year / args.site / 'Clean' / 'ThirdStage_ML'
+    os.makedirs(ml_dir, exist_ok=True)
     for model in config['models']:
         df_gapfilled = fluxgapfill.gapfill(site_path, dfs_by_year[args.year], [model])
         fch4_f = df_gapfilled['FCH4_F'].values.astype(config['dbase_metadata']['traces']['dtype'])
         fch4_f_u = df_gapfilled['FCH4_F_UNCERTAINTY'].values.astype(config['dbase_metadata']['traces']['dtype'])
 
-        fch4_f.tofile(db_path / args.year / args.site / 'Clean' / 'ThirdStage' / f'FCH4_F_ML_{model.upper()}')
-        fch4_f_u.tofile(db_path / args.year / args.site / 'Clean' / 'ThirdStage' / f'FCH4_F_ML_{model.upper()}_UNCERTAINTY')
+        fch4_f.tofile(ml_dir / f'FCH4_F_ML_{model.upper()}')
+        fch4_f_u.tofile(ml_dir / f'FCH4_F_ML_{model.upper()}_UNCERTAINTY')
 
         # Put scatter plots out? Not sure how well this would work, as the will still
         # be separated by year and model. Maybe do this after the test phase?
