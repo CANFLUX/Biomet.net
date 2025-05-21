@@ -169,7 +169,7 @@ end
 
 arg_default('stages',[1 2 3]);
 % When FCRN export is requested make sure all cleaning is done
-if ~isempty(find(stages == 4)) 
+if ~isempty(find(stages == 4))
     stages = [1 2 3 4];
 end
 
