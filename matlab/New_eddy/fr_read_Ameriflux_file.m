@@ -15,24 +15,41 @@ function [EngUnits, Header,tv,outStruct] = fr_read_Ameriflux_file(fileName,assig
 %
 %
 % (c) Zoran Nesic                   File created:       Mar  6, 2025
-%                                   Last modification:  Mar  6, 2025
+%                                   Last modification:  May 21, 2025
 %
 
 % Revisions (last one first):
 %
-% 
+% May 21, 2025 (Zoran)
+%   - Added a check to differentiate between the two different Ameriflux file 
+%     formats: with a header (downloaded files)
+%     or without a header (files formatted for uploads)
+%
 
     arg_default('assign_in',[]);
     arg_default('varName','outStruct');
     
     try
+        % Test if the given fileName is an AmeriFlux downloaded file (it has a header 
+        % starting with "#Site") or it's an upload version (no header)
+        fid = fopen(fileName);
+        if fid >2
+            oneLine = fgetl(fid);
+            fclose(fid);           
+            if strfind(oneLine,"Site:")             
+                VariableNamesLine = 3;
+            else
+                VariableNamesLine = 1;
+            end
+        else
+            error('Cannot open file %s\n',fileName);
+        end
         dateColumnNum = [2];
         timeInputFormat = {'uuuuMMddHHmm'};
-        colToKeep = [3 Inf];
         structType = 1;
         inputFileType = 'delimitedtext';
         modifyVarNames = 0;
-        VariableNamesLine = 3;
+        colToKeep = [3 Inf];
         rowsToRead = [];
         isTimeDuration =[];
         [EngUnits,Header,tv,outStruct] = fr_read_generic_data_file(fileName,assign_in,...
