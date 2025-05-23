@@ -13,6 +13,10 @@ function db_NCEI_climate_station(yearRange,UTC2local,stationID,dbPath,timeUnit)
 %                           Last modification:  Jan 15, 2025
 
 % Revisions:
+% May 22, 2025 (Paul)
+%   - Reporting time and intervals are not necessarily hourly or consistent
+%       so adopted an approach where data is interpolated to hourly for
+%       periods which don't have multi-hour gaps.
 % Jan 15, 2025 (Paul)
 %   - Fixed time offset (supposed to be hours, not days)
 %   - Station list can be found at: https://www.ncei.noaa.gov/pub/data/noaa/isd-history.txt
@@ -46,27 +50,51 @@ for yearIn = yearRange
     websave(tempFileName,urlDataSource,options);
     
     % Extract data from temporary file
-    [Stats,~,~] = fr_read_NCEI_file(tempFileName,[],[],1);
+    [Stats0,~,~] = fr_read_NCEI_file(tempFileName,[],[],1);
     delete(tempFileName);
     
     % Adjust time 
-    TimeVector = get_stats_field(Stats,'TimeVector') + UTC2local./24;
-    % Get reporting time interval
-    dt = 1440 .* median(diff(TimeVector),'omitnan');
-    if dt>29 && dt<31
-        interval_round = '30min';
-    elseif dt>59 && dt<61
-        interval_round = 'hour';
+    TimeVector = get_stats_field(Stats0,'TimeVector') + UTC2local./24;
+    
+    % Extract hourly data adjusted for UTC offset
+    tv_hr = (datenum(yearIn,1,1,0,0,0):1/24:datenum(yearIn,12,31,23,0,0))' + UTC2local./24;
+
+    for cnt=1:length(tv_hr)
+        Stats(cnt).TimeVector = tv_hr(cnt);
     end
-    % Note: The Pullman Moscow station reports at 58 minutes past the hour
-    %   so it seems reasonable to just round to the nearest hour. However,
-    %   whether this applies to all weather station data needs to be
-    %   assessed.
+
+    % Get time interval between reported values
+    dt = [0; diff(TimeVector)];
+    dt_hr = 1440 .* interp1(TimeVector,dt,tv_hr,'linear','extrap');
+    idx = dt_hr>65; % Multi-hour gaps not suitable for interpolation
+
+    fn = fieldnames(Stats0);
+    for i=1:length(fn)
+        if ~strcmpi(fn{i},'TimeVector')
+            y_orig = get_stats_field(Stats0,fn{i});
+            
+            % Interpolate data onto an hour interval
+            y_hr = interp1(TimeVector,y_orig,tv_hr,'linear','extrap');
+
+            % Replace multi-hour gaps in original data with NaN
+            y_hr(idx) = NaN;
+    
+            for cnt=1:length(tv_hr)
+                Stats(cnt).(fn{i}) = y_hr(cnt);
+            end
+        end
+    end
+
+    % Set reporting time interval
+    interval_round = 'hour';
+    TimeVector = get_stats_field(Stats,'TimeVector');
+
     for cnt = 1:length(TimeVector)
         Stats(cnt).TimeVector = fr_round_time(TimeVector(cnt),interval_round,1);
     end
 
     % Remove creation of duplicates
+    % --> This shouldn't be an issue with the new approach (Paul-2025-05-22)
     TimeVector = get_stats_field(Stats,'TimeVector');
     idx = 1440 .* diff([0;TimeVector])>0;
     Stats = Stats(idx);
@@ -82,7 +110,7 @@ for yearIn = yearRange
             % now interpolate data from 60- to 30- min time periods
             % and shift it by 30 min forward.
             % generic TimeVector for GMT time
-            TimeVector30min = fr_round_time(datenum(currentYear,1,1,0,30,0):1/48:datenum(currentYear+1,1,1));
+            TimeVector30min = fr_round_time(datenum(currentYear,1,1,0,0,0):1/48:datenum(currentYear,12,31,23,30,0));
             Stats30min = interp_Struct(Stats,TimeVector30min);
             db30minPath = fullfile(dbPath,'30min');
                         
