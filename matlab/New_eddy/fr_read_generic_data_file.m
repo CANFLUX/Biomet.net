@@ -20,8 +20,8 @@ function [EngUnits,Header,tv,outStruct] = fr_read_generic_data_file(fileName,ass
 %                         either in callers space or in the base space.
 %   varName             - Used with 'caller'. Sets the name of the structure
 %                         for the output variables. If
-%                         empty the default name will be 'LGR' (LGR.tv,
-%                         LGR.CH4_ppm...)
+%                         empty the default name will be 'Stats' (Stats.tv,
+%                         Stats.CH4_ppm...)
 %   dateColumnNum       - The column number of the column containing date [time]. There has to be one. Default 1.
 %   timeInputFormat     - If the date[time] column is not in the datetime format, use this format. Default 'uuuuMMddHHmm'
 %   colToKeep           - default [1 Inf] meaning export all columns from 1:end.
@@ -45,11 +45,23 @@ function [EngUnits,Header,tv,outStruct] = fr_read_generic_data_file(fileName,ass
 %                          
 %
 % (c) Zoran Nesic                   File created:       Dec 20, 2023
-%                                   Last modification:  Feb 18, 2025
+%                                   Last modification:  May 22, 2025
 %
 
 % Revisions (last one first):
 %
+% May 22, 2025 (Zoran)
+%   - Bug fix: changed: 
+%       for cntVars = 1:length(goodNames)
+%     to
+%       for cntVars = colToKeepAll
+%     This way one can ignore the columns that sometimes have irelevant comments and keep only
+%     a subset of data columns.
+%  - Bug fix:
+%       changed:
+%           f1 = f_tmp(:,colToKeep);
+%       to
+%           1 = f_tmp(:,colToKeepAll);
 % Feb 18, 2024 (Zoran)
 %   - Bug fix: function would fail if one of the column/variable names started with an "_".
 % Oct 24, 2024 (Zoran)
@@ -204,7 +216,7 @@ function [EngUnits,Header,tv,outStruct] = fr_read_generic_data_file(fileName,ass
             variableNames = f_tmp.Properties.VariableNames;
             % but use the proper names for Units!
             goodNames = renameFields(variableNames);
-            for cntVars = 1:length(goodNames)
+            for cntVars = colToKeepAll
                 Header.Units.(char(goodNames{cntVars})) = '';
             end
         end
@@ -239,7 +251,7 @@ function [EngUnits,Header,tv,outStruct] = fr_read_generic_data_file(fileName,ass
         if isinf(colToKeep(2))
             f1 = f_tmp(:,colToKeep(1):end);
         else
-            f1 = f_tmp(:,colToKeep);
+            f1 = f_tmp(:,colToKeepAll);
         end
         % At this point some of the columns could contain strings or cells
         % Set all of those to NaNs
