@@ -22,12 +22,14 @@ function tableOut = saveDatabaseToAmeriFluxCSV(siteID,yearIn,outputPath)
 %
 %
 % Zoran Nesic               File created:       Oct 20, 2022
-%                           Last modification:  Feb 12, 2023
+%                           Last modification:  Jun  3, 2025
 %
 
 %
 % Revisions:
 %
+% Jun 3, 2025 (Zoran)
+%   - Added an option for getting the AmerifluxID from a site-specific yml file.
 % Feb 23, 2023 (Zoran)
 %   - function will create outputPath if it doesn't exist.
 % Nov 25, 2022 (Zoran)
@@ -96,6 +98,18 @@ tableOut = struct2table(structOut);
 indThisYear = find(tv < datetime('today'));
 tableOut = tableOut(indThisYear,:); %#ok<FNDSB>
 
+% See if the there is a siteID-specific yml file with AmerifluxID in it
+fn = fullfile(db_pth_root,'Calculation_Procedures','TraceAnalysis_ini',siteID,[siteID '_config.yml']);
+if isfile(fn)
+    configYAML = yaml.loadFile(fn);
+else
+    configYAML.Metadata = NaN;
+end
+if isfield(configYAML.Metadata,'AmerifluxID')
+    siteNameAF = configYAML.Metadata.AmerifluxID;
+else
+    siteNameAF = ['CA-' upper(siteID)];
+end
 % export only data that older from today
 
 % if outputPath is given then save the table
@@ -104,16 +118,6 @@ if ~isempty(outputPath)
     % outputPath does not exist, create it
     if ~exist(outputPath,'dir')
         mkdir(outputPath)
-    end
-    % load the AF site names from a file.
-    % ** this is just for testing***
-    switch siteID
-        case {'BB','BB1'}
-            siteNameAF = 'CA-DBB';
-        case {'BB2'}
-            siteNameAF = 'CA-DB2';
-        otherwise
-            siteNameAF = ['CA-' upper(siteID)];
     end
     fileName = sprintf('%s_HH_%s_%s.csv',siteNameAF,...
                              datestr(tv(1)-1/48,'yyyymmdd0000'),...
