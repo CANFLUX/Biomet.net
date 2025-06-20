@@ -45,11 +45,13 @@ function [EngUnits,Header,tv,outStruct] = fr_read_generic_data_file(fileName,ass
 %                          
 %
 % (c) Zoran Nesic                   File created:       Dec 20, 2023
-%                                   Last modification:  May 22, 2025
+%                                   Last modification:  Jun  2, 2025
 %
 
 % Revisions (last one first):
 %
+% Jun 2, 2025 (Zoran)
+%   - Added an option to convert "µ" to "u" so it becomes a valid variable/field name.
 % May 22, 2025 (Zoran)
 %   - Bug fix: changed: 
 %       for cntVars = 1:length(goodNames)
@@ -334,6 +336,13 @@ function renFields = renameFields(fieldsIn)
     
     renFields  = strrep(renFields,'''','_');
     renFields  = strrep(renFields,'?','Q');
+    renFields  = strrep(renFields,'µ','u');
+
+    % At this point it's important to check if the renFields contains only
+    % valid Matlab variable names (digits, letters and underscores).
+    % remove (replace with '') all other codes and special characters
+    renFields = regexprep(renFields,'[^a-zA-Z0-9_\s]','');
+
     % Remove all '_' that a field starts with
     % do this only for cells
     if iscell(fieldsIn)
@@ -368,6 +377,7 @@ function renFields = renameFields(fieldsIn)
     renFieldsNew  = replace(renFieldsNew,'³','3');
     renFieldsNew  = replace(renFieldsNew,'²','2');
     renFieldsNew  = replace(renFieldsNew,'?','Q');
+    renFieldsNew  = replace(renFieldsNew,'µ','u');
 
     %Remove all '_' that a field starts with
     % do this only for cells
