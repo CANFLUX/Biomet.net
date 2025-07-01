@@ -19,17 +19,8 @@ TEST = 3
 GAPFILL = 4
 
 def main(args):
-    with open(DEFAULT_CONFIG_FILE, 'r') as f:
-        config = yaml.safe_load(f)
-    
     db_path = Path(args.db_path)
-    custom_config_path = db_path / 'Calculation_Procedures' / 'TraceAnalysis_ini' / 'CH4_ML_Gapfill.yml'
-    if os.path.exists(custom_config_path):
-        with open(custom_config_path, 'r') as custom_ml_comfig_file:
-            config.update(yaml.safe_load(custom_ml_comfig_file))
-    else:
-        print('No custom config found, proceeding with defaults...')
-    config['site'] = args.site
+    config = create_config(args)
 
     dfs_by_year = read_database_traces(db_path, config)
     stages_to_run = get_stages_to_run(db_path, dfs_by_year, config)
@@ -56,9 +47,30 @@ def main(args):
         fch4_f.tofile(ml_dir / f'FCH4_F_ML_{model.upper()}')
         fch4_f_u.tofile(ml_dir / f'FCH4_F_ML_{model.upper()}_UNCERTAINTY')
 
-        # Put scatter plots out? Not sure how well this would work, as the will still
-        # be separated by year and model. Maybe do this after the test phase?
 
+def create_config(args) -> dict:
+    '''Creates a configuration dictionary for the pipeline.
+       Reads in the default config, then updates using a custom config in TraceAnalysis_ini / CH4_ML_Gapfill.yml
+       Then updates with a site-specific config if it exists - in TraceAnalysis_ini / {site} / CH4_ML_Gapfill.yml
+    '''
+    trace_analysis_ini_path = Path(args.db_path) / 'Calculation_Procedures' / 'TraceAnalysis_ini'
+    with open(DEFAULT_CONFIG_FILE, 'r') as f:
+        config = yaml.safe_load(f)
+    site = args.site
+    config['site'] = site
+    
+    custom_config_path = trace_analysis_ini_path  / 'CH4_ML_Gapfill.yml'
+    if os.path.exists(custom_config_path):
+        with open(custom_config_path, 'r') as custom_ml_comfig_file:
+            config.update(yaml.safe_load(custom_ml_comfig_file))
+    
+    site_config_path = trace_analysis_ini_path / site / 'CH4_ML_Gapfill.yml'
+    if os.path.exists(site_config_path):
+        with open(site_config_path, 'r') as site_ml_config_file:
+            config.update(yaml.safe_load(site_ml_config_file))
+    
+    return config
+    
 
 def setup_and_preprocess(site_path, dfs_by_year, config):
     '''Creates the run directory and caches the config as JSON, then runs preprocess'''
