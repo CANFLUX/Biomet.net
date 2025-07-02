@@ -39,10 +39,13 @@ function fr_automated_cleaning(Years,Sites,stages,db_out,db_ini)
 %    to use a local copy of the database.
 
 
-% kai* Feb 12, 2003                     Last modified: May 20, 2024
+% kai* Feb 12, 2003                     Last modified: Jul  2, 2025
 %
 % Revisions:
 % 
+% Jul 2, 2025 (Zoran)
+%   - edited some comments and corrected the log file fprintf for stage 8 
+%     (it used to print "9" instead of "8").
 % May 20, 2024 (Zoran)
 %   - Bug fix:
 %     removed trailing filesep from derVarPth. Without this step the folder
@@ -358,15 +361,15 @@ for cntSites = 1:numOfSites
         end
         
         %------------------------------------------------------------------
-        % 9th stage is export of Micromet (Sara Knox's) sites to AmeriFlux
-        % format. The output data is stored to clean/ThirdStage folder
+        % 9th stage is export of clean data into AmeriFlux
+        % format. The output data is stored to .../siteID/Clean/Ameriflux folder
         %------------------------------------------------------------------
         if ~isempty(find(stages == 8))
             stage_str = '8-th';
             disp(['============== ' stage_str ' stage. Exporting AmeriFlux csv file for: ' siteID ' ' yy_str ' ==============']);
             pathAF = fullfile(db_pth,num2str(yy(1)),siteID,'Clean','Ameriflux');
             saveDatabaseToAmeriFluxCSV(siteID,yy(1),pathAF);
-            fprintf('============== End of cleaning stage 9 =============\n'); 
+            fprintf('============== End of cleaning stage 8 =============\n'); 
         end
         clear data_* ini_* pth_* mat_*
         
