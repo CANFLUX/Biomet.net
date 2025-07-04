@@ -1,6 +1,8 @@
 .DS_Store
 
 lastFolderUsed.ini
+*.png
+junk.txt
 
 .lintr
 .vscode
