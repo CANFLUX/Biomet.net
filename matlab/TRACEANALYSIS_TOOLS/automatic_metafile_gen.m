@@ -27,10 +27,10 @@ function automatic_metafile_gen(yearIn,siteID,stageNum,exportList,fName)
 % Revisions
 %
 
-    
+    % Read ini file
     trace_str= readIniFileDirect(yearIn,siteID,stageNum);
     
-    % save meta file
+    % if fName is not empty then save meta file. Otherwise just list it in the command window.
     if ~isempty(fName)
         fid = fopen(fName,'w');
         if fid < 0
@@ -57,11 +57,11 @@ function automatic_metafile_gen(yearIn,siteID,stageNum,exportList,fName)
         fprintf('Done.\n')
     end
     
-
-
 end
 
 function metaField = extractName(iniInfo,targetName)
+    % find and extract field targetName from the trace info. 
+    % if targetName does not exist, replace it with a space.
     fNames  = fieldnames(iniInfo);
     fInd = find(strcmpi(fNames,targetName));
     if fInd > 0
