@@ -8,10 +8,13 @@ function gui_Browse_Folder(pathIn)
 %
 %
 % Zoran Nesic                   File created:       May 26, 2023
-%                               Last modifications: Dec 23, 2024
+%                               Last modifications: Jul 28, 2025
 
 % Revisions:
 %
+% Jul 28, 2025 (Zoran)
+%   - Changed the location of the pull-down window so it does not overlap with
+%     the units for y-axis.
 % Dec 23, 2024 (Zoran)
 %   - prevented Matlab from changing the time axis when the data trace is incomplete. 
 %     The plot now goes from the first to the last date of the year.
@@ -103,7 +106,7 @@ function gui_Browse_Folder(pathIn)
 
             hDropDown = uicontrol(figNum,'Style','popupmenu',...
                     'Units','normalized',...
-                    'Position',[axPos(1),axPos(2)+axPos(4)+0.005,axPos(3)/4,0.05],...
+                    'Position',[axPos(1)*2,axPos(2)+axPos(4)+0.005,axPos(3)/4,0.05],...
                     'String',{s_all(:).name},...
                     'Callback',@(hDropDown,event) optionSelected(hDropDown,figNum)); 
 
