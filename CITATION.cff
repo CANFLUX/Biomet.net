@@ -1,0 +1,28 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "CANFLUX/Biomet.net: Biomet.net v1.0.0 (2025a) - First release"
+version: v1.0.0
+date-released: 2025-08-04
+doi: 10.5281/zenodo.16740100
+repository-code: https://github.com/CANFLUX/Biomet.net
+authors:
+  - family-names: Knox
+    given-names: Sara
+  - family-names: Nesic
+    given-names: Zoran
+  - family-names: Skeeter
+    given-names: June
+  - family-names: Moore
+    given-names: Paul
+  - family-names: Howard
+    given-names: Rosie
+  - family-names: Sonnentag
+    given-names: Oliver
+  - family-names: Alcock
+    given-names: Haley
+  - family-names: Fortier
+    given-names: Matt
+  - family-names: Li
+    given-names: Fa
+  - family-names: Koser
+    given-names: Onur
