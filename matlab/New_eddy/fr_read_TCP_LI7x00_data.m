@@ -19,10 +19,12 @@ function [dataOut, cError,allData] = fr_read_TCP_LI7x00_data(addressIP,portNum,t
 %   allData             - ASCII data collected during the call to the instrument
 %
 % Zoran Nesic               File created        Jan 22, 2022
-%                           Last modification:  Jul 29, 2024
+%                           Last modification:  Aug  4, 2025
 
 % Revisions:
 %
+% Aug 4, 2025 (Zoran)
+%   - Changed flowRate from VolFlowRate to MeasFlowRate (more stable, standard flow rate - SLPM)
 % Jul 29, 2024 (Zoran)
 %   - Changed from:
 %       oneLine(indSt+fieldLen+1:indSt+fieldLen+indEnd)
@@ -144,12 +146,12 @@ function dataOut = processLine(oneLine,fieldsNew)
     %                       'FlowPressure','FlowDrive','CH4','RSSI','DIAG','SFVin');
     if contains(oneLine,'MeasFlowRate')
         fieldsOriginal = char('Ndx','DiagVal','DiagVal2','APres','DPres','CO2MFd',...
-                          'H2OMFd','TempIn','TempOut','AvgSS','VolFlowRate',...
+                          'H2OMFd','TempIn','TempOut','AvgSS','MeasFlowRate',...
                           'FlowPressure','FlowDrive','CH4','RSSI','DIAG','SFVin'); 
     elseif contains(oneLine,'CO2MF')
         % Probably LI-7500. Try this:
          fieldsOriginal = char('Ndx','DiagVal','DiagVal2','Pres','DPres','CO2MF',...
-                          'H2OMF','Temp','TempOut','CO2SS','VolFlowRate',...
+                          'H2OMF','Temp','TempOut','CO2SS','MeasFlowRate',...
                           'FlowPressure','FlowDrive','CH4','RSSI','DIAG','SFVin','DSIVin');
     else
         % Unknown input. Return Nans
