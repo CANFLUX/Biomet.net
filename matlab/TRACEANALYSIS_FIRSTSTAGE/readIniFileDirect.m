@@ -1,4 +1,4 @@
-function trace_str = readIniFileDirect(yearIn,SiteID,stageNum)
+function trace_str = readIniFileDirect(yearIn,siteID,stageNum)
 % Reads a TraceAnalysis ini file
 %
 % trace_str = readIniFileDirect(year,SiteID,stageNum)
@@ -6,29 +6,35 @@ function trace_str = readIniFileDirect(yearIn,SiteID,stageNum)
 % Arguments
 %
 %   yearIn      - the year that requires processing
-%   siteID      - site name (like 'DSM')
+%   siteID      - site name (like 'DSM') or a full file name to an ini file
 %   stageNum    - a number (1-3) of the cleaning stage number
 %
 %   trace_str   - a structure read from the ini file
 %
 %
 % Zoran Nesic               File created:       Jan 25, 2023
-%                           Last modification:  Jan 25, 2023
+%                           Last modification:  Aug  8, 2025
 
 % Revisions
 %
+% Aug 8, 2025 (Zoran)
+%   - changed function so it can now accept a full path to the ini file
+%     instead of creating the iniFileName based on siteID and stageNum and default paths
 
-
-arg_default('stageNum',1)
-switch stageNum
-    case 1
-        fileName = [SiteID '_FirstStage.ini'];
-    case 2
-        fileName = [SiteID '_SecondStage.ini'];
-    case 3
-        fileName = [SiteID '_ThirdStage.ini'];
+if exist(siteID,'file')
+    iniFileName = siteID;
+else
+    arg_default('stageNum',1)
+    switch stageNum
+        case 1
+            fileName = [siteID '_FirstStage.ini'];
+        case 2
+            fileName = [siteID '_SecondStage.ini'];
+        case 3
+            fileName = [siteID '_ThirdStage.ini'];
+    end
+    iniFileName = fullfile(db_pth_root,'Calculation_Procedures','TraceAnalysis_ini',siteID,fileName);
 end
-iniFileName = fullfile(db_pth_root,'Calculation_Procedures','TraceAnalysis_ini',SiteID,fileName);
 
 %Open initialization file if it is present:
 if exist(iniFileName,'file')
