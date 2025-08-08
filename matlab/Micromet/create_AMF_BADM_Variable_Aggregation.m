@@ -7,13 +7,15 @@ function tableOut = create_AMF_BADM_Variable_Aggregation(siteID,yearIn,outputPat
 %  siteID       - a site ID using TAB naming convention ('YF','DSM'...)
 %  yearIn       - a year for which the output will be generated
 %  outputPath   - path where to save CSV file. If omitted, no file will be saved.
+%  siteIDamf    - in case the default AMF site ID is not defined in siteID_config.yml file
+%                 you can use your own name
 %
 %
 % Example call:
-%  1. Load up 2022 DSM data into a table (without saving):
-%       tableOut = saveDatabaseToAmeriFluxCSV('DSM',2022);
-%  2. Save 2022 DSM data into a file with proper AF name under p:\test folder
-%       saveDatabaseToAmeriFluxCSV('DSM',2022,'p:\test');
+%  1. Create an output table for site RBM and year 2025 (without saving):
+%       tableOut = create_AMF_BADM_Variable_Aggregation('RBM',2025);
+%  2. Save AMF BADM Variable Aggregation file for year 2025 and site RBM into p:\test.csv
+%       saveDatabaseToAmeriFluxCSV('DSM',2022,'p:\test.csv');
 %
 %
 % Zoran Nesic               File created:       Aug  7, 2025
@@ -30,9 +32,7 @@ fileHeader{2} = 'XX-yyy,Variable Code,list separated by semicolons,LIST(AGG_STAT
 fileHeader{3} = 'Required,Required,Required,Required,Optional,Optional';
 
 arg_default('outputPath',[]);
-pthDatabase = biomet_path(yearIn,siteID);
 
-pthDataIn = fullfile(pthDatabase,'Clean','SecondStage');
 pthListOfVarNames = fullfile(db_pth_root,'Calculation_Procedures','AmeriFlux');
 afListOfVarNames = readtable(fullfile(pthListOfVarNames,'flux-met_processing_variables_20221020.csv'));
 
@@ -50,6 +50,8 @@ end
 structProject = get_TAB_project;
 if ~(exist('siteIDamf','var') && ~isempty(siteIDamf))
     siteIDamf = get_TAB_AMF_siteID(structProject,siteID);
+else
+    siteIDamf = string(siteIDamf);
 end
 
 % cycle through all Ameriflux variable names
@@ -77,11 +79,12 @@ for cntVar = 1:size(afListOfVarNames,1)
             col4(cntRows,1) = "Single observation";  % *** TO BE PROPERLY ESTABLISHED (Single or Mean)***
             col5(cntRows,1) = string();
             col6(cntRows,1) = string();
-            fprintf('%3d %8s %20s %40s\n',cntRows,col1(cntRows,1),col2(cntRows,1),col3(cntRows,1));
+            %fprintf('%3d %8s %20s %40s\n',cntRows,col1(cntRows,1),col2(cntRows,1),col3(cntRows,1));
         end
     end
 end
-
+% create the tableOut
+tableOut = table(col1,col2,col3,col4,col5,col6);
 % if outputPath is given then save the table
 if ~isempty(outputPath)
     fid = fopen(outputPath,'w');
@@ -91,12 +94,7 @@ if ~isempty(outputPath)
         fprintf(fid,'%s\n',fileHeader{2});
         fprintf(fid,'%s',fileHeader{3});
         fclose(fid);
-        tableOut = table(col1,col2,col3,col4,col5,col6);
         writetable(tableOut, outputPath, 'WriteVariableNames', false, 'WriteMode', 'append');
-        % for cntOutput = 1:cntRows
-        %     fprintf(fid,'%s,%s,%s,$s,%s,%s\n',col1(cntOutput),col2(cntOutput),col3(cntOutput)...
-        %                                      ,col4(cntOutput),col5(cntOutput),col6(cntOutput));
-        % end
     end
 end
 
