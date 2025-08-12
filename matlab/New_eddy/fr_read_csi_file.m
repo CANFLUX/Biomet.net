@@ -5,10 +5,11 @@ function [EngUnits,Header,tv,dataOut] = fr_read_csi_file(fileName,chanInd,chanNa
 % 
 % Inputs:
 % Inputs:
-%       FileName - full file name including path. Wild cards accepted
-%       dateIn   - time vector to extract.  [] extracts all data
-%       chanInd  - channels to extract. [] extracts all
-%       tableID  - Table to be extracted
+%       FileName        - full file name including path. Wild cards accepted
+%       dateIn          - time vector to extract.  [] extracts all data
+%       chanInd         - channels to extract. [] extracts all
+%       chanNames       - a cell array of column names. 
+%       tableID         - Table to be extracted
 %       timeUnit        - nearest time unit that time will be rouned to (see
 %                         fr_round_time). When rounding on the seconds function
 %                         will assume that the time is in columns 2-5 otherwise
@@ -22,11 +23,15 @@ function [EngUnits,Header,tv,dataOut] = fr_read_csi_file(fileName,chanInd,chanNa
 %
 %
 % (c) Zoran Nesic                               File created:      Aug 27, 2023
-%                                               Last modification: Aug 27, 2023
+%                                               Last modification: Aug 12, 2025
 %
 
 % Revisions:
 %
+% Aug 12, 2025 (Zoran)
+%   - Added ,"FileType","delimitedtext" to readtable 
+%   - added comments for chanNames in the function header
+%   - added TimeVector to dataOut
 
 % Default arguments
 arg_default('timeUnit','30min');        % rounding to half hour
@@ -56,7 +61,7 @@ if ~exist(fileName,'file')
     return
 end
 try
-    climateDataTable = readtable(fileName);
+    climateDataTable = readtable(fileName,"FileType","delimitedtext");
 catch
     fprintf('Error reading file %s. (fr_read_csi_file.m).\n',fileName);
     return
@@ -101,6 +106,7 @@ for cntFields = 1:numOfVars
     dataOut.(fieldName) = EngUnits(:,cntFields);
 end
 dataOut.tv = tv;
+dataOut.TimeVector = tv;
 % 
 % if strcmpi(assign_in,'caller')
 %     assignin(assign_in,varName, dataOut);
