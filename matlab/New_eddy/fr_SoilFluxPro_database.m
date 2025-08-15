@@ -28,11 +28,13 @@ function [numOfFilesProcessed,numOfDataPointsProcessed] = fr_SoilFluxPro_databas
 %       missingPointValue   - default 0 (Biomet legacy), all new non-Biomet sites should be NaN
 %
 % Zoran Nesic           File Created:      Sep  6, 2023
-%                       Last modification: Jan 18, 2024  
+%                       Last modification: Aug 15, 2025
 
 %
 % Revisions:
 %
+% Aug 15, 2025 (Zoran)
+%   - Bug fix: pth = h(i).folder was outside of the main loop. Moved it inside.
 % Jan 18, 2024 (Zoran)
 %  - updated calls to db_struct2database to account for the new input parameters:
 %      structType = 0,forceFullDB = 0 (this maintained the previous way of functioning)
@@ -52,8 +54,6 @@ if isempty(h)
     error('File: %s not found\n',wildCardPath);
 end
 
-pth = h(1).folder;
-
 if exist(processProgressListPath,'file')
     load(processProgressListPath,'filesProcessProgressList');
 else
@@ -67,6 +67,7 @@ warning('off')
 hnd_wait = waitbar(0,'Updating site database...');
 
 for i=1:length(h)
+    pth = h(i).folder;
     try 
         stPth = 1;if length(pth)>30,stPth=length(pth)-30;end
         waitbar(i/length(h),hnd_wait,{'Processing: %s ', ['...' pth(stPth:end) ], h(i).name})
