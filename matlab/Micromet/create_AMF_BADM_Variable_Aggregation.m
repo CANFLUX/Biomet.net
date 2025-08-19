@@ -1,4 +1,4 @@
-function tableOut = create_AMF_BADM_Variable_Aggregation(siteID,yearIn,outputPath,siteIDamf)
+function tableOut = create_AMF_BADM_Variable_Aggregation(siteID,yearIn,outputPath,siteIDamf,oneFluxVarNames)
 % tableOut = create_AMF_BADM_Variable_Aggregation(siteID,yearIn,outputPath)
 %
 % Create an Ameriflux BADM Variable Aggregation file from siteID_SecondStage.ini
@@ -22,7 +22,7 @@ function tableOut = create_AMF_BADM_Variable_Aggregation(siteID,yearIn,outputPat
 %
 %
 % Zoran Nesic               File created:       Aug  7, 2025
-%                           Last modification:  Aug  8, 2025
+%                           Last modification:  Aug 18, 2025
 %
 
 %
@@ -36,11 +36,13 @@ fileHeader{3} = 'Required,Required,Required,Required,Optional,Optional';
 
 arg_default('outputPath',[]);
 
-pthListOfVarNames = fullfile(db_pth_root,'Calculation_Procedures','AmeriFlux');
+%pthListOfVarNames = fullfile(db_pth_root,'Calculation_Procedures','AmeriFlux');
 %afListOfVarNames = readtable(fullfile(pthListOfVarNames,'flux-met_processing_variables_20221020.csv'));
-oneFluxVarNames = {'CO2','FC','H','LE','WS','USTAR','TA','RH','PA', 'SW_IN','PPFD_IN',...
+oneFluxVarNamesDefaults = {'CO2','FC','H','LE','WS','USTAR','TA','RH','PA', 'SW_IN','PPFD_IN',...
                    'SC','G','NETRAD','PPFD_IN','LW_IN','P','SWC','TS',...
                    'WD','PPFD_DIF','PPFD_OUT','SW_DIF','SW_OUT','LW_OUT'};
+arg_default('oneFluxVarNames',oneFluxVarNamesDefaults)
+oneFluxVarNames = oneFluxVarNames(:)';
 
 % Load up trace and site info
 % If the siteID is a full path to an ini file then just load up that file
@@ -65,9 +67,10 @@ if length(allTraces) > length(uniqueNames)
     fprintf(2,'Ignoring the duplicates.\n');
     allTraces = uniqueNames;
 end
-structProject = get_TAB_project;
+
 if ~(exist('siteIDamf','var') && ~isempty(siteIDamf))
     try
+        structProject = get_TAB_project;
         siteIDamf = get_TAB_AMF_siteID(structProject,siteID);
     catch
         fprintf(2,'Could not find AMF site ID. Using the default:%s\n',siteID);
