@@ -54,6 +54,25 @@ for currentSiteID = sitesIn
         fprintf(2,'fr_automated_cleaning failed when running %s site!\n', siteID);
     end
 end
+
+% --- rename all Met files once per day ----
+if hour(datetime) == 0 && minute(datetime) < 30
+    try
+        TAB_rename_csi_files
+    catch
+        fprintf(2,'Error renaming CSI files. (%s)',datetime);
+    end
+end
+
+% --- process ECCC stations once per day ----
+if hour(datetime) == 0 && minute(datetime) > 30
+    try
+        process_ECCC_stations;
+    catch
+        fprintf(2,'Error processing ECCC stations. (%s)',datetime);
+    end
+end
+
 fprintf('\n\n%s\n',datetime);
 fprintf('**** run_TAB_db_update finished in %6.1f sec.******\n',seconds(datetime-startTime));
 fprintf('=====================================================\n\n\n');
