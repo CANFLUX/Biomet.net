@@ -3,7 +3,7 @@ function trace_str_out = read_ini_file_update(fid,Year)
 % Create by June Skeeter (March 1, 2024)
 % Intended to repalce existing string parsing method with a function that
 % works with using the **standardized** ini file format.  Outputs should be
-% backwards compatible with previous read_ini_file_update() function
+% backwards compatible with original read_ini_file() function
 % 
 % As is, this takes roughly twice as long to read an ini file compared to
 % thw old procedure.  But some of of the processes here are only necessary
