@@ -4,11 +4,14 @@ function run_TAB_db_update(yearIn,sitesIn)
 % This program is based on run_UQAM_db_update (CARBONIQUE project)
 %
 % Zoran Nesic           File created:       Aug 20, 2025
-%                       Last modification:  Aug 20, 2025
+%                       Last modification:  Aug 21, 2025
 
 %
 % Revisions:
 %
+% Aug 21, 2025 (Zoran)
+%   - Added renaming CSI files and ECCC station processing to this function
+%     so we don't have to schedule the other tasks separately. 
 
 startTime = datetime;
 arg_default('yearIn',year(startTime));    % default - current year
