@@ -18,17 +18,21 @@ function process_EP_API_fulloutput(allSites,pthEPAPI_main,pthEP_main,flagCreate,
 %
 %
 % Zoran Nesic               File created:       Aug 14, 2025
-%                           Last modification:  Aug 14, 2025
+%                           Last modification:  Aug 26, 2025
 
 % Revisions
 %
+% Aug 26, 2025 (Zoran)
+%   - Added a test if allSites is a cell array
 
 arg_default('flagCreate',false)
 arg_default('flagOverwrite',0)
 % default is to process all sites
 allSitesTmp        = get_TAB_site_names;
 arg_default('allSites',allSitesTmp)
-
+if ~iscell(allSites)
+    error('allSites needs to be a cell array of sites!');
+end
 
 fprintf('\n======================\nRenaming EddyPro API output files started...\n\n');
 for cSite = allSites

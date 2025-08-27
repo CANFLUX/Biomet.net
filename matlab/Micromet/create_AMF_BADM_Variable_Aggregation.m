@@ -84,12 +84,14 @@ end
 cntRows = 0;
 for cntVar = 1:size(oneFluxVarNames,2)
     varName = char(oneFluxVarNames(cntVar));
+    cntRows = cntRows + 1;
+    col1(cntRows,1) = siteIDamf; %#ok<*AGROW>
+    col2(cntRows,1) = string(varName);    
+    col5(cntRows,1) = string();
+    col6(cntRows,1) = string();
     % see if such a variable exists in the second stage
     indAllMatchingVarnames = find(strcmpi(allTraces,varName) | startsWith(allTraces,[varName '_']));
     if ~isempty(indAllMatchingVarnames)
-        cntRows = cntRows + 1;
-        col1(cntRows,1) = siteIDamf; %#ok<*AGROW>
-        col2(cntRows,1) = string(varName);
         if length(indAllMatchingVarnames) > 1
             col3(cntRows,1) = string(allTraces(indAllMatchingVarnames(1)));
             for cntMatchingNames = indAllMatchingVarnames(2:end)
@@ -100,13 +102,11 @@ for cntVar = 1:size(oneFluxVarNames,2)
             col3(cntRows,1) = string(allTraces(indAllMatchingVarnames));
             col4(cntRows,1) = find_observation_type(trace_str(indAllMatchingVarnames)); %"Single observation";  % *** TO BE PROPERLY ESTABLISHED (Single or Mean)***
         end
-        
-        col5(cntRows,1) = string();
-        col6(cntRows,1) = string();
-        %fprintf('%3d %8s %20s %40s\n',cntRows,col1(cntRows,1),col2(cntRows,1),col3(cntRows,1));
+    else
+        col3(cntRows,1) = string([varName '_NA']);
+        col4(cntRows,1) = string([varName '_NA']);
     end
 end
-
 % create the tableOut
 tableOut = table(col1,col2,col3,col4,col5,col6);
 % if outputPath is given then save the table
@@ -132,20 +132,27 @@ function sType = find_observation_type(trace_str)
     % and loop through them (skip if none exist)
     for cntE = 1:length(indE)
         evalStr = char(fNames(indE(cntE)));
+        sEval = trace_str.ini.(evalStr);
         % get the string in one single Evaluate line
         aLine = setupIni.(evalStr);
         %fprintf('%4d %20s %s\n',cntTraces,tName,aLine);   
         % search for a pattern 'varName=...'
-        tstStr = [tName '=.'] ;
-        sEval = trace_str.ini.(evalStr);
+        tstStr = [tName '=.'] ;       
         xx=regexpi(sEval,tstStr);
         % given that the aLine can have multiple assignments,
         % pick only the last one
         xx = xx(end);
         % extract the part after "="
         strLastCalc = sEval((xx+length(tstStr))-1:end);
-         
-        % within the leftover string find (if exists) the string
+        % remove ";"
+        strLastCalc = regexprep(strLastCalc,';',''); 
+        % Now, the strLastCalc would look like one of these lines
+        % Eval options:
+        % Var = Var;
+        % Var = calc_and_average(x,y,[ var1,var2,var3])
+        % Var = something_else(Var)
+        % 
+        % first look for the string
         % [....] presumably containing all the traces that are 
         % being used/averaged to calculate this tName
         yy = char(regexpi(strLastCalc,'(\[.*\])','match'));
