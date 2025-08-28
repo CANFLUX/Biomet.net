@@ -45,11 +45,19 @@ function [EngUnits,Header,tv,outStruct] = fr_read_generic_data_file(fileName,ass
 %                          
 %
 % (c) Zoran Nesic                   File created:       Dec 20, 2023
-%                                   Last modification:  Aug 27, 2025
+%                                   Last modification:  Aug 28, 2025
 %
 
 % Revisions (last one first):
 %
+% Aug 28, 2025 (Zoran)
+%   - Had to address another issue that was caused by the previous fix:
+%       - Added testing the existance of and setting the datetime format:
+%           if ~isempty(timeInputFormat)
+%              opts.VariableOptions(dateColumnNum(1)).InputFormat = char(timeInputFormat{1});
+%        end
+%  - Changed default timeInputFormat. For some reason it was defaulting to 
+%    a very unusual format: 'uuuuMMddHHmm'. Changed it to [] to let Matlab pick what's the best.
 % Aug 27, 2025 (Zoran)
 %   - Bug fix: Program would not read properly TOA5 files when they have
 %     only one data row. The issue was the inability of the function to
@@ -128,7 +136,7 @@ function [EngUnits,Header,tv,outStruct] = fr_read_generic_data_file(fileName,ass
     % Set the defaults
     arg_default('assign_in','base');
     arg_default('varName','Stats');
-    arg_default('timeInputFormat',{'uuuuMMddHHmm'})   % Matches time format for ORG Manitoba files.
+    arg_default('timeInputFormat',[]); %{'uuuuMMddHHmm'})   % Matches time format for ORG Manitoba files.
     arg_default('dateColumnNum',1)                  % table column with dates
     arg_default('colToKeep', [1 Inf])                   % keep all table columns in EngUnits (not a good idea if there are string columns)
     arg_default('inputFileType','delimitedtext');
@@ -165,6 +173,9 @@ function [EngUnits,Header,tv,outStruct] = fr_read_generic_data_file(fileName,ass
             end
         end
         opts.VariableTypes{dateColumnNum(1)} = 'datetime';
+        if ~isempty(timeInputFormat)
+            opts.VariableOptions(dateColumnNum(1)).InputFormat = char(timeInputFormat{1});
+        end
         if length(dateColumnNum)==2                       
             if isTimeDuration
                 opts.VariableTypes{dateColumnNum(2)} = 'duration';
