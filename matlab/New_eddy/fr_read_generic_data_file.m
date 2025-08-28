@@ -45,11 +45,21 @@ function [EngUnits,Header,tv,outStruct] = fr_read_generic_data_file(fileName,ass
 %                          
 %
 % (c) Zoran Nesic                   File created:       Dec 20, 2023
-%                                   Last modification:  Jun  2, 2025
+%                                   Last modification:  Aug 27, 2025
 %
 
 % Revisions (last one first):
 %
+% Aug 27, 2025 (Zoran)
+%   - Bug fix: Program would not read properly TOA5 files when they have
+%     only one data row. The issue was the inability of the function to
+%     detect the datetime for the first column. 
+%     Before:
+%        if length(dateColumnNum)==2   
+%           opts.VariableTypes{dateColumnNum(1)} = 'datetime';
+%     after
+%        opts.VariableTypes{dateColumnNum(1)} = 'datetime';
+%        if length(dateColumnNum)==2   
 % Jun 2, 2025 (Zoran)
 %   - Added an option to convert "µ" to "u" so it becomes a valid variable/field name.
 % May 22, 2025 (Zoran)
@@ -154,8 +164,8 @@ function [EngUnits,Header,tv,outStruct] = fr_read_generic_data_file(fileName,ass
                 %opts.VariableNamingRule = 'modify';
             end
         end
-        if length(dateColumnNum)==2
-            opts.VariableTypes{dateColumnNum(1)} = 'datetime';           
+        opts.VariableTypes{dateColumnNum(1)} = 'datetime';
+        if length(dateColumnNum)==2                       
             if isTimeDuration
                 opts.VariableTypes{dateColumnNum(2)} = 'duration';
             else
