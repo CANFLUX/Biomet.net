@@ -55,8 +55,11 @@ required_second_stage_ini_fields = {'Evaluate1'};
 %listed, store into an array of structures:
 countTraces = 0;
 
-yml_ini = yaml.loadFile(yaml_path);
+yml_ini = yaml.loadFile(ymlFileName);
 countTraces = length(fieldnames(yml_ini.Trace));
 countTraces
+
+
+trace_yaml_config = trace_str;
 
 % // trace_str_yml = [];
