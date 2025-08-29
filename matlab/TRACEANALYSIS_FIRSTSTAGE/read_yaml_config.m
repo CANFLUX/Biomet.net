@@ -1,21 +1,7 @@
-% A test
-SiteID = 'BB'
-ini_path = strcat("C:\Database\Calculation_Procedures\TraceAnalysis_ini\",SiteID,"\",SiteID,"_FirstStage.ini")
-yaml_path = strcat("C:\Database\Calculation_Procedures\TraceAnalysis_ini\",SiteID,"\",SiteID,"_FirstStage.yml")
+function trace_yaml_config = read_yaml_config(fid)
 
-
-Site_name = 'ECCC'
-fid = fopen(ini_path,'rt');						%open text file for reading only.   
-trace_str_ini = read_ini_file(fid,2024);
-fclose(fid);
-trace_str_ini
-
-
-% Since the old method only provides a fid ....
-fid = fopen(yaml_path,'rt');
-fclose(fid);
-
-
+% Ideally we'd just pass the filepath beause that is what the yaml parser wants ...
+% But to conform with the legacy approach, for now it will get the filename (which is already known elsewehre) from the fid number
 ymlFileName = char(arrayfun(@fopen, fid, 'UniformOutput', 0));
 % Extract the ini file type ('first','second','third')
 [iniFilePath,iniFileType,~] = fileparts(ymlFileName);
