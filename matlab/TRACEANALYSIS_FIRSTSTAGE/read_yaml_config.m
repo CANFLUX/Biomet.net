@@ -17,7 +17,7 @@ fclose(fid);
 
 ymlFileName = char(arrayfun(@fopen, fid, 'UniformOutput', 0));
 % Extract the ini file type ('first','second','third')
-[iniFilePath,iniFileType,~] = fileparts(iniFileName);
+[iniFilePath,iniFileType,~] = fileparts(ymlFileName);
 [~,iniFileType,~] = fileparts(iniFileType);
 if endsWith(iniFileType,'FirstStage','ignorecase',true) || endsWith(iniFileType,'FirstStage_include','IgnoreCase',true)
     iniFileType = 'first';
@@ -69,6 +69,7 @@ required_second_stage_ini_fields = {'Evaluate1'};
 countTraces = 0;
 
 yml_ini = yaml.loadFile(yaml_path);
-yml_ini
+countTraces = length(fieldnames(yml_ini.Trace));
+countTraces
 
 % // trace_str_yml = [];
