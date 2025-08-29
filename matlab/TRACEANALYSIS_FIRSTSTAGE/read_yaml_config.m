@@ -11,7 +11,7 @@ trace_str_ini
 
 
 % Since the old method only provides a fid ....
-fid = fopen(yaml_path,'rt')
+fid = fopen(yaml_path,'rt');
 fclose(fid);
 
 
@@ -64,7 +64,11 @@ required_common_ini_fields = {'variableName', 'title', 'units'};
 required_first_stage_ini_fields = {'inputFileName', 'measurementType', 'minMax'};
 required_second_stage_ini_fields = {'Evaluate1'};
 
+%Read each line of the ini_file given by the file ID number, 'fid', and for each trace
+%listed, store into an array of structures:
+countTraces = 0;
 
-% // f = yaml.loadFile(yaml_path);
-% // f
+yml_ini = yaml.loadFile(yaml_path);
+yml_ini
+
 % // trace_str_yml = [];
