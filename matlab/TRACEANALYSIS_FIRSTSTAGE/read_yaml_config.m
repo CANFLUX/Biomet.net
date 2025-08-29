@@ -1,6 +1,7 @@
 % A test
-ini_path = "C:\Database\Calculation_Procedures\TraceAnalysis_ini\SCL\SCL_FirstStage.ini"
-yaml_path = "C:\Database\Calculation_Procedures\TraceAnalysis_ini\SCL\SCL_FirstStage.yml"
+SiteID = 'BB'
+ini_path = strcat("C:\Database\Calculation_Procedures\TraceAnalysis_ini\",SiteID,"\",SiteID,"_FirstStage.ini")
+yaml_path = strcat("C:\Database\Calculation_Procedures\TraceAnalysis_ini\",SiteID,"\",SiteID,"_FirstStage.yml")
 
 
 Site_name = 'ECCC'
