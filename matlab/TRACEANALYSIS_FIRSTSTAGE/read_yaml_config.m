@@ -3,6 +3,7 @@ function trace_yaml_config = read_yaml_config(fid)
 % Ideally we'd just pass the filepath beause that is what the yaml parser wants ...
 % But to conform with the legacy approach, for now it will get the filename (which is already known elsewehre) from the fid number
 ymlFileName = char(arrayfun(@fopen, fid, 'UniformOutput', 0));
+keyboard
 % Extract the ini file type ('first','second','third')
 [iniFilePath,iniFileType,~] = fileparts(ymlFileName);
 [~,iniFileType,~] = fileparts(iniFileType);
@@ -56,8 +57,14 @@ required_second_stage_ini_fields = {'Evaluate1'};
 countTraces = 0;
 
 yml_ini = yaml.loadFile(ymlFileName);
+
+
 countTraces = length(fieldnames(yml_ini.Trace));
 countTraces
+
+% Read includes and add them to default traces
+for nInclude = 1:length(yml_ini.include)
+
 
 
 trace_yaml_config = trace_str;
