@@ -20,7 +20,6 @@ function trace_str = readIniFileDirect(yearIn,siteID,stageNum)
 % Aug 8, 2025 (Zoran)
 %   - changed function so it can now accept a full path to the ini file
 %     instead of creating the iniFileName based on siteID and stageNum and default paths
-
 if exist(siteID,'file')
     iniFileName = siteID;
 else
@@ -50,3 +49,4 @@ else
 end
 trace_str = read_ini_file(fid,yearIn);
 fclose(fid);
+keyboard
