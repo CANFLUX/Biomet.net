@@ -1,4 +1,4 @@
-function trace_str = readIniFileDirect(yearIn,siteID,stageNum)
+function trace_str = readIniFileDirect(yearIn,siteID,stageNum,newYAML)
 % Reads a TraceAnalysis ini file
 %
 % trace_str = readIniFileDirect(year,SiteID,stageNum)
@@ -8,6 +8,7 @@ function trace_str = readIniFileDirect(yearIn,siteID,stageNum)
 %   yearIn      - the year that requires processing
 %   siteID      - site name (like 'DSM') or a full file name to an ini file
 %   stageNum    - a number (1-3) of the cleaning stage number
+%   newYAML     - boolean, false to keep old ini, true for new yaml format
 %
 %   trace_str   - a structure read from the ini file
 %
@@ -20,6 +21,8 @@ function trace_str = readIniFileDirect(yearIn,siteID,stageNum)
 % Aug 8, 2025 (Zoran)
 %   - changed function so it can now accept a full path to the ini file
 %     instead of creating the iniFileName based on siteID and stageNum and default paths
+
+arg_default('newYAML',true);
 if exist(siteID,'file')
     iniFileName = siteID;
 else
@@ -34,7 +37,15 @@ else
     end
     iniFileName = fullfile(db_pth_root,'Calculation_Procedures','TraceAnalysis_ini',siteID,fileName);
 end
-
+if newYAML
+    tmp = strrep(iniFileName,'.ini','.yml')
+    if exist(tmp,'file')
+        iniFileName = tmp;
+    else
+        newYAML = false;
+    end
+    
+end
 %Open initialization file if it is present:
 if exist(iniFileName,'file')
    fid = fopen(iniFileName,'rt');						%open text file for reading only.   
@@ -47,6 +58,10 @@ else
     fprintf('Could not open file: %s\n', iniFileName);
     return
 end
-trace_str = read_ini_file(fid,yearIn);
+if newYAML
+    fprintf('\n\nReading new yaml format\n\n')
+    trace_str = read_yaml_config(fid,yearIn);
+else
+    trace_str = read_ini_file(fid,yearIn);
+end
 fclose(fid);
-keyboard
