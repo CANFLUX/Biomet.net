@@ -60,7 +60,7 @@ else
 end
 if newYAML
     fprintf('\n\nReading new yaml format\n\n')
-    trace_str = read_yaml_config(fid,yearIn);
+    trace_str = read_yaml_config(iniFileName,yearIn);
 else
     trace_str = read_ini_file(fid,yearIn);
 end

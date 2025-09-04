@@ -1,4 +1,4 @@
-function trace_yaml_config = read_yaml_config(fid,yearIn)
+function trace_yaml_config = read_yaml_config(yaml_path,yearIn)
 % written by June Skeeter 2025-08-29
 % A function to read yaml files which hopefully replace stage 1/2 ini files
 % A corresponding python function for converting custom ini to standard yml

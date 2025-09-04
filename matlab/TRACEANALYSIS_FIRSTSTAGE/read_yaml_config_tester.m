@@ -14,9 +14,9 @@ yaml_path = strcat(root,SiteID,"\",SiteID,"_",stage,".yml");
 if exist(yaml_path, 'file')
     % Since the old method only provides a fid ....
 
-    fid = fopen(yaml_path,'rt');
-    trace_str_yml = read_yaml_config(fid,year(datetime()));
-    fclose(fid);
+    % fid = fopen(yaml_path,'rt');
+    trace_str_yml = read_yaml_config(yaml_path,year(datetime()));
+    % fclose(fid);
 end
 
 inicomp(trace_str_ini,trace_str_yml)
