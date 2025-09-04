@@ -62,7 +62,7 @@ trace_str.output_path = '';         %holds the path where output data is dumped
 trace_str.high_level_path = '';
 
 
-trace_str.iniFileName = ymlFileName;
+trace_str.iniFileName = char(ymlFileName);
 trace_str.iniFileLineNum = 0;
 
 % Define which fileds in the ini must exist

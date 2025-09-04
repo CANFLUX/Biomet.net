@@ -1,4 +1,4 @@
-function trace_str = read_data(yearIn, SiteID, ini_file)
+function trace_str = read_data(yearIn, SiteID, ini_file, newYAML)
 % This function reads the data from the database.  Given the ini_file the function
 % is able to determine what stage of the cleaning process should be applied (ie first of second stage)
 % Note however that data is not cleaned in this stage;  data is mearly read from the database
@@ -17,6 +17,8 @@ function trace_str = read_data(yearIn, SiteID, ini_file)
 
 % revisions:
 %
+% Sep 4, 2025 (June)
+%   - Added option to read new YAML first/second stage files if they exist
 % Feb 1, 2025 (Zoran)
 %   - Bug fix: This function was displaying 'Cleaning traces...' but it was not cleaning them, only reading them
 %     Replaced with: 'Reading traces from database...'
@@ -88,6 +90,7 @@ bgc = [0 0.36 0.532];
 
 yearNow = year(datetime);
 arg_default('yearIn',yearNow)
+arg_default('newYAML',true)
 
 % Added by June Skeeter to read SiteID_config.yml files
 fn = fullfile(db_pth_root,"Calculation_Procedures/TraceAnalysis_ini",SiteID,strcat(SiteID,"_config.yml"));
@@ -104,25 +107,40 @@ ini_file = setFolderSeparator(ini_file);    % in case that ini_file has wrong fo
 arg_default('options','none')
 arg_default('sourceDB','database')
 
+if newYAML
+    tmp = strrep(iniFileName,'.ini','.yml')
+    if exist(tmp,'file')
+        iniFileName = tmp;
+    else
+        newYAML = false;
+    end
+end
+
 %-------------------------------------------------------------------------------------
 % Handle the path - all site specific generation should be done via function in
 % biomet_path('Calculation_Procedures\TraceAnalysis_ini',SiteID,'Derived_Variables')
 addpath( biomet_path('Calculation_Procedures\TraceAnalysis_ini',SiteID,'Derived_Variables'))
 
+
 %-------------------------------------------------------------------------------------
 %Open initialization file if it is present:
 if exist('ini_file','var') & ~isempty(ini_file) %#ok<*AND2>
-    fid = fopen(ini_file,'rt');						%open text file for reading only.
-    if (fid < 0)
-        disp(['File, ' ini_file ', is invalid']);
-        trace_str = [];
-        return
-    end
-    % Read ini file
-    trace_str = read_ini_file(fid,yearIn);
-    fclose(fid);
-    if isempty(trace_str)
-        return
+    if newYAML
+        fprintf('\n\nReading new yaml format\n\n')
+        trace_str = read_yaml_config(iniFileName,yearIn);
+    else
+        fid = fopen(ini_file,'rt');						%open text file for reading only.
+        if (fid < 0)
+            disp(['File, ' ini_file ', is invalid']);
+            trace_str = [];
+            return
+        end
+        % Read ini file
+        trace_str = read_ini_file(fid,yearIn);
+        fclose(fid);
+        if isempty(trace_str)
+            return
+        end
     end
 end
 

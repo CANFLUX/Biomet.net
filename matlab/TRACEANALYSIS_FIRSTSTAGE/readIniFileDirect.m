@@ -18,6 +18,8 @@ function trace_str = readIniFileDirect(yearIn,siteID,stageNum,newYAML)
 
 % Revisions
 %
+% Sep 4, 2025 (June)
+%   - Added option to read new YAML first/second stage files if they exist
 % Aug 8, 2025 (Zoran)
 %   - changed function so it can now accept a full path to the ini file
 %     instead of creating the iniFileName based on siteID and stageNum and default paths
@@ -44,24 +46,21 @@ if newYAML
     else
         newYAML = false;
     end
-    
 end
 %Open initialization file if it is present:
-if exist(iniFileName,'file')
+if newYAML
+    fprintf('\n\nReading new yaml format\n\n')
+    trace_str = read_yaml_config(iniFileName,yearIn);
+elseif exist(iniFileName,'file')
    fid = fopen(iniFileName,'rt');						%open text file for reading only.   
    if (fid < 0)
       disp(['File, ' iniFileName ', is invalid']);
       trace_str = [];
       return
    end
+    trace_str = read_ini_file(fid,yearIn);
+    fclose(fid);
 else
     fprintf('Could not open file: %s\n', iniFileName);
     return
 end
-if newYAML
-    fprintf('\n\nReading new yaml format\n\n')
-    trace_str = read_yaml_config(iniFileName,yearIn);
-else
-    trace_str = read_ini_file(fid,yearIn);
-end
-fclose(fid);
