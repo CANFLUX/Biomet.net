@@ -204,7 +204,6 @@ function block_out = check_types(block_in)
     cell_array = {'inputFileName'};
     % Forced to double, will check if strings are datetimes first
     double_array = {'Enable','minMax','clamped_minMax','zeroPt','inputFileName_dates','loggedCalibration','currentCalibration'};
-    rename = {{'Evaluate','Evaluate1'}};
     % double_array_wdatenum = {'inputFileName_dates','loggedCalibration','currentCalibration'};
     % First apply to trace blocks
     trace_name = fieldnames(block_in);
@@ -215,6 +214,13 @@ function block_out = check_types(block_in)
             if ismember(char(tf),cell_array) & ~ isa(v,'cell')
                 block_in.(char(tr)).(char(tf)) = {v};
             elseif strcmp(char(tf),'Evaluate')
+                % Parse to match the expectation of the legacy code
+                lines = splitlines(v);
+                for k = 1:numel(lines)
+                    c = split(lines{k},'%');
+                    lines{k} = regexprep(strtrim(c{1}),'\s+','');
+                end
+                v - strjoin(lines,'');
                 % Rename for legacy reasons
                 block_in.(char(tr)).('Evaluate1') = v;
             elseif ismember(char(tf),double_array) & ~ isa(v,'double')
