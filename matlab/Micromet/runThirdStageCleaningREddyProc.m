@@ -11,11 +11,16 @@ function statusR = runThirdStageCleaningREddyProc(yearIn,siteID,yearsToProcess)
 %                     for gap-filling even when outputing one year only
 %
 % Zoran Nesic               File created:       Oct 25, 2022
-%                           Last modification:  Mar 11, 2025
+%                           Last modification:  Aug 26, 2025
 %
 
 % Revisions
 %
+% Aug 26, 2025 (Zoran)
+%   - Bug fix: the R script call would not run properly if the database
+%     path was a drive name (y:) instead of something like (y:\Database).
+%     3rd stage R script needed to have a folder seprarator in that case:
+%     (instead of "y:" it needed "y:\". 
 % Mar 11, 2025 (Zoran)
 %   - Added code that (in theory) should update libraries properly. Currently set to 
 %     run only on a PC. 
@@ -144,7 +149,11 @@ end
 function databasePath = findDatabasePath
     databasePath = biomet_path('yyyy');
     indY = strfind(databasePath,'yyyy');
-    databasePath = databasePath(1:indY-2); 
+    databasePath = databasePath(1:indY-2);
+    if strcmp(databasePath(end),':')
+        % if databasePath is just the drive (c:) then add filesep
+        databasePath = [databasePath filesep];
+    end
 end
 
 function Rpath = findRPath

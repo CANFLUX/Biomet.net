@@ -1,6 +1,6 @@
-function [t,x] = BB_pl(ind, year, siteID, select, fig_num_inc,flgPause) 
+function [t,x] = BB_pl(ind, yearIn, siteID, select, fig_num_inc,flgPause) 
 %
-% [t,x] = BB_pl(ind, year,siteID, select, fig_num_incflgPause)
+% [t,x] = BB_pl(ind, yearIn,siteID, select, fig_num_incflgPause)
 %
 %   This function plots selected data from the data-logger files. It reads from
 %   the UBC data-base formated files.
@@ -14,7 +14,7 @@ function [t,x] = BB_pl(ind, year, siteID, select, fig_num_inc,flgPause)
 %
 % Jan 2, 2025 (Zoran)
 %   - Bug fix: There were some issues with the plotting of cumulative precipitation
-%     when plotting the first few days of a new year. Patched it up with try-catch-end.
+%     when plotting the first few days of a new yearIn. Patched it up with try-catch-end.
 %     If there is time, this could be fixed properly.
 % Jul 16, 2024 (Zoran)
 %   - Added Precip plots
@@ -58,8 +58,8 @@ arg_default('select',1);
 arg_default('siteID','BB2');
 arg_default('flgPause',1);              % default is show one figure and pause
 
-[yearX,~,~] = datevec(now);             % if parameter "year" not given
-arg_default('year',yearX);              % assume current year
+yearX = year(datetime);             % if parameter "yearIn" not given
+arg_default('yearIn',yearX);              % assume current yearIn
 
 % create default database path
 % NOTE: make sure that there is a file
@@ -90,7 +90,7 @@ st = min(ind);                              % first day of measurements
 ed = max(ind)+1;                            % last day of measurements (approx.)
 ind = st:ed; %#ok<*NASGU>
 
-datesTmp = datenum(year,1,[st ed]);
+datesTmp = datenum(yearIn,1,[st ed]);
 [rangeYears,~,~,~,~,~] = datevec(datesTmp);
 rangeYears = rangeYears(1):rangeYears(2);
 
@@ -101,7 +101,7 @@ switch siteID
         tv=fr_round_time(read_bor(fullfile(pthSite,'MET','TimeVector'),8,[],rangeYears)); % get time from the data base
 end
 
-t = tv - datenum(year,1,0) - GMTshift;               % convert decimal time to
+t = tv - datenum(yearIn,1,0) - GMTshift;               % convert decimal time to
                                                     % decimal DOY local time
 t_all = t;                                          % save time trace for later                                                    
 ind = find( t >= st & t <= ed );                    % extract the requested period
@@ -134,7 +134,7 @@ end
 trace_units = 'T_{air}(degC)';
 y_axis      = [];
 fig_num = fig_num + fig_num_inc;
-x = plt_msig( trace_path, ind, trace_name, trace_legend, year, trace_units, y_axis, t, fig_num,[],tempOffset );
+x = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num,[],tempOffset );
 indAxes = indAxes+1; allAxes(indAxes) = gca;
 
 %----------------------------------------------------------
@@ -157,7 +157,7 @@ end
 trace_units = 'RH (%)';
 y_axis      = [];
 fig_num = fig_num + fig_num_inc;
-x = plt_msig( trace_path, ind, trace_name, trace_legend, year, trace_units, y_axis, t, fig_num );
+x = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num );
 indAxes = indAxes+1; allAxes(indAxes) = gca;
 
 %----------------------------------------------------------
@@ -178,7 +178,7 @@ end
 trace_units = 'Precipitation (mm/30-min)';
 y_axis      = [];
 fig_num = fig_num + fig_num_inc;
-x = plt_msig( trace_path, ind, trace_name, trace_legend, year, trace_units, y_axis, t, fig_num,unitMult );
+x = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num,unitMult );
 indAxes = indAxes+1; allAxes(indAxes) = gca;
 % remember xlim, you'll need it to rescale cumulative rain
 originalXlim = xlim;
@@ -186,13 +186,13 @@ originalXlim = xlim;
 %----------------------------------------------------------
 % Cumulative rain
 %----------------------------------------------------------
-% *** in case of multiple-year plots it plots only the last year
+% *** in case of multiple-yearIn plots it plots only the last yearIn
 indx = find( t_all >= 1 & t_all <= ed );                    % extract the period from
-tx = t_all(indx);                                           % the beginning of the last year
+tx = t_all(indx);                                           % the beginning of the last yearIn
 indNew = [1:length(indx)]+round(GMTshift*48);               % use GMTshift to align the data with time vector
 
 
-trace_name  = sprintf('%s: %s',siteID,'Cumulative Rain (current year only)');
+trace_name  = sprintf('%s: %s',siteID,'Cumulative Rain (current yearIn only)');
 switch siteID
     case {'HOGG','YOUNG','OHM'}
         trace_path  = char(fullfile(pthSite,'flux','P_RAIN_1_1_1'));
@@ -203,13 +203,13 @@ switch siteID
 end
 
 trace_units = 'Precipitation (mm)';
-[x1,tx_new] = read_sig(trace_path(1,:), indNew,year, tx,0); %#ok<*ASGLU>
+[x1,tx_new] = read_sig(trace_path(1,:), indNew,yearIn, tx,0); %#ok<*ASGLU>
 x1(isnan(x1)) = 0; % replace NaNs with 0 so that cumsum can work
 y_axis      = [];
 fig_num = fig_num + fig_num_inc;
-x = plt_msig( cumsum(x1), ind, trace_name, trace_legend, year, trace_units, y_axis, t, fig_num,unitMult );
+x = plt_msig( cumsum(x1), ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num,unitMult );
 try
-    % sometimes at the begining of new year this causes an error. Ignore. (20250102 Zoran)
+    % sometimes at the begining of new yearIn this causes an error. Ignore. (20250102 Zoran)
     xlim(originalXlim);
     indAxes = indAxes+1; allAxes(indAxes) = gca;
 catch
@@ -227,7 +227,7 @@ trace_legend = char('Collected','Used');
 trace_units = '# of Samples';
 y_axis      = [34000 37000];
 fig_num = fig_num + fig_num_inc;
-[x, dTV]= plt_msig( trace_path, ind, trace_name, trace_legend, year, trace_units, y_axis, t, fig_num );
+[x, dTV]= plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num );
 indNans = find(isnan(sum(x,2)));
 if ~isempty(indNans)
     line(dTV(indNans,1),ones(length(indNans),1)*36000,...
@@ -254,7 +254,7 @@ end
 trace_units = '24V Battery Voltage (V)';
 y_axis      = [];
 fig_num = fig_num + fig_num_inc;
-x = plt_msig( trace_path, ind, trace_name, trace_legend, year, trace_units, y_axis, t, fig_num );
+x = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num );
 indAxes = indAxes+1; allAxes(indAxes) = gca;
 
 %----------------------------------------------------------
@@ -281,7 +281,7 @@ end
 trace_units = '24V Battery Current (Amps)';
 y_axis      = [];
 fig_num = fig_num + fig_num_inc;
-sysCurrent = plt_msig( trace_path, ind, trace_name, trace_legend, year, trace_units, y_axis, t, fig_num,[1 1]*coeffSign ); 
+sysCurrent = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num,[1 1]*coeffSign ); 
 indAxes = indAxes+1; allAxes(indAxes) = gca;
 
 %----------------------------------------------------------
@@ -290,11 +290,11 @@ indAxes = indAxes+1; allAxes(indAxes) = gca;
 trace_name  = sprintf('%s: %s',siteID,' Cumulative Battery Current');
 switch siteID
     case 'BB1'
-        Ibb1 = -read_sig( fullfile(pthSite,'MET', 'SYS_Batt_DCCurrent_Avg'), ind,year, t, 0 );
+        Ibb1 = -read_sig( fullfile(pthSite,'MET', 'SYS_Batt_DCCurrent_Avg'), ind,yearIn, t, 0 );
         Ibb1(isnan(Ibb1)) = 0;
         if tv(ind(1))<datenum(2021,11,17)
             % For this period, process the second battery box too.
-            Ibb2 = -read_sig( fullfile(pthSite,'MET', 'SYS_Batt_DCCurrent2_Avg'), ind,year, t, 0 );
+            Ibb2 = -read_sig( fullfile(pthSite,'MET', 'SYS_Batt_DCCurrent2_Avg'), ind,yearIn, t, 0 );
             Ibb2(isnan(Ibb2)) = 0;
             trace_path = (1+cumsum([Ibb1/600 Ibb2/800]/2))*100;  % Ah / Ah
         else
@@ -305,7 +305,7 @@ switch siteID
         trace_legend = char('Batt 1','Batt 2');
 
     case {'BB2','DSM','RBM'}
-        Ibb1 = read_sig( fullfile(pthSite,'MET', 'SYS_Batt_DCCurrent_Avg'), ind,year, t, 0 );
+        Ibb1 = read_sig( fullfile(pthSite,'MET', 'SYS_Batt_DCCurrent_Avg'), ind,yearIn, t, 0 );
         Ibb1(isnan(Ibb1))=0;
         trace_path = (1+cumsum(Ibb1/2)/2600)*100;    % Ah / Ah
         trace_legend = [];
@@ -316,7 +316,7 @@ end
 trace_units = 'Cummulative Current (%)';
 y_axis      = [];
 fig_num = fig_num + fig_num_inc;
-x = plt_msig( trace_path, ind, trace_name, trace_legend, year, trace_units, y_axis, t, fig_num );
+x = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num );
 indAxes = indAxes+1; allAxes(indAxes) = gca;
 
 
@@ -347,7 +347,7 @@ end
 trace_units = 'System Voltage (V)';
 y_axis      = [];
 fig_num = fig_num + fig_num_inc;
-sysVoltage = plt_msig( trace_path, ind, trace_name, trace_legend, year, trace_units, y_axis, t, fig_num );
+sysVoltage = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num );
 indAxes = indAxes+1; allAxes(indAxes) = gca;
 
 %----------------------------------------------------------
@@ -371,7 +371,7 @@ end
 trace_units = 'System Power (W)';
 y_axis      = [];
 fig_num = fig_num + fig_num_inc;
-sysPower = plt_msig( trace_path, ind, trace_name, trace_legend, year, trace_units, y_axis, t, fig_num );
+sysPower = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num );
 indAxes = indAxes+1; allAxes(indAxes) = gca;
 
 %----------------------------------------------------------
@@ -388,7 +388,7 @@ end
 trace_units = 'System Energy (Wh)';
 y_axis      = [];
 fig_num = fig_num + fig_num_inc;
-sysEnergy = plt_msig( trace_path, ind, trace_name, trace_legend, year, trace_units, y_axis, t, fig_num );
+sysEnergy = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num );
 indAxes = indAxes+1; allAxes(indAxes) = gca;
 
 %----------------------------------------------------------
@@ -434,8 +434,115 @@ end
 trace_units = 'Temperature (\circC)';
 y_axis      = [];
 fig_num = fig_num + fig_num_inc;
-x = plt_msig( trace_path, ind, trace_name, trace_legend, year, trace_units, y_axis, t, fig_num );
+x = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num );
 indAxes = indAxes+1; allAxes(indAxes) = gca;
+
+%----------------------------------------------------------
+% CNR4 components
+%----------------------------------------------------------
+trace_name  = sprintf('%s: %s',siteID,' CNR4 components');
+switch siteID
+    case {'BB1','BB2'}
+        trace_path  = char(fullfile(pthSite,'Met','MET_CNR1_SWi_Avg'),...
+                           fullfile(pthSite,'Met','MET_CNR1_SWo_Avg'),...
+                           fullfile(pthSite,'Met','MET_CNR1_LWi_Avg'),...
+                           fullfile(pthSite,'Met','MET_CNR1_LWo_Avg')...
+                           );
+    case {'DSM','RBM'}
+        trace_path  = char(fullfile(pthSite,'Met','MET_CNR4_SWi_Avg'),...
+                           fullfile(pthSite,'Met','MET_CNR4_SWo_Avg'),...
+                           fullfile(pthSite,'Met','MET_CNR4_LWi_Avg'),...
+                           fullfile(pthSite,'Met','MET_CNR4_LWo_Avg')...
+                           );
+    case {'HOGG','YOUNG','OHM'}
+        trace_path  = char(fullfile(pthSite,'Flux','SWIN_1_1_1'),...
+                           fullfile(pthSite,'Flux','SWOUT_1_1_1'),...
+                           fullfile(pthSite,'Flux','LWIN_1_1_1'),...
+                           fullfile(pthSite,'Flux','LWOUT_1_1_1')...
+                           );
+end
+trace_legend = char('SW_{IN}','SW_{OUT}','LW_{IN}','LW_{OUT}');
+trace_units = '(W)';
+y_axis      = [];
+fig_num = fig_num + fig_num_inc;
+x = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num );
+indAxes = indAxes+1; allAxes(indAxes) = gca;
+
+%----------------------------------------------------------
+% NET radiation
+%----------------------------------------------------------
+trace_name  = sprintf('%s: %s',siteID,' NETRAD');
+switch siteID
+    case {'BB1','BB2'}
+        trace_path  = char(fullfile(pthSite,'MET','MET_CNR1_Net_Avg'));
+    case {'DSM','RBM'}
+        trace_path  = char(fullfile(pthSite,'MET','MET_CNR4_Net_Avg'));
+    case {'HOGG','YOUNG','OHM'}
+        trace_path  = char(fullfile(pthSite,'Flux','RN_1_1_1'));
+end
+
+trace_legend = [];
+trace_units = '(µmol/m2/s)';
+y_axis      = [];
+fig_num = fig_num + fig_num_inc;
+x = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num );
+indAxes = indAxes+1; allAxes(indAxes) = gca;
+
+%----------------------------------------------------------
+% PPFD
+%----------------------------------------------------------
+trace_name  = sprintf('%s: %s',siteID,' PPFD');
+switch siteID
+    case {'DSM','RBM','BB1','BB2'}
+        trace_path  = char(fullfile(pthSite,'MET','MET_PARin_Avg'),...
+                           fullfile(pthSite,'MET','MET_PARout_Avg')...
+                           );
+    case {'HOGG','YOUNG','OHM'}
+        trace_path  = char(fullfile(pthSite,'Flux','PPFD_1_1_1'));
+end
+
+trace_legend = char('PPFD_{IN}','PPFD_{OUT}');
+trace_units = '(µmol/m2/s)';
+y_axis      = [];
+fig_num = fig_num + fig_num_inc;
+x = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num );
+indAxes = indAxes+1; allAxes(indAxes) = gca;
+
+%----------------------------------------------------------
+% Wind Speed
+%----------------------------------------------------------
+trace_name  = sprintf('%s: %s',siteID,'Wind Speed');
+switch siteID
+    case {'DSM','RBM','BB1','BB2'}
+        trace_path  = char(fullfile(pthSite,'MET','MET_Young_WS_WVc1'));
+    case {'HOGG','YOUNG','OHM'}
+        trace_path  = char(fullfile(pthSite,'Flux','wind_speed'));
+end
+trace_units = '(m/s)';
+y_axis      = [];
+fig_num = fig_num + fig_num_inc;
+x = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num );
+indAxes = indAxes+1; allAxes(indAxes) = gca;
+
+%----------------------------------------------------------
+% Wind Direction
+%----------------------------------------------------------
+trace_name  = sprintf('%s: %s',siteID,'Wind Direction');
+switch siteID
+    case {'DSM','RBM','BB1','BB2'}
+        trace_path  = char(fullfile(pthSite,'MET','MET_Young_WS_WVc2'));
+    case {'HOGG','YOUNG','OHM'}
+        trace_path  = char(fullfile(pthSite,'Flux','wind_dir'));
+end
+trace_legend = char('MET','ECCC');
+trace_units = 'deg';
+unitCorrection = [1 10];
+y_axis      = [];
+fig_num = fig_num + fig_num_inc;
+x = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num,unitCorrection );
+indAxes = indAxes+1; allAxes(indAxes) = gca;
+
+
 
 %----------------------------------------------------------
 % LI-7200 Thermocouples
@@ -454,7 +561,7 @@ trace_units = 'Temperature (\circC)'; % flowrate_min needs to be converted from 
 y_axis      = [];
 fig_num = fig_num + fig_num_inc;
 x = plt_msig( trace_path, ind, trace_name, ...
-              trace_legend, year, trace_units, ...
+              trace_legend, yearIn, trace_units, ...
               y_axis, t, fig_num );
 indAxes = indAxes+1; allAxes(indAxes) = gca;
 
@@ -475,7 +582,7 @@ trace_legend = char('Monitor','EddyPro');
 trace_units = 'Flow (lpm)'; % flowrate_min needs to be converted from m^3/sec *1000*60 (L/min)
 y_axis      = [];
 fig_num = fig_num + fig_num_inc;
-x = plt_msig( trace_path, ind, trace_name, trace_legend, year, trace_units, y_axis, t, fig_num,[1 1000*60] );
+x = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num,[1 1000*60] );
 indAxes = indAxes+1; allAxes(indAxes) = gca;
 
 %----------------------------------------------------------
@@ -496,7 +603,7 @@ end
 trace_units = 'Flow Drive (%)';
 y_axis      = [];
 fig_num = fig_num + fig_num_inc;
-x = plt_msig( trace_path, ind, trace_name, trace_legend, year, trace_units, y_axis, t, fig_num );
+x = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num );
 indAxes = indAxes+1; allAxes(indAxes) = gca;
 
 %----------------------------------------------------------
@@ -517,7 +624,7 @@ end
 trace_units = 'Phead (kPa)';
 y_axis      = [];
 fig_num = fig_num + fig_num_inc;
-x = plt_msig( trace_path, ind, trace_name, trace_legend, year, trace_units, y_axis, t, fig_num );
+x = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num );
 indAxes = indAxes+1; allAxes(indAxes) = gca;
 
 %----------------------------------------------------------
@@ -531,7 +638,7 @@ trace_legend = char('air\_pressure','air\_P\_mean');
 trace_units = 'Barometric Pressure (kPa)';
 y_axis      = [];
 fig_num = fig_num + fig_num_inc;
-x = plt_msig( trace_path, ind, trace_name, trace_legend, year, trace_units, y_axis, t, fig_num, [ 1 1] * 0.001 );
+x = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num, [ 1 1] * 0.001 );
 indAxes = indAxes+1; allAxes(indAxes) = gca;
 
 %----------------------------------------------------------
@@ -548,7 +655,7 @@ trace_legend = char('w_{spikes}','ts_{spikes}','co2_{spikes}','h2o_{spikes}','ch
 trace_units = 'Number of spikes';
 y_axis      = [];
 fig_num = fig_num + fig_num_inc;
-x = plt_msig( trace_path, ind, trace_name, trace_legend, year, trace_units, y_axis, t, fig_num );
+x = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num );
 indAxes = indAxes+1; allAxes(indAxes) = gca;
 
 
@@ -600,7 +707,7 @@ end
 trace_units = 'Num of errors';
 y_axis      = [];
 fig_num = fig_num + fig_num_inc;
-x = plt_msig( trace_path, ind, trace_name, trace_legend, year, trace_units, y_axis, t, fig_num );
+x = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num );
 indAxes = indAxes+1; allAxes(indAxes) = gca;
 
 %----------------------------------------------------------
@@ -631,7 +738,7 @@ end
 trace_units = 'Signal Strength (%)';
 y_axis      = [];
 fig_num = fig_num + fig_num_inc;
-x = plt_msig( trace_path, ind, trace_name, trace_legend, year, trace_units, y_axis, t, fig_num );
+x = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num );
 indAxes = indAxes+1; allAxes(indAxes) = gca;
 
 %----------------------------------------------------------
@@ -646,8 +753,72 @@ trace_legend = char('h_2o','co_2','ch_4');
 trace_units = 'Delay Times (Seconds)';
 y_axis      = [];
 fig_num = fig_num + fig_num_inc;
-x = plt_msig( trace_path, ind, trace_name, trace_legend, year, trace_units, y_axis, t, fig_num,[],[],char('o') );
+x = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num,[],[],char('o') );
 indAxes = indAxes+1; allAxes(indAxes) = gca;
+
+%----------------------------------------------------------
+% Soil moisture
+%----------------------------------------------------------
+trace_name  = sprintf('%s: %s',siteID,' Soil Moisture');
+
+trace_path  = char( fullfile(pthSite,'met','a_CS650_1_1_1_Avg'),...
+                    fullfile(pthSite,'met','a_CS650_1_2_1_Avg'),...
+                    fullfile(pthSite,'met','a_CS650_1_3_1_Avg'),...
+                    fullfile(pthSite,'met','a_CS650_1_4_1_Avg')...
+                   );
+
+trace_legend = char('1','2','3','4');
+trace_units = '(%)'; 
+y_axis      = [];
+fig_num = fig_num + fig_num_inc;
+x = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num );
+indAxes = indAxes+1; allAxes(indAxes) = gca;
+
+%----------------------------------------------------------
+% CO2
+%----------------------------------------------------------
+trace_name  = sprintf('%s: %s',siteID,' CO_2');
+
+trace_path  = char( fullfile(pthSite,'flux','co2_mixing_ratio')...
+                   );
+
+trace_legend = [];
+trace_units = '(umol/mol)'; 
+y_axis      = [];
+fig_num = fig_num + fig_num_inc;
+x = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num );
+indAxes = indAxes+1; allAxes(indAxes) = gca;
+
+%----------------------------------------------------------
+% CH4
+%----------------------------------------------------------
+trace_name  = sprintf('%s: %s',siteID,' CH_4');
+
+trace_path  = char( fullfile(pthSite,'flux','ch4_mixing_ratio')...
+                   );
+
+trace_legend = [];
+trace_units = '(umol/mol)'; 
+y_axis      = [];
+fig_num = fig_num + fig_num_inc;
+x = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num );
+indAxes = indAxes+1; allAxes(indAxes) = gca;
+
+%----------------------------------------------------------
+% H2O
+%----------------------------------------------------------
+trace_name  = sprintf('%s: %s',siteID,' H_2O');
+
+trace_path  = char( fullfile(pthSite,'flux','h2o_mixing_ratio')...
+                   );
+
+trace_legend = [];
+trace_units = '(mmol/mol)'; 
+y_axis      = [];
+fig_num = fig_num + fig_num_inc;
+x = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num );
+indAxes = indAxes+1; allAxes(indAxes) = gca;
+
 
 linkaxes(allAxes,'x');
 
