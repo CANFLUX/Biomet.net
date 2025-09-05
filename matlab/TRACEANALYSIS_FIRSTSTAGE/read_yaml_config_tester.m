@@ -1,6 +1,9 @@
+
+
 % A script for testing
-SiteID = 'DSM';
-stage = 'firststage';
+SiteID = 'BB';
+stage = 'secondstage';
+% stage = 'firststage';
 root = "C:\Database\Calculation_Procedures\TraceAnalysis_ini\";
 ini_path = strcat(root,SiteID,"\",SiteID,"_",stage,".ini");
 
@@ -19,6 +22,10 @@ if exist(yaml_path, 'file')
     % fclose(fid);
 end
 
+if length(trace_str_yml) ~= length(trace_str_ini)
+    fprintf("yml length %d vs ini_lenght %d",length(trace_str_yml), length(trace_str_ini))
+    error('Trace lengths do not match!!!')
+end
 inicomp(trace_str_ini,trace_str_yml)
 
 function inicomp(inm,ynm)
@@ -51,7 +58,15 @@ function inicomp(inm,ynm)
             continue
         elseif isa(itmp,'struct')
             fprintf('\n\n%s are not equal, digging deeper\n\n~~~~~~~~~~~~~~`',fn)
-            inicomp(itmp,ytmp)
+            for i = 1:length(inm)
+                try
+                    fprintf('Testing %s',char(inm(i).variableName))
+                catch
+                    fprintf('Unexpected recursion?')
+                    keyboard
+                end
+                inicomp(inm(i).(fn),ynm(i).(fn))
+            end
             fprintf('\n\nend summary of %s\n\n~~~~~~~~~~~~~~~~\n\n',fn)
             continue
         end

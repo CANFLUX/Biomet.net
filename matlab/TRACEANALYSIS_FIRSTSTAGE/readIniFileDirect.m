@@ -40,7 +40,7 @@ else
     iniFileName = fullfile(db_pth_root,'Calculation_Procedures','TraceAnalysis_ini',siteID,fileName);
 end
 if newYAML
-    tmp = strrep(iniFileName,'.ini','.yml')
+    tmp = strrep(iniFileName,'.ini','.yml');
     if exist(tmp,'file')
         iniFileName = tmp;
     else

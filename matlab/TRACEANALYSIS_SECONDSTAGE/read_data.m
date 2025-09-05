@@ -108,9 +108,9 @@ arg_default('options','none')
 arg_default('sourceDB','database')
 
 if newYAML
-    tmp = strrep(iniFileName,'.ini','.yml')
+    tmp = strrep(ini_file,'.ini','.yml');
     if exist(tmp,'file')
-        iniFileName = tmp;
+        ini_file = tmp;
     else
         newYAML = false;
     end
@@ -127,7 +127,7 @@ addpath( biomet_path('Calculation_Procedures\TraceAnalysis_ini',SiteID,'Derived_
 if exist('ini_file','var') & ~isempty(ini_file) %#ok<*AND2>
     if newYAML
         fprintf('\n\nReading new yaml format\n\n')
-        trace_str = read_yaml_config(iniFileName,yearIn);
+        trace_str = read_yaml_config(ini_file,yearIn);
     else
         fid = fopen(ini_file,'rt');						%open text file for reading only.
         if (fid < 0)

@@ -59,7 +59,7 @@ trace_str.data = [];                %holds calculated data from Evalutation rout
 trace_str.searchPath = '';          %holds the options used to determine the path of the second stage data
 trace_str.input_path = '';          %holds the path of the database of the source data
 trace_str.output_path = '';         %holds the path where output data is dumped
-trace_str.high_level_path = '';
+trace_str.high_level_path = {};     % Modified from tempalt to conform with expected type from parsing an empyt high_level_path = {}
 
 
 trace_str.iniFileName = char(ymlFileName);
@@ -70,25 +70,25 @@ required_common_ini_fields = {'variableName', 'title', 'units'};
 required_first_stage_ini_fields = {'inputFileName', 'measurementType', 'minMax'};
 required_second_stage_ini_fields = {'Evaluate1'};
 
-% %Read each line of the ini_file given by the file ID number, 'fid', and for each trace
-% %listed, store into an array of structures:
-% countTraces = 0;
-% 
-% % Opperations adapted for working with yaml format (recursion & eval (mostly) not required)
+% Opperations adapted for working with yaml format (recursion & eval (mostly) not required)
 yml_ini = read_and_check_types(ymlFileName);
-% base-level fields in the yaml file
-yml_fields = fieldnames(yml_ini);
-% base-level fields in trace_str
-base_fields = fieldnames(trace_str);
 
 % Add whatever is possible from the get go
+% Base variables from inis without tags are coded as "metadata"
 % This won't work for ini lines where names don't match the codebase ... but
 % now is the perfect time to fix that, by translating the chainges in the
 % python YAML parser!
-for i = 1:length(yml_fields)
-    yml_fn = yml_fields{i};
-    if ismember(yml_fn,base_fields)
-        trace_str.(yml_fn) = yml_ini.(yml_fn);
+% base-level fields in the yaml file
+metadata = fieldnames(yml_ini.metadata);
+% base-level fields in trace_str
+base_fields = fieldnames(trace_str);
+for i = 1:length(metadata)
+    md_fn = metadata{i};
+    if ismember(md_fn,base_fields)
+        value = yml_ini.metadata.(md_fn);
+        if ~isempty(value) & ~isa(value,'yaml.Null')
+            trace_str.(md_fn) = value;
+        end
     end
 end
 
@@ -111,9 +111,12 @@ variableNames = fieldnames(yml_ini.Trace);
 nTraces = length(variableNames);
 
 % Update from global Trace variables
-global_trace_updates = fieldnames(yml_ini.globalVars.Trace);
+if isfield(yml_ini,'globalVars') & isfield(yml_ini.globalVars,'Trace')
+    global_trace_updates = fieldnames(yml_ini.globalVars.Trace);
+else
+    global_trace_updates = {};
+end
 for trace_update = global_trace_updates'
-    % keyboard
     trace_global = yml_ini.globalVars.Trace.(char(trace_update));
     if isfield(yml_ini.Trace,char(trace_update))
         for fld=fieldnames(trace_global(:))'
@@ -125,9 +128,13 @@ for trace_update = global_trace_updates'
 end
 
 % Then update from global instrument variables
-global_instrument_updates = fieldnames(yml_ini.globalVars.Instrument);
-fns = fieldnames(yml_ini.Trace);
-types = cellfun(@(f) yml_ini.Trace.(f).instrumentType, fns, 'UniformOutput', false);
+if isfield(yml_ini,'globalVars') & isfield(yml_ini.globalVars,'Instrument')
+    global_instrument_updates = fieldnames(yml_ini.globalVars.Instrument);
+    fns = fieldnames(yml_ini.Trace);
+    types = cellfun(@(f) yml_ini.Trace.(f).instrumentType, fns, 'UniformOutput', false);
+else
+    global_instrument_updates = {};
+end
 for instrumentType = global_instrument_updates(:)'
     % Find variableNames for given instrument types
     idx = strcmp(types, instrumentType);
@@ -146,9 +153,7 @@ for instrumentType = global_instrument_updates(:)'
     end
 end
 
-
 % Now iteratively dump traces to trace_str
-
 for nm = fieldnames(yml_ini)'
     nm = char(nm);
     if isfield(trace_str,nm)
@@ -165,40 +170,9 @@ for nth_trace=1:nTraces
     if isfield(yml_ini,'globalVars') && isfield(yml_ini.globalVars,'other')
         trace_str(nth_trace).ini.globalVars.other = yml_ini.globalVars.other;
     end
-% 
-%     %Test for required fields that the initialization file must have.
-%     curr_fields = fieldnames(trace_str(nth_trace).ini);												%get current fields
-%     chck_common = ismember(required_common_ini_fields,curr_fields);				    %check to see if the fields that are common to both stages are present
-%     chck_first_stage = ismember(required_first_stage_ini_fields,curr_fields);		%check to see if the fields that are common to both stages are present
-%     chck_second_stage = ismember(required_second_stage_ini_fields,curr_fields);		%check to see if the fields that are common to both stages are present
-%     if all(chck_common)
-%         if all(chck_first_stage)
-%             if strcmp(iniFileType,'first')
-%                 stage = 'first';
-%                 trace_str(nth_trace).stage = 'first';
-%             else
-%                 error('Ini file is for the stage: %s but the stage: %s is detected based on the required field names. ',iniFileType,stage);
-%             end
-%         end
-%         if all(chck_second_stage)
-%             if strcmp(iniFileType,'second')
-%                 stage = 'second';
-%                 trace_str(nth_trace).stage = 'second';
-%             else
-%                 error('*Warning: Ini file is for the stage: *%s* but the *second* stage is detected based on the required field names. Line: %d\n',iniFileType,countLines);
-%             end
-%         end
-%     else
-%         error(2,'Error in ini file, common required field(s) do not exist.');
-%         trace_str_out = '';
-%         return
-%     end
-% 
 end
 
 trace_yaml_config = trace_str;
-% 
-% 
 end
 % 
 function yml_out = read_and_check_types(ymlFileName)
@@ -230,6 +204,7 @@ function block_out = check_types(block_in)
     cell_array = {'inputFileName'};
     % Forced to double, will check if strings are datetimes first
     double_array = {'Enable','minMax','clamped_minMax','zeroPt','inputFileName_dates','loggedCalibration','currentCalibration'};
+    rename = {{'Evaluate','Evaluate1'}};
     % double_array_wdatenum = {'inputFileName_dates','loggedCalibration','currentCalibration'};
     % First apply to trace blocks
     trace_name = fieldnames(block_in);
@@ -239,6 +214,9 @@ function block_out = check_types(block_in)
             v = block_in.(char(tr)).(char(tf));
             if ismember(char(tf),cell_array) & ~ isa(v,'cell')
                 block_in.(char(tr)).(char(tf)) = {v};
+            elseif strcmp(char(tf),'Evaluate')
+                % Rename for legacy reasons
+                block_in.(char(tr)).('Evaluate1') = v;
             elseif ismember(char(tf),double_array) & ~ isa(v,'double')
                 values = block_in.(char(tr)).(char(tf));
                 if isempty(values)
@@ -257,47 +235,12 @@ function block_out = check_types(block_in)
                             values{i} = double(values{i});
                         end
                     end
-                    % keyboard
                 end
                 if isa(values,'cell')
                     values = [values{:}];
-                % else
-                %     keyboard
                 end
                 block_in.(char(tr)).(char(tf)) = values;
                 
-            % % all date objects have been converted to string format in the
-            % % yaml files, go back to depreciated datenum for matlab
-            % % compatibility
-            % elseif ismember(char(tf),double_array_wdatenum) & ~ isa(v,'double')
-                % if strcmp(char(tf), 'inputFileName_dates')
-                %     % inputFileName_dates are all dates
-                %     inputFileName_dates = double([]);
-                %     for i = 1:length(v)
-                %         inputFileName_dates(i) = datenum(datetime(v(i)));
-                %     end
-                %     block_in.(char(tr)).(char(tf)) = inputFileName_dates;
-                % else
-                %     % others contain calibration settings and dates,
-                %     % requires parsing
-                %     mixed_double = double([]);
-                %     if iscell(v) && all(cellfun(@iscell, v))
-                %         v = [v{:}];   % concatenate all 1×4 cells (when multiple calibraitons exist)
-                %     else
-                %         v = v;
-                %     end
-                %     for i = 1:length(v)
-                %         if (mod(i,4) == 0) | (mod(i,4) == 3)
-                %             mixed_double(i) = datenum(datetime(v(i)));
-                %         else
-                %             mixed_double(i) = cell2mat(v(i));
-                %         end
-                %     end
-                %     if length(mixed_double)>4
-                %         mixed_double = reshape(mixed_double,4,[])';
-                %     end
-                %     block_in.(char(tr)).(char(tf)) = mixed_double;
-                % end
             else  
                 % Handle nulls and other edge cases
                 if strcmp(class(v),'yaml.Null')
