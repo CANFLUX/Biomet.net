@@ -15,10 +15,12 @@ function [successOut,outputPath] = release_TAB_project(projectPath,outputFolderN
 %
 %  
 % Zoran Nesic               File created:       Sep  5, 2025
-%                           Last modification:  Sep  5, 2025
+%                           Last modification:  Sep  7, 2025
 
 % Revisions
 %
+% Sep 7, 2025 (Zoran)
+%   - cleaned up some commented-out lines.
  
 defaultFoldersToCopy = {'Database','Matlab','Scripts'};
 arg_default('foldersToCopy',defaultFoldersToCopy)
@@ -45,19 +47,7 @@ for cntFolders = 1:length(foldersToCopy)
         successOut = 0;
     end
 end
-% % copy Matlab
-% [success,message,~] = copyfile(fullfile(structProject.matlabPath),fullfile(outputPath,'Matlab'));
-% if ~success
-%     fprintf(2,'%s\n',message);
-%     successOut = 0;
-% end
-% % copy Scripts
-% [success,message,~] = copyfile(fullfile(structProject.path,'Scripts'),fullfile(outputPath,'Scripts'));
-% if ~success
-%     fprintf(2,'%s\n',message);
-%     successOut = 0;
-% end
-% copy Biomet.net
+
 pathBiomet = which('read_bor');
 indEnd = regexpi(pathBiomet,[filesep 'Biomet.net' filesep],"end");
 pathBiomet = pathBiomet(1:indEnd);

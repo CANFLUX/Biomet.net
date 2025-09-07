@@ -10,17 +10,20 @@ function activate_TAB_release(releasePath)
 %       activate_TAB_release(releasePath)
 %  
 % Zoran Nesic               File created:       Sep  5, 2025
-%                           Last modification:  Sep  5, 2025
+%                           Last modification:  Sep  7, 2025
 
 % Revisions
 %
+% Sep 7, 2025 (Zoran)
+%   - made the code a bit more clear by moving path(pathdef) above cd() line.
 
 % Set the project configuration
 structProject=set_TAB_project(releasePath);
 % convert to using "frozen" release of Biomet.net
-cd(fullfile(structProject.path,'Biomet.net','matlab','startup'))
 path(pathdef)
+cd(fullfile(structProject.path,'Biomet.net','matlab','startup'))
 startup
+
 % Go back to the 
 structProject=set_TAB_project(releasePath);
 
