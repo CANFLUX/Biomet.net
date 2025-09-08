@@ -132,7 +132,7 @@ configure <- function(siteID){
   fn <- sprintf('%s_config.yml',siteID)
   filename <- file.path(db_root,'Calculation_Procedures/TraceAnalysis_ini',siteID,fn)
   site_config <- yaml.load_file(filename)
-  
+
   # merge the config files
   config <- merge_nested_lists(site_config,dbase_config)
   
@@ -145,9 +145,10 @@ configure <- function(siteID){
   yearsAll = yearsAll[!sapply(yearsAll, is.na)]
   level_in <- config$Database$Paths$SecondStage
   tv <- config$Database$Timestamp$name
+
   siteYearsAll = file.path(db_root,as.character(yearsAll),siteID,level_in,tv)
   yearsAll = yearsAll[sapply(siteYearsAll,file.exists)]
-  siteYearsAll = siteYearsAll[sapply(siteYearsAll,file.exists)]
+  siteYearsAll = normalizePath(siteYearsAll[sapply(siteYearsAll,file.exists)],winslash="/")
   siteYearsAll = gsub(tv,'',siteYearsAll)
   siteYearsAll = gsub(config$Database$Paths$SecondStage,'',siteYearsAll)
   siteYearsAll = gsub('//','',siteYearsAll)
@@ -155,12 +156,12 @@ configure <- function(siteID){
   # Determine site years to output
   if (length(args)>2){
     years <- c(args[3]:args[length(args)])
-    siteYearsOut = file.path(db_root,as.character(years),siteID)
+    siteYearsOut = normalizePath(file.path(db_root,as.character(years),siteID),winslash="/")
   } else {
     siteYearsOut = siteYearsAll
     years <- yearsAll
   }
-  
+
   config$siteYearsAll <- siteYearsAll
   config$siteYearsOut <- siteYearsOut
   config$years <- years
@@ -241,10 +242,11 @@ read_and_copy_traces <- function(){
   for (siteYearIn in config$siteYearsAll) {
     in_path <- file.path(siteYearIn,level_in)
     out_path <- file.path(siteYearIn,level_out)
+
     if (siteYearIn %in% config$siteYearsOut){
       dir.create(out_path, showWarnings = FALSE)
       unlink(file.path(out_path,'*'))
-      
+         
       # First copy time-vector
       file.copy(file.path(in_path,config$Database$Timestamp$name),
                 file.path(out_path,config$Database$Timestamp$name))
