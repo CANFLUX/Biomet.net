@@ -41,7 +41,9 @@ trace_str.Diff_GMT_to_local_time = '';
 % Diff_GMT_to_local_time is only assigned in first stage, but is was
 % declared globally here in read_ini_file ... so I don't think it will
 % cause an issue?
-trace_str.Timezone = '';
+if strcmp(iniFileType,'first')
+    trace_str.Timezone = '';
+end
 trace_str.Last_Updated = char(datetime("now"));
 trace_str.data = [];
 trace_str.DOY = [];
@@ -59,16 +61,11 @@ trace_str.data = [];                %holds calculated data from Evalutation rout
 trace_str.searchPath = '';          %holds the options used to determine the path of the second stage data
 trace_str.input_path = '';          %holds the path of the database of the source data
 trace_str.output_path = '';         %holds the path where output data is dumped
-trace_str.high_level_path = {};     % Modified from tempalt to conform with expected type from parsing an empyt high_level_path = {}
+trace_str.high_level_path = [''];     % Modified from tempalte to conform with expected type from parsing an empyt high_level_path = {}
 
 
 trace_str.iniFileName = char(ymlFileName);
 trace_str.iniFileLineNum = 0;
-
-% Define which fileds in the ini must exist
-required_common_ini_fields = {'variableName', 'title', 'units'};
-required_first_stage_ini_fields = {'inputFileName', 'measurementType', 'minMax'};
-required_second_stage_ini_fields = {'Evaluate1'};
 
 % Opperations adapted for working with yaml format (recursion & eval (mostly) not required)
 yml_ini = read_and_check_types(ymlFileName);
@@ -82,12 +79,17 @@ yml_ini = read_and_check_types(ymlFileName);
 metadata = fieldnames(yml_ini.metadata);
 % base-level fields in trace_str
 base_fields = fieldnames(trace_str);
+cell_array = {'high_level_path'};
 for i = 1:length(metadata)
     md_fn = metadata{i};
     if ismember(md_fn,base_fields)
         value = yml_ini.metadata.(md_fn);
         if ~isempty(value) & ~isa(value,'yaml.Null')
-            trace_str.(md_fn) = value;
+            if ismember({md_fn},cell_array)
+                trace_str.(md_fn) = {value};
+            else
+                trace_str.(md_fn) = value;
+            end
         end
     end
 end
@@ -101,14 +103,49 @@ if isfield(yml_ini,"Include")
         includePath = fullfile(includePath,strcat(includeName{1},'.yml'));
         yml_ini_include = read_and_check_types(includePath);
         addTraces = fieldnames(yml_ini_include.Trace);
+        existingTraces = fieldnames(yml_ini.Trace);
         for nadd = 1:numel(addTraces)
-            yml_ini.Trace.(addTraces{nadd}) = yml_ini_include.Trace.(addTraces{nadd});
+            % find overlaps, base ini file should overwrite anything in the
+            % include
+            addVar = addTraces{nadd};
+            addTrace = yml_ini_include.Trace.(addTraces{nadd});
+            if ismember(addVar,existingTraces)
+                current = yml_ini.Trace.(addVar);
+                if current.Overwrite>=addTrace.Overwrite
+                    if current.Overwrite == 2
+                        % Current will overwrite include and not move postions
+                        continue
+                    else
+                        % Current will overwrite inclue (at position of include)
+                        addTrace = yml_ini.Trace.(addVar);
+                        yml_ini.Trace = rmfield(yml_ini.Trace,addVar);
+                        yml_ini.Trace.(addVar) = addTrace;
+                    end
+                else
+                end
+
+            end
+            yml_ini.Trace.(addTraces{nadd}) = addTrace;
         end
     end
 end
 
-variableNames = fieldnames(yml_ini.Trace);
-nTraces = length(variableNames);
+% Some modified legacy code, Don't think its used in current version? but
+% just incase, modify input path
+if ~isempty(trace_str.input_path) & trace_str.input_path(end) ~= '\'
+    trace_str.input_path = [trace_str.input_path filesep];
+end
+if ~isempty(trace_str.output_path) & trace_str.output_path(end) ~= '\'
+    trace_str.output_path = [trace_str.output_path filesep];
+end
+%Elyn 08.11.01 - added year-independent path name option
+ind_year = strfind(lower(trace_str.input_path),'yyyy');
+if isempty(ind_year) & length(ind_year) > 1
+    error 'Year-independent paths require a wildcard: yyyy!'
+end
+if ~isempty(ind_year) & length(ind_year) == 1
+    trace_str.input_path(ind_year:ind_year+3) = num2str(yearIn);
+end
 
 % Update from global Trace variables
 if isfield(yml_ini,'globalVars') & isfield(yml_ini.globalVars,'Trace')
@@ -120,9 +157,7 @@ for trace_update = global_trace_updates'
     trace_global = yml_ini.globalVars.Trace.(char(trace_update));
     if isfield(yml_ini.Trace,char(trace_update))
         for fld=fieldnames(trace_global(:))'
-            if isfield(yml_ini.Trace.(char(trace_update)),fld)
-                yml_ini.Trace.(char(trace_update)).(char(fld)) = trace_global.(char(fld));
-            end
+            yml_ini.Trace.(char(trace_update)).(char(fld)) = trace_global.(char(fld));
         end
     end
 end
@@ -153,23 +188,52 @@ for instrumentType = global_instrument_updates(:)'
     end
 end
 
-% Now iteratively dump traces to trace_str
-for nm = fieldnames(yml_ini)'
-    nm = char(nm);
-    if isfield(trace_str,nm)
-        trace_str.(nm) = yml_ini.(nm);
-    end
-end
+% Now iteratively dump traces to trace_str 
+% filter for inputFilename_Dates first if possible
+variableNames = fieldnames(yml_ini.Trace);
+nTraces = length(variableNames);
+mth_trace_added = 0;
+strYearDate = datenum(yearIn,1,1,0,30,0); %#ok<*DATNM>
+endYearDate = datenum(yearIn+1,1,1,0,0,0);
+tvYear = fr_round_time(strYearDate:1/48:endYearDate); % contains all 30-min points in the current year
 for nth_trace=1:nTraces
-    trace_str(nth_trace) = trace_str(1);
     temp_trace = yml_ini.Trace.(variableNames{nth_trace});
-    trace_str(nth_trace).variableName = temp_trace.variableName;
-    trace_str(nth_trace).ini = yml_ini.Trace.(variableNames{nth_trace});
+    bool_no_inputFileName_dates = (~isfield(temp_trace,'inputFileName_dates') ...
+        || isempty(temp_trace.inputFileName_dates));
+    if bool_no_inputFileName_dates
+        bool_validTrace = 1;
+    else
+        bool_validTrace = 0;
+        datesMatrix = temp_trace.inputFileName_dates;
 
-    % if globalVars.other exist, store them under the ini.globalVars.other field
-    if isfield(yml_ini,'globalVars') && isfield(yml_ini.globalVars,'other')
-        trace_str(nth_trace).ini.globalVars.other = yml_ini.globalVars.other;
+        for cntRows = 1:size(datesMatrix,1)
+            % if any of the data points beween one of input_FileName_dates pairs
+            % belong to the current year then keep the trace
+            if   any(tvYear > temp_trace.inputFileName_dates(cntRows,1) & ...
+                tvYear <= temp_trace.inputFileName_dates(cntRows,2)) 
+                bool_validTrace = 1;
+                break
+            end
+        end
     end
+    if bool_validTrace
+        mth_trace_added = mth_trace_added + 1;
+        trace_str(mth_trace_added) = trace_str(1);
+        trace_str(mth_trace_added).variableName = temp_trace.variableName;
+        trace_str(mth_trace_added).ini = yml_ini.Trace.(variableNames{nth_trace});
+    
+        % if globalVars.other exist, store them under the ini.globalVars.other field
+        if isfield(yml_ini,'globalVars') && isfield(yml_ini.globalVars,'other')
+            trace_str(mth_trace_added).ini.globalVars.other = yml_ini.globalVars.other;
+        end
+        if strcmp(iniFileType,'second')
+            trace_str(mth_trace_added).ini.measurementType = 'high_level';
+        end
+    
+    else
+        fprintf('\nSkipping %s due to filename date filter\n',temp_trace.variableName )
+    end
+
 end
 
 trace_yaml_config = trace_str;
@@ -203,26 +267,46 @@ function block_out = check_types(block_in)
     % char if not listed here
     cell_array = {'inputFileName'};
     % Forced to double, will check if strings are datetimes first
-    double_array = {'Enable','minMax','clamped_minMax','zeroPt','inputFileName_dates','loggedCalibration','currentCalibration'};
-    % double_array_wdatenum = {'inputFileName_dates','loggedCalibration','currentCalibration'};
+    double_array = {'Overwrite','Enable','minMax','clamped_minMax','zeroPt','inputFileName_dates','loggedCalibration','currentCalibration'};
     % First apply to trace blocks
     trace_name = fieldnames(block_in);
+    flagOverwriteDefault = 0;
+    flagOverwriteNew = flagOverwriteDefault;
     for tr = trace_name(:)'
         tr_flds = fieldnames(block_in.(char(tr)));
         for tf = tr_flds(:)'
             v = block_in.(char(tr)).(char(tf));
+            if strcmp(char(tf),'Overwrite')
+                flagOverwriteNew = block_in.(char(tr)).(char(tf));
+                if ~ismember(flagOverwriteNew,[0 1 2])
+                    % flag can have only 3 possible values [0 1 2])
+                    error('      Overwrite property value can be only [0 1 2]. Trace: %s has Overwrite = %d\n',trace_str(mth_trace_added).variableName,flagOverwriteNew);
+                end
+            end
             if ismember(char(tf),cell_array) & ~ isa(v,'cell')
                 block_in.(char(tr)).(char(tf)) = {v};
-            elseif strcmp(char(tf),'Evaluate')
+            elseif ismember(char(tf),cell_array)
+                block_in.(char(tr)).(char(tf)) = v;
+            elseif strcmp(char(tf),'Evaluate') | strcmp(char(tf),'postEvaluate')
                 % Parse to match the expectation of the legacy code
                 lines = splitlines(v);
                 for k = 1:numel(lines)
                     c = split(lines{k},'%');
                     lines{k} = regexprep(strtrim(c{1}),'\s+','');
                 end
-                v - strjoin(lines,'');
-                % Rename for legacy reasons
-                block_in.(char(tr)).('Evaluate1') = v;
+                v = strjoin(lines,',');
+                if v(1) == "'" & v(end) == "'"
+                    v = v(2:end-1);
+                end
+
+                if strcmp(char(tf),'Evaluate')
+                    % Rename for legacy reasons
+                    block_in.(char(tr)).('Evaluate1') = v;
+                    block_in.(char(tr)) = rmfield(block_in.(char(tr)),'Evaluate');
+                else
+                    block_in.(char(tr)).('postEvaluate') = v;
+                end
+
             elseif ismember(char(tf),double_array) & ~ isa(v,'double')
                 values = block_in.(char(tr)).(char(tf));
                 if isempty(values)
@@ -267,8 +351,8 @@ function block_out = check_types(block_in)
                 end
             end
         end
+        block_in.(char(tr)).('Overwrite') = flagOverwriteNew;
     end
-
     block_out = block_in;
 end
     

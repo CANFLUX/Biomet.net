@@ -735,16 +735,35 @@ if ~flagRecursiveCall & strcmpi(iniFileType,'first')
                 % get Overwrite status of the duplicate trace. 
                 flagOverwriteNew = trace_str_out(indDuplicate(cntDuplicates)).ini.Overwrite;
                 % test if the overwritting is allowed
+                % It looks like this is mainlly needed (so far) when a timeshift is applied?
+                % I think timeshifting data should be a separate standalone function as its a common enough issue 
+                % maybe it need not be on a case by case basis in Eval statements, it could be a globalVarible inestead?
                 if flagOverwriteNew >= 1 && flagOverwriteOld == 0
                     % All good, trace can be overwritten. Proceed
                     if flagOverwriteNew == 1
                         % Overwrite the existing trace with the new one
+                        % Desired behaviour here is somewheat unclear, more docuemnation of Overwrite parrameter would be helpful
+                        % Idea is to have Site level ini parameters overwrite includes correct?
+                        % in the ini format, this REQUIRES the trace block to be written after the include staement correct?
+                        % If upgrading to yaml format, this could result in slightly different ordering of trace struct
+                        % But also present an opporotunity to make behaviour more explicit
+                        % I would propose having the include traces default overwrite = 1, 
+                        % ie it overwrites whatever is in the site level ini has the default overwrite (0)
+                        % If site level overwrite = 1, site level trace replaces include trace, taking position (order) of the include
+                        % If site level overwrite == 2, it can usurp the include and maintain its current position.  
+                        % Important point for disucssion regardless given bug mentoined below
                         fprintf(1,'      Found a duplicate trace: %s \n',currentTrace);
                         fprintf(1,'        Original  trace on line %4d in file: %s\n',trace_str_out(indDuplicate(1)).iniFileLineNum,trace_str_out(indDuplicate(1)).iniFileName);
                         fprintf(1,'        Duplicate trace on line %4d in file: %s\n',trace_str_out(indDuplicate(cntDuplicates)).iniFileLineNum,trace_str_out(indDuplicate(cntDuplicates)).iniFileName);
                         fprintf(1,'        Overwritting the original trace (trace: #%d) with the duplicate.\n',cntTrace);
                         trace_str_unique(cntTrace) = trace_str_out(indDuplicate(cntDuplicates));
                     else
+                        % Bug??  This does not seem to work as intended
+                        % On HOGG, set SW_OUT_1_1_1 Overwrite = 2 ( instead of 1 which is in the file)
+                        % Creates a duplicate SW_1_1_1 and a missing LW_1_1_1
+                        % Can recreate issue for BB, if copy/paste BOTH post-include Traces but not if just one
+
+
                         % Delete the existing trace and add new one at the back 
                         % (this changes order of traces in the output trace_str)
                         fprintf(1,'      Found a duplicate trace: %s \n',currentTrace);
@@ -760,6 +779,7 @@ if ~flagRecursiveCall & strcmpi(iniFileType,'first')
                         trace_str_unique(indDuplicateInUnique(1)) = [];
                     end
                 else       % if flagOverwriteOld >= flagOverwriteNew
+                    % This will fail if old overwrite = 1 and new overwrite = 2
                     fprintf(2,'      Found a duplicate trace: %s\n',currentTrace);
                     fprintf(2,'        Original  trace on line %4d in file: %s\n',trace_str_out(indDuplicate(1)).iniFileLineNum,trace_str_out(indDuplicate(1)).iniFileName);
                     fprintf(2,'        Duplicate trace on line %4d in file: %s\n',trace_str_out(indDuplicate(cntDuplicates)).iniFileLineNum,trace_str_out(indDuplicate(cntDuplicates)).iniFileName);
