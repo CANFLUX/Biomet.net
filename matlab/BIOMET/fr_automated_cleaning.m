@@ -1,4 +1,4 @@
-function fr_automated_cleaning(Years,Sites,stages,db_out,db_ini)
+function fr_automated_cleaning(Years,Sites,stages,db_out,db_ini,use_yaml)
 
 % Example call: run stages 1 & 2 for two sites (BB & BB2) for two years (2022 & 2023) 
 % fr_automated_cleaning([2022 2023],{'BB', 'BB2'},[1 2])
@@ -212,6 +212,7 @@ end
 %--------------------------------------------------------------------------
 arg_default('db_out',db_pth);
 arg_default('db_ini',db_pth);
+arg_default('use_yaml',false);
 
 numOfYears = length(Years);
 numOfSites = length(Sites);
@@ -250,8 +251,8 @@ for cntSites = 1:numOfSites
         if ~isempty(find(stages == 1)) %#ok<*EFIND>
             stage_str = 'First ';
             disp(['============== ' stage_str ' stage cleaning ' siteID ' ' yy_str ' ==============']);
-            db_dir_ini(yy(1),siteID,db_out,1);
-            data_first = fr_cleaning_siteyear(yy(1),siteID,1,db_ini);
+            db_dir_ini(yy(1),siteID,db_out,1,use_yaml);
+            data_first = fr_cleaning_siteyear(yy(1),siteID,1,db_ini,use_yaml);
             ta_export(data_first,pth_out_first);
             fprintf('============== End of cleaning stage 1 =============\n');
         end
@@ -276,7 +277,7 @@ for cntSites = 1:numOfSites
             stage_str = 'Third ';
             disp(['============== ' stage_str ' stage cleaning ' siteID ' ' yy_str ' ==============']);
             db_dir_ini(yy(1),siteID,db_out,3);
-            data_third = fr_cleaning_siteyear(yy(1),siteID,3,db_ini);
+            data_third = fr_cleaning_siteyear(yy(1),siteID,3,db_ini,use_yaml);
             ta_export(data_third,pth_out_third);
             fprintf('============== End of cleaning stage 3 =============\n');
         end
@@ -286,7 +287,7 @@ for cntSites = 1:numOfSites
         %------------------------------------------------------------------
         if ~isempty(find(stages == 4))
             disp(['============== ' siteID ' - FCRN Export =================================']);
-            data_fcrn = fcrn_trace_str(data_first,data_second,data_third);
+            data_fcrn = fcrn_trace_str(data_first,data_second,data_third,use_yaml);
             fcrnexport(siteID,data_fcrn);
             fprintf('============== End of cleaning stage 4 =============\n');
         end

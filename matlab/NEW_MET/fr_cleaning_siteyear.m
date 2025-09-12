@@ -1,4 +1,4 @@
-function data_cleaned = fr_cleaning_siteyear(Year,SiteId,stage,db_ini)
+function data_cleaned = fr_cleaning_siteyear(Year,SiteId,stage,db_ini,use_yaml)
 % data_cleaned = fr_cleaning_siteyear(Year,SiteId,stage,db_ini)
 %
 % Run one stage of cleaning
@@ -62,6 +62,9 @@ function data_cleaned = fr_cleaning_siteyear(Year,SiteId,stage,db_ini)
 % Sep 09, 2004
 % Implemented db_out and db_ini option and use of db_dir_ini
 
+
+arg_default('use_yaml',false)
+
 Year_cur = year(datetime);
 arg_default('Year',Year_cur(1));
 db_pth = db_pth_root;
@@ -99,7 +102,7 @@ if stage == 1
         mat = [];
     end
     
-    data_raw    = read_data(Year(1),SiteId,ini_file_first);
+    data_raw    = read_data(Year(1),SiteId,ini_file_first,use_yaml);
     
     % find dependents to clean
     [data_auto,ct] = find_all_dependent(data_raw);
@@ -149,14 +152,14 @@ end
 % Do second stage cleaning and exporting
 %------------------------------------------------------------------
 if stage == 2
-    data_cleaned = read_data(Year(1),SiteId,ini_file_second);
+    data_cleaned = read_data(Year(1),SiteId,ini_file_second,use_yaml);
 end
 
 %------------------------------------------------------------------
 % Do third stage automated cleaning and exporting
 %------------------------------------------------------------------
 if stage == 3
-    data_cleaned = read_data(Year(1),SiteId,ini_file_third);
+    data_cleaned = read_data(Year(1),SiteId,ini_file_third,use_yaml);
 end
 
 

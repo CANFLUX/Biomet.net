@@ -24,7 +24,7 @@ function trace_str = readIniFileDirect(yearIn,siteID,stageNum,newYAML)
 %   - changed function so it can now accept a full path to the ini file
 %     instead of creating the iniFileName based on siteID and stageNum and default paths
 
-arg_default('newYAML',true);
+arg_default('newYAML',false);
 if exist(siteID,'file')
     iniFileName = siteID;
 else

@@ -1,4 +1,4 @@
-function foldersToClean = db_find_folders_to_clean(yearIn,siteID,stageNum)
+function foldersToClean = db_find_folders_to_clean(yearIn,siteID,stageNum,use_yaml)
 % find all Clean folders that are used for this site and at this stage
 %
 % db_find_folders_to_clean(yearIn,siteID,stageNum)
@@ -17,7 +17,9 @@ function foldersToClean = db_find_folders_to_clean(yearIn,siteID,stageNum)
 % Jan 26, 2023 (Zoran)
 %   - initialized variable foldersToClean{}
 
-trace_str = readIniFileDirect(yearIn,siteID,stageNum);
+arg_default('use_yaml',false)
+
+trace_str = readIniFileDirect(yearIn,siteID,stageNum,use_yaml);
 nAll = length(trace_str);
 names1{nAll}={};
 for cnt=1:nAll

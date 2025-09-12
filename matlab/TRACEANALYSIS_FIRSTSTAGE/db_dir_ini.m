@@ -1,4 +1,4 @@
-function db_dir_ini(years,SiteId,base_dir,stages,dir)
+function db_dir_ini(years,SiteId,base_dir,stages,dir,use_yaml)
 % db_dir_ini - Generate empty clean database structure
 % 
 % db_dir_ini(years,SiteId,base_dir) Makes all necessary directories
@@ -28,6 +28,7 @@ function db_dir_ini(years,SiteId,base_dir,stages,dir)
 
 arg_default('stages',[1 2 3]);
 arg_default('dir','');
+arg_default('use_yaml',false)
 
 % db_pth = biomet_path('1111','xx');
 % ind = find(db_pth == filesep);
@@ -40,7 +41,7 @@ for currentYear = years
 
    if find(stages == 1)
         % Find folders to empty based on the ones actually used in the ini files
-        foldersToClean = db_find_folders_to_clean(currentYear,SiteId,1);
+        foldersToClean = db_find_folders_to_clean(currentYear,SiteId,1,use_yaml);
         for cntFolders = 1:length(foldersToClean)
             do_dir(db_pth,base_dir,char(foldersToClean(cntFolders)));
         end

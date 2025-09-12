@@ -309,10 +309,17 @@ function block_out = check_types(block_in)
 
             elseif ismember(char(tf),double_array) & ~ isa(v,'double')
                 values = block_in.(char(tr)).(char(tf));
+                rshape = 0;
                 if isempty(values)
                     values = [];
                 else
                     if iscell(values) && all(cellfun(@iscell, values))
+                        rshape = numel(values{1});
+                        for k = values
+                            if ~numel(k) == rshape
+                                error('inconsistent sizing in sub arrays')
+                            end
+                        end
                         values = [values{:}];   % concatenate all 1×4 cells (when multiple calibraitons exist)
                     end
                     for i = 1:length(values)
@@ -328,6 +335,9 @@ function block_out = check_types(block_in)
                 end
                 if isa(values,'cell')
                     values = [values{:}];
+                    if rshape
+                        values = reshape(values,rshape,[]).';
+                    end
                 end
                 block_in.(char(tr)).(char(tf)) = values;
                 

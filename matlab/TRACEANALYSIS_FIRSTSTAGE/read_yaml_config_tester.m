@@ -1,33 +1,79 @@
 % A script for testing
-function out = read_yaml_config_tester(dbRoot,SiteID,stage)
+function out = read_yaml_config_tester(SiteID,stage,yearIn,db_ini)
+
+
+% ------------Nick's fix for using a local copy of the database---------------
+if exist('biomet_database_default','file') == 2
+    db_pth = biomet_database_default;
+else
+    db_pth = db_pth_root;
+end
+%--------------------------------------------------------------------------
+
+arg_default('yearIn',2024)
+arg_default('db_ini',db_pth);
+
 
 if ~isa(SiteID,'cell')
-    SiteID = {SiteID}
+    SiteID = {SiteID};
 end
 if ~isa(stage,'cell')
-    stage = {stage}
+    stage = {stage};
 end
 
 for site = SiteID
     for current_stage = stage
-        current_stage = char(current_stage);
-        
+        current_stage = char(current_stage);        
         
         % Open the ini file for comparison
+        ini_path = fullfile(db_ini,"Calculation_Procedures","TraceAnalysis_ini",site,strcat(site,"_",current_stage,".ini"));
         tic;
-        ini_path = strcat(dbRoot,site,"\",site,"_",current_stage,".ini");
         fid = fopen(ini_path,'rt');						%open text file for reading only.   
-        trace_str_ini = read_ini_file(fid,year(datetime()));
+        trace_str_ini = read_ini_file(fid,yearIn);
         fclose(fid);
         ini_time = toc;
         fprintf('Read ini file in %f\n',ini_time)
 
 
-        yaml_path = strcat(dbRoot,site,"\",site,"_",current_stage,".yml");
+        fprintf('Cleaninig and reading database using ini file in \n')
+        fr_automated_cleaning(yearIn,site,current_stage)
+        
+        for i = 1:numel(trace_str_ini)
+            if strcmp(stage,'firststage')
+                subpath = fullfile(char(trace_str_ini(i).ini.measurementType),'Clean');
+            else
+                subpath = fullfile('Clean','SecondStage');
+            end
+            vname = char(trace_str_ini(i).variableName);
+            if ~strcmp(vname,'clean_tv')
+                [trace,clean_tv] = read_db([yearIn],char(site),subpath,vname);
+                trace_str_ini(i).data = trace;
+            end
+        end
+
+        yaml_path = fullfile(db_ini,"Calculation_Procedures","TraceAnalysis_ini",site,strcat(site,"_",current_stage,".yml"));
+
         tic;
-        trace_str_yml = read_yaml_config(yaml_path,year(datetime()));
+        trace_str_yml = read_yaml_config(yaml_path,yearIn);
         yml_time = toc;
         fprintf('Read yaml file in %f\n',yml_time)
+
+
+        fprintf('Cleaninig and reading database using yaml file in \n')
+        fr_automated_cleaning(yearIn,site,current_stage)
+
+        for i = 1:numel(trace_str_yml)
+            if strcmp(stage,'firststage')
+                subpath = fullfile(char(trace_str_yml(i).ini.measurementType),'Clean');
+            else
+                subpath = fullfile('Clean','SecondStage');
+            end
+            vname = char(trace_str_yml(i).variableName);
+            if ~strcmp(vname,'clean_tv')
+                [trace,clean_tv] = read_db([yearIn],char(site),subpath,vname);
+                trace_str_yml(i).data = trace;
+            end
+        end
                 
         if length(trace_str_yml) ~= length(trace_str_ini)
             fprintf("\nyml length %d vs ini_lenght %d\n",length(trace_str_yml), length(trace_str_ini))
@@ -58,7 +104,9 @@ for site = SiteID
         fprintf('\n\nEnd of comparison\n')
     end
 end
-out = [trace_str_ini,trace_str_yml];
+out = [];
+out.trace_str_ini = trace_str_ini;
+out.trace_str_yml = trace_str_yml;
 end
 function inicomp(ini_all,yml_all,message)
     arg_default('message','')
@@ -105,7 +153,13 @@ function inicomp(ini_all,yml_all,message)
     for i = 1:numel(ini_all)
         for f = ini_fields'
             fn = char(f);
-            if ~isequal(ini_all(i).(fn),yml_all(i).(fn)) & ~ismember({fn},mute)
+            if strcmp(fn,'data')
+                if isequaln(ini_all(i).data,yml_all(i).data)
+                    fprintf('Data traces are equal for: %s\n',yml_all(i).variableName)
+                else
+                    fprintf('Data traces are NOT equal for: %s\n',yml_all(i).variableName)
+                end
+            elseif ~isequal(ini_all(i).(fn),yml_all(i).(fn)) & ~ismember({fn},mute)
                 if ismember({'iniFileLineNum'},ini_fields)
                     message = sprintf('\n\n%s are not equal:\n\nDiscrepancy in trace %s\nStarts online: %d in file\n%s\n', ...
                         fn,ini_all(i).variableName,ini_all(i).iniFileLineNum,ini_all(i).iniFileName);
@@ -113,11 +167,17 @@ function inicomp(ini_all,yml_all,message)
                 if isa(ini_all(i).(fn),'struct')
                     inicomp(ini_all(i).(fn),yml_all(i).(fn),message)
                 else
-                    fprintf('%s',message)
-                    message = '';
-                    fprintf('Fieldname: %s\n',fn)
-                    fprintf('ini = %s\n',strjoin(string(ini_all(i).(fn)),' '))
-                    fprintf('yml = %s\n',strjoin(string(yml_all(i).(fn)),' '))
+                    % Ignore discrepancy if yml is a double array and ini
+                    % is a char array of datenums yet to be evaluated
+                    if isa(ini_all(i).(fn),"char") & contains(ini_all(i).(fn),'datenum') & isequal(yml_all(i).(fn),eval(ini_all(i).(fn)))
+                        message = '';
+                    else
+                        fprintf('%s',message)
+                        message = '';
+                        fprintf('Fieldname: %s\n',fn)
+                        fprintf('ini = %s\n',strjoin(string(ini_all(i).(fn)),' '))
+                        fprintf('yml = %s\n',strjoin(string(yml_all(i).(fn)),' '))
+                    end
                 end
             end
         end
