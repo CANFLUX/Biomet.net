@@ -42,7 +42,7 @@ trace_str.Diff_GMT_to_local_time = '';
 % declared globally here in read_ini_file ... so I don't think it will
 % cause an issue?
 if strcmp(iniFileType,'first')
-    trace_str.Timezone = '';
+    trace_str.Timezone = 0;
 end
 trace_str.Last_Updated = char(datetime("now"));
 trace_str.data = [];
@@ -76,14 +76,14 @@ yml_ini = read_and_check_types(ymlFileName);
 % now is the perfect time to fix that, by translating the chainges in the
 % python YAML parser!
 % base-level fields in the yaml file
-metadata = fieldnames(yml_ini.metadata);
+metadata = fieldnames(yml_ini.Metadata);
 % base-level fields in trace_str
 base_fields = fieldnames(trace_str);
 cell_array = {'high_level_path'};
 for i = 1:length(metadata)
     md_fn = metadata{i};
     if ismember(md_fn,base_fields)
-        value = yml_ini.metadata.(md_fn);
+        value = yml_ini.Metadata.(md_fn);
         if ~isempty(value) & ~isa(value,'yaml.Null')
             if ismember({md_fn},cell_array)
                 trace_str.(md_fn) = {value};
@@ -109,6 +109,34 @@ if isfield(yml_ini,"Include")
             % include
             addVar = addTraces{nadd};
             addTrace = yml_ini_include.Trace.(addTraces{nadd});
+            % Check if global vars are referenced in include filse
+            % Use string substituion if to sub in globalVars
+            for fn = fieldnames(addTrace)'
+                if isa(addTrace.(fn{1}),'char') & ~isempty(addTrace.(fn{1}))
+                    tokens = regexp(addTrace.(fn{1}), '\$.*?\$', 'match');
+                    for i = 1:numel(tokens)
+                        expr = strcat('yml_ini.',tokens{i}(2:end-1));
+                        val = eval(expr);
+                        if isnumeric(val)
+                            val = num2str(val);
+                        end
+                        addTrace.(fn{1}) = strrep(addTrace.(fn{1}), tokens{i}, val);
+                    end    
+                elseif isa(addTrace.(fn{1}),'cell') & ~isempty(addTrace.(fn{1}))
+                    for c=1:numel(addTrace.(fn{1}))
+                        tokens = regexp(addTrace.(fn{1}){c}, '\$.*?\$', 'match');
+                        for i = 1:numel(tokens)
+                            expr = strcat('yml_ini.',tokens{i}(2:end-1));
+                            val = eval(expr);
+                            if isnumeric(val)
+                                val = num2str(val);
+                            end
+                            addTrace.(fn{1}){c} = strrep(addTrace.(fn{1}){c}, tokens{i}, val);
+                        end    
+                    end
+                end
+            end
+            
             if ismember(addVar,existingTraces)
                 current = yml_ini.Trace.(addVar);
                 if current.Overwrite>=addTrace.Overwrite
@@ -283,9 +311,12 @@ function block_out = check_types(block_in)
                     error('      Overwrite property value can be only [0 1 2]. Trace: %s has Overwrite = %d\n',trace_str(mth_trace_added).variableName,flagOverwriteNew);
                 end
             end
-            if ismember(char(tf),cell_array) & ~ isa(v,'cell')
+            if ismember(char(tf),cell_array) & ~isa(v,'cell')
                 block_in.(char(tr)).(char(tf)) = {v};
             elseif ismember(char(tf),cell_array)
+                if numel(v)>1
+                    v = {strjoin(v,'')};
+                end
                 block_in.(char(tr)).(char(tf)) = v;
             elseif strcmp(char(tf),'Evaluate') | strcmp(char(tf),'postEvaluate')
                 % Parse to match the expectation of the legacy code

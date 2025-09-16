@@ -13,7 +13,6 @@ end
 arg_default('yearIn',2024)
 arg_default('db_ini',db_pth);
 
-
 if ~isa(SiteID,'cell')
     SiteID = {SiteID};
 end
@@ -23,8 +22,12 @@ end
 
 for site = SiteID
     for current_stage = stage
-        current_stage = char(current_stage);        
-        
+        current_stage = char(current_stage);  
+        if ~isfolder(fullfile(db_ini,num2str(yearIn),site))
+            trace_str_ini = [];
+            trace_str_yml = [];
+            continue
+        end
         % Open the ini file for comparison
         ini_path = fullfile(db_ini,"Calculation_Procedures","TraceAnalysis_ini",site,strcat(site,"_",current_stage,".ini"));
         tic;
@@ -34,9 +37,15 @@ for site = SiteID
         ini_time = toc;
         fprintf('Read ini file in %f\n',ini_time)
 
-
-        fprintf('Cleaninig and reading database using ini file in \n')
-        fr_automated_cleaning(yearIn,site,current_stage)
+        if strcmpi(current_stage,'firststage')
+            stage_number = 1;
+        elseif strcmpi(current_stage,'secondstage')
+            stage_number = 2;
+        else
+            stage_number = 0;
+        end
+        fprintf('\n\nCleaninig and reading database using ini file\n\n')
+        fr_automated_cleaning(yearIn,site,stage_number)
         
         for i = 1:numel(trace_str_ini)
             if strcmp(stage,'firststage')
@@ -59,8 +68,8 @@ for site = SiteID
         fprintf('Read yaml file in %f\n',yml_time)
 
 
-        fprintf('Cleaninig and reading database using yaml file in \n')
-        fr_automated_cleaning(yearIn,site,current_stage)
+        fprintf('\n\nCleaninig and reading database using yaml file\n\n')
+        fr_automated_cleaning(yearIn,site,stage_number,[],[],true)
 
         for i = 1:numel(trace_str_yml)
             if strcmp(stage,'firststage')
@@ -77,6 +86,17 @@ for site = SiteID
                 
         if length(trace_str_yml) ~= length(trace_str_ini)
             fprintf("\nyml length %d vs ini_lenght %d\n",length(trace_str_yml), length(trace_str_ini))
+            ini_names = {trace_str_ini.variableName};
+            [~, ia, ic] = unique(ini_names, 'stable');
+            dup_idx = setdiff(1:numel(ini_names), ia);
+            
+            disp('Duplicate entries in ini file:')
+            disp(ini_names(dup_idx))
+            fprintf('\n\nAttempting to delete duplicates and continue comparison\n\n')
+            keyboard
+            for d = numel(dup_idx):-1:1
+                trace_str_ini(dup_idx(d)) = []
+            end
             for i =1:length(trace_str_yml)
                 if ~strcmp(trace_str_yml(i).variableName, trace_str_ini(i).variableName)
                     fprintf('\nyml #%i:%s ini #%i:%s\n',i, trace_str_yml(i).variableName,i, trace_str_ini(i).variableName)
@@ -100,15 +120,17 @@ for site = SiteID
             end
         end
         fprintf('\n\nPerfoming comparison\n site: %s  stage: %s\n',char(site),char(current_stage))
-        inicomp(trace_str_ini,trace_str_yml)
-        fprintf('\n\nEnd of comparison\n')
+        data_not_equal = inicomp(trace_str_ini,trace_str_yml);
+        fprintf('\n\nEnd of comparison\n%d Traces were found to have unequal data.\nSee report above for details',data_not_equal)
+        
     end
 end
 out = [];
 out.trace_str_ini = trace_str_ini;
 out.trace_str_yml = trace_str_yml;
 end
-function inicomp(ini_all,yml_all,message)
+function data_not_equal = inicomp(ini_all,yml_all,message)
+    data_not_equal = 0;
     arg_default('message','')
     % Order of fieldnames should not matter for comparisson
     % Only row order matters
@@ -158,6 +180,7 @@ function inicomp(ini_all,yml_all,message)
                     fprintf('Data traces are equal for: %s\n',yml_all(i).variableName)
                 else
                     fprintf('Data traces are NOT equal for: %s\n',yml_all(i).variableName)
+                    data_not_equal = data_not_equal + 1
                 end
             elseif ~isequal(ini_all(i).(fn),yml_all(i).(fn)) & ~ismember({fn},mute)
                 if ismember({'iniFileLineNum'},ini_fields)
@@ -165,11 +188,13 @@ function inicomp(ini_all,yml_all,message)
                         fn,ini_all(i).variableName,ini_all(i).iniFileLineNum,ini_all(i).iniFileName);
                 end
                 if isa(ini_all(i).(fn),'struct')
-                    inicomp(ini_all(i).(fn),yml_all(i).(fn),message)
+                    data_not_equal = data_not_equal + inicomp(ini_all(i).(fn),yml_all(i).(fn),message);
                 else
                     % Ignore discrepancy if yml is a double array and ini
                     % is a char array of datenums yet to be evaluated
                     if isa(ini_all(i).(fn),"char") & contains(ini_all(i).(fn),'datenum') & isequal(yml_all(i).(fn),eval(ini_all(i).(fn)))
+                        message = '';
+                    elseif isempty(ini_all(i).(fn)) & isempty(yml_all(i).(fn))
                         message = '';
                     else
                         fprintf('%s',message)
