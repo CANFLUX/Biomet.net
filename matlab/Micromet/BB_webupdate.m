@@ -3,13 +3,15 @@ function BB_webupdate(siteNames,outputPath)
 % BB_webupdate
 %
 % Sara Knox             File created:       Oct 21, 2019
-%                       Last modification:  Jan  9, 2023
+%                       Last modification:  Sep 30, 2025
 
 % This file is intended to create csv files to export data for web plots
 % for Burns Bog (https://ibis.geog.ubc.ca/~micromet/data/burnsbog.html#)
 
 % Revisions (latest first):
 %
+% Sep 30, 2025 (Zoran)
+%   - Bug fix: remove signal strenghts larger than 1000 to prevent csv_save from crashing.
 % Jan 9, 2023 (Zoran)
 %   - replaced all 'datetime(datestr(tv))'  with much (90x) faster
 %     'tv_datetime'. Saved ~9s per occurrence.
@@ -2886,6 +2888,8 @@ for siteNum = 1:length(siteNames)
             cFormat = '%12.6f, %12.6f, %12.6f, %12.6f\n';
             fileName = [siteID 'SSA.csv'];
             data = load_data(varStruct,pth,Years);
+            % remove too high numbers
+            data(abs(data)>=1000) = NaN;
             
             if plot_fig == 1, plot(tv, data);end
             
