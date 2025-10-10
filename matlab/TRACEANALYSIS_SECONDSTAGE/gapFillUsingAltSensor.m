@@ -1,4 +1,4 @@
-function [gapFilledMeasurement,qaqcOut] = gapFillUsingAltSensor(mainSensor,altSensor,stdMultiplier,qaqcIn,flagVerbose)
+function [gapFilledMeasurement,qaqcOut] = gapFillUsingAltSensor(mainSensor,altSensor,stdMultiplier,qaqcIn,flagVerbose,flagForceError)
 % This function does gap filling using alternative sensor
 % It works for the two traces that are known to be linearly dependan.
 %
@@ -22,7 +22,10 @@ function [gapFilledMeasurement,qaqcOut] = gapFillUsingAltSensor(mainSensor,altSe
 %      minSlope         - minimum acceptable slope
 %      maxSlope         - maximum acceptable slope (Default: 1.05)
 %      maxRMSE          - maximum acceptable RMSE  (Default: Inf)
-% flagVerbose           - ==1 when additinal function comments are requested
+%      flagVerbose      - ==1 when additinal function comments are requested
+%      flagForceError   - false (default): print a warning
+%                         true:            raise an error
+%                         outputSting:     print outputString in addition to the warning   
 %
 % Outputs:
 %   gapFilledMeasurement - gap filled measurements (if the fit was of a good quality or forced, 
@@ -38,14 +41,17 @@ function [gapFilledMeasurement,qaqcOut] = gapFillUsingAltSensor(mainSensor,altSe
 %                          indGaps  - index of the points that were gap-filled
 %
 %
-% Zoran Nesic                       File created:       Sep  2, 2020
-%                                   Last modification:  Sep  2, 2022
+% Zoran Nesic                       File created:       Sep  2, 2025
+%                                   Last modification:  Oct 10, 2025
 
 % Revisions
 %
+% Oct 10, 2025 (Zoran)
+%   - Added a flag to force an error if the traces are not well matched or to print and
+%     additional string to provide an indication where the error occured. To be used 
+%     with fr_automated_cleaning so, in cases when the traces are poor fit
 
 arg_default('stdMultiplier',5)
-
 defQAQC.enable = true;              % test for acceptable quality of gap filling
 defQAQC.gapfillOverwrite = false;   % if the fit is not good enough: 
                                     %    false (default) - do not gap fill
@@ -56,7 +62,7 @@ defQAQC.maxSlope = 1.05;            % default max acceptable slope fit
 defQAQC.maxRMSE = Inf;              % default: no limit for max RMSE
 arg_default('qaqcIn',defQAQC)
 arg_default('flagVerbose',false)
-
+arg_default('flagForceError',false)
 [~, ~, qaqcOut.poly_bf, qaqcOut.poly_af] = ta_clean_1to1_trace(altSensor,mainSensor,stdMultiplier);
 
 qaqcOut.indGaps = find(isnan(mainSensor));
@@ -125,11 +131,18 @@ if ~qaqcOut.flag
     % if ~gapfillOverwrite return the original data
     if ~qaqcIn.gapfillOverwrite
         gapFilledMeasurement = mainSensor;
-        fprintf(2,'     No gap-filling due to a poorly matched alternative trace. Returning the original trace.\n');
+        fprintf(2,'      No gap-filling due to a poorly matched alternative trace. Returning the original trace.\n');
     else
-        fprintf(2,'     Forcing gap-filling with a poorly matched alternative trace.\n');
+        fprintf(2,'      Forcing gap-filling with a poorly matched alternative trace.\n');
     end
 end
+if isstring(flagForceError) || ischar(flagForceError)
+    fprintf(2,'      %s\n',flagForceError);
+elseif flagForceError
+    error '      Error in gapFillUsingAltSensor'
+end
+
+
 
 
 
