@@ -25,7 +25,7 @@
 ## Call from R terminal
 
 # # Giving database as an input
-# args <- c("C:/Database","siteID",startYear,endYear)
+# args <- c("F:/EcoFlux lab/Database","AB1",2025,2025)
 # source("C:/Biomet.net/R/database_functions/ThirdStage.R")
 
 # # If current directory is the the root of a database
@@ -264,6 +264,7 @@ read_and_copy_traces <- function(){
     }
     
   }
+  
   # Create time variables
   data <- data %>%
     mutate(Year = year(datetime),
@@ -590,7 +591,7 @@ Run_REddyProc <- function() {
   for (v in REddyConfig$vars_in){
     if (!(v %in% Time_Vars) & (invert[v] %in% REddyConfig$MDSGapFill$UStarScens | invert[v] %in% REddyConfig$MDSGapFill$basic) ){
       iv = unlist(unname(invert[v]))
-      if (grepl('_PI_',v)){
+      if (grepl('_PI',v)){
         REddyConfig$vars_in[iv] = paste(v,'_',suffix_label,sep="")
       } else if (!(v %in% Time_Vars)) {
         REddyConfig$vars_in[iv] = paste(v,'_PI_',suffix_label,sep="")
@@ -652,6 +653,15 @@ Run_REddyProc <- function() {
         UstFull$max,
         length.out = UstFull$steps)
     )
+  }
+  
+  #browser()
+  if ("USTAR_manual_thresh" %in% names(config$Processing$ThirdStage)){
+    # Over-ride Ustar thresholds
+    EProc$sUSTAR_SCEN$uStar <- rep(config$Processing$ThirdStage$USTAR_manual_thresh$U50,5)
+    EProc$sUSTAR_SCEN$U05 <- rep(config$Processing$ThirdStage$USTAR_manual_thresh$U05,5)
+    EProc$sUSTAR_SCEN$U50 <- rep(config$Processing$ThirdStage$USTAR_manual_thresh$U50,5)
+    EProc$sUSTAR_SCEN$U95 <- rep(config$Processing$ThirdStage$USTAR_manual_thresh$U95,5)
   }
   
   # Simple MDS for non-Ustar dependent variables

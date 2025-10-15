@@ -80,7 +80,7 @@ box on
 idx_maxVal = find(c==max(abs(c)));
 bestLag = min(lags(idx_maxVal)); %#ok<FNDSB>
 xlims = get(gca,'xlim');
-text(xlims(1)+0.05.*diff(xlims),-0.95,char(['Lag_{best}=' num2str(roundn(bestLag,0))]))
+text(xlims(1)+0.05.*diff(xlims),-0.95,char(['Lag_{best}=' num2str(round(bestLag,0))]))
 
 ah12.UserData = 12;
 ah12.Toolbar.Visible='off';
@@ -119,21 +119,21 @@ ylabel(ylabel_str)
 rsq = corr(input1(idx), input2(idx)).^2;
 xpos = xlims(1)+0.05*(xlims(2)-xlims(1));
 ypos = ylims(1)+0.91*(ylims(2)-ylims(1));
-slope_val = roundn(fit(1),-2);
+slope_val = round(fit(1),2);
 if slope_val==0
     text(xpos,ypos,char(['slope=' num2str(fit(1),'%1.2E')]))
 else
     text(xpos,ypos,char(['slope=' num2str(slope_val)]))
 end
 ypos = ylims(1)+0.8*(ylims(2)-ylims(1));
-int_val = roundn(fit(2),-2);
+int_val = round(fit(2),2);
 if int_val==0
     text(xpos,ypos,char(['int.=' num2str(fit(2),'%1.2E')]))
 else
     text(xpos,ypos,char(['int.=' num2str(int_val)]))
 end
 ypos = ylims(1)+0.69*(ylims(2)-ylims(1));
-text(xpos,ypos,char(['r^2=' num2str(roundn(rsq,-2))]))
+text(xpos,ypos,char(['r^2=' num2str(round(rsq,2))]))
 
 ah21.UserData = 21;
 ah21.Toolbar.Visible='off';
@@ -163,10 +163,10 @@ mean_val = mean(residuals(idx));
 median_val = median(residuals(idx));
 xlims = get(gca,'xlim');
 xpos = xlims(1)+0.05*(xlims(2)-xlims(1));
-text(xpos,0.9,char(['RMSE=' num2str(roundn(RMSD,-2))]))
-text(xpos,0.8,char(['MAD=' num2str(roundn(MAD,-2))]))
-text(xpos,0.7,char(['Mean=' num2str(roundn(mean_val,-2))]))
-text(xpos,0.6,char(['Med.=' num2str(roundn(median_val,-2))]))
+text(xpos,0.9,char(['RMSE=' num2str(round(RMSD,2))]))
+text(xpos,0.8,char(['MAD=' num2str(round(MAD,2))]))
+text(xpos,0.7,char(['Mean=' num2str(round(mean_val,2))]))
+text(xpos,0.6,char(['Med.=' num2str(round(median_val,2))]))
 
 ah22.UserData = 22;
 ah22.Toolbar.Visible='off';
@@ -219,11 +219,11 @@ if eventdata.Axes.UserData==11
     set(ah,'ylim',ylims','xlim',xlims)
     %--> Update stats
     fit = linreg(input1, input2);
-    ah.Children(1).String = char(['r^2=' num2str(roundn(corr(input1(idx_nan)',input2(idx_nan)').^2,-2))]);
+    ah.Children(1).String = char(['r^2=' num2str(round(corr(input1(idx_nan)',input2(idx_nan)').^2,2))]);
     ah.Children(1).Position = [xlims(1)+0.05.*diff(xlims) ylims(2)-3.*0.09.*diff(ylims) 0];
-    ah.Children(2).String = char(['int.=' num2str(roundn(fit(2),-2))]);
+    ah.Children(2).String = char(['int.=' num2str(round(fit(2),2))]);
     ah.Children(2).Position = [xlims(1)+0.05.*diff(xlims) ylims(2)-2.*0.09.*diff(ylims) 0];
-    ah.Children(3).String = char(['slope=' num2str(roundn(fit(1),-2))]);
+    ah.Children(3).String = char(['slope=' num2str(round(fit(1),2))]);
     ah.Children(3).Position = [xlims(1)+0.05.*diff(xlims) ylims(2)-1.*0.09.*diff(ylims) 0];
     xlims = get(ah,'XLim');
     ah.Children(4).XData = xlims;
@@ -239,6 +239,9 @@ if eventdata.Axes.UserData==11
     ah = h.Children(UserData==12);
     covh = ah.Children(end);
     refreshdata(covh,'caller')
+    idx_maxVal = find(c==max(abs(c)));
+    bestLag = min(lags(idx_maxVal)); %#ok<FNDSB>
+    ah.Children(1).String = char(['Lag_{best}=' num2str(round(bestLag,0))]);
     ah.UserData = 12;
     ah.Toolbar.Visible='off';
     ah.HitTest = 0;
@@ -248,15 +251,16 @@ if eventdata.Axes.UserData==11
     ah = h.Children(UserData==22);
     ch = ah.Children(end);
     refreshdata(ch,'caller')
+    set(ah,'ylim',[0 1])
     %--> Update stats
     RMSD = sqrt(mean(resid_vals.^2));
     MAD = mean(abs(resid_vals));
     mean_val = mean(resid_vals);
     median_val = median(resid_vals);
-    ah.Children(1).String = char(['med.=' num2str(roundn(median_val,-2))]);
-    ah.Children(2).String = char(['Mean=' num2str(roundn(mean_val,-2))]);
-    ah.Children(3).String = char(['MAD=' num2str(roundn(MAD,-2))]);
-    ah.Children(4).String = char(['RMSE=' num2str(roundn(RMSD,-2))]);
+    ah.Children(1).String = char(['med.=' num2str(round(median_val,2))]);
+    ah.Children(2).String = char(['Mean=' num2str(round(mean_val,2))]);
+    ah.Children(3).String = char(['MAD=' num2str(round(MAD,2))]);
+    ah.Children(4).String = char(['RMSE=' num2str(round(RMSD,2))]);
     ah.UserData = 22;
     ah.Toolbar.Visible='off';
     ah.HitTest = 0;
