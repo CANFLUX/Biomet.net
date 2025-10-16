@@ -23,10 +23,12 @@ function createFirstStageIni(structSetup)
 % structSetup.outputPath = []; % keep it in the local directory
 %
 % Zoran Nesic               File created:           Mar 20, 2024
-%                           Last modification:      Mar 19, 2025
+%                           Last modification:      Oct 16, 2025
 
 % Revisions:
 %
+% Oct 16, 2025 (Zoran)
+%   - added automatic creation of the "Title" field based on AF names.
 % Mar 19, 2025 (Zoran)
 %   - Proper handling of minMax using Ameriflux defaults.
 %   - Proper setting of dependencies for a few QC Ameriflux files. See below.
@@ -110,7 +112,11 @@ for cntMeasurementTypes = 1:length(structSetup.allMeasurementTypes)
                 variableName = allFiles(cntFiles).name;
                 fprintf(fid,'[Trace]\n');
                 fprintf(fid,'    variableName         = ''%s''\n',variableName);
-                fprintf(fid,'    title                = ''Title goes here''\n');
+                if cntFiles <= length(limitsQAQC) && ~isempty(limitsQAQC(cntFiles).description)
+                    fprintf(fid,'    title                = ''%s''\n',char(limitsQAQC(cntFiles).description));
+                else
+                    fprintf(fid,'    title                = ''Title goes here''\n');
+                end
                 fprintf(fid,'    inputFileName        = {''%s''}\n',variableName);
                 fprintf(fid,'    inputFileName_dates  = [ datenum(%d,%d,%d) datenum(%d,%d,%d)]\n',...
                                                         structSetup.startYear,structSetup.startMonth,structSetup.startDay,...

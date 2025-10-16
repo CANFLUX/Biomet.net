@@ -17,17 +17,21 @@ function limitsQAQC = extract_AF_QAQC_LimitRanges(traceNames,QAQC_limit_filename
 %
 %
 % Zoran Nesic               File created:           Mar 12, 2025
-%                           Last modification:      Mar 12, 2025
+%                           Last modification:      Oct 16, 2025
 
 % Revisions:
 %
+% Oct 16, 2025 (Zoran)
+%   - in addition to min/max/units the function now extract the Description field too.
+%     (to be used to auto-populate "Title" field when using createFirstStageIni.m)
+%   - removed the warning message by forcing 'VariableNamingRule' to "preserve"
 
 % Read Ameriflux QAQC
 % Notes from the file:
 %     Ameriflux QAQC information
 %     Extracted from variable "FP_ls" when running amf_chk_run.R/amfqaqc_main.R
 %     Rosie Howard
-QC=readtable(QAQC_limit_filename,"NumHeaderLines",6);
+QC=readtable(QAQC_limit_filename,"NumHeaderLines",6,'VariableNamingRule','preserve');
 
 % limitsQAQC=[];
 %%
@@ -48,6 +52,7 @@ for cntAFvar = 1:length(QC.Name)
         limitsQAQC(flags(cntFlags)).minMax     = [QC.Min(cntAFvar)      QC.Max(cntAFvar)];
         limitsQAQC(flags(cntFlags)).minMaxBuff = [QC.Min_buff(cntAFvar) QC.Max_buff(cntAFvar)];
         limitsQAQC(flags(cntFlags)).units = QC.Units(cntAFvar);
+        limitsQAQC(flags(cntFlags)).description = QC.Description(cntAFvar);
     end
 
     % if ~isempty(matchInd)
