@@ -34,6 +34,19 @@ function trace_str_out = read_ini_file(fid,yearIn,fromRootIniFile)
 
 % Revisions
 %
+% Oct 26, 2025 (Zoran)
+%   - New feature: #IF...#ENDIF statements can be used within a 1st stage ini file
+%     to include/exclude some parts of the ini file. 
+%       Example: If EC equipment was not used in year 2014 and 2015 one could write this in the ini file:
+%           #if yearIn<2014 | yearIn > 2015
+%               #include EddyPro_Common_FirstStage_include.ini
+%               #include EddyPro_LI7200_FirstStage_include.ini
+%               #include EddyPro_LI7700_FirstStage_include.ini
+%           #endif
+%           #include RAD_FirstStage_include.ini
+%           #include ECCC_FirstStage_include.ini
+%   - Bug fix/Change of behavior: removed requirement that for [TRACE] and [END] have to be the first characters in the line
+%           This would allow line indentation when using #IF...#ENDIF
 % May 7, 2025 (Zoran)
 %   - Bug fix: program was using a wrong way of confirming if the inputFileName_dates
 %              belong in the current year. Fixed it by creating variable "tvYear" 
@@ -195,19 +208,48 @@ required_second_stage_ini_fields = {'Evaluate1'};
 
 %Read each line of the ini_file given by the file ID number, 'fid', and for each trace
 %listed, store into an array of structures:
-countTraces = 0;
-countLines = 1;
-tm_line = 'There were no lines read!';  % this is the default in case fgetl below fails.
 try
     % Set some locally used variables
+    countTraces = 0;
+    countLines = 1;
+    tm_line = 'There were no lines read!';  % this is the default in case fgetl below fails.    
+    skipNext = false;                       % if true, skip lines until encountering "#ENDIF" 
+    nestedIF = 0;                           % the depth of nested #IF ... #ENDIF. Currently only 0 or 1 are alowed.
     tm_line=fgetl(fid);
     while ischar(tm_line)
         temp_var = '';
         tm_line = strtrim(tm_line);             % remove leading and trailing whitespace chars
         temp = find(tm_line~=32 & tm_line~=9);  %skip white space outside [TRACE]->[END] blocks
-        if isempty(temp) | strcmp(tm_line(temp(1)),'%')
+        % if skipNext ==  true, the ini file is 
+        % within #IF(condition)... #ENDIF group of lines with (condition)==true
+        % those lines are going to be skipped
+        if startsWith(tm_line,'#endif','IgnoreCase',true)
+            if nestedIF < 1
+                % "#indif" found without an "#if". Error
+                fprintf(2,'#ENDIF found without #IF!\n')
+                error('#ENDIF found without #IF!');
+            else
+                skipNext = false;
+                nestedIF = nestedIF-1;
+                % if nestedIF< 0 
+                %     nestedIF = 0;
+                % end
+            end        
+        elseif ~isempty(regexp(tm_line,'^\s*#(if|IF)(\s+|\()','once'))
+            % if the line starts with #if or #IF followed by a space or "("
+            % test if the expression following the #if is true or false
+            % NO nested #IF-s
+            if nestedIF > 0
+                fprintf(2,'Nested #IF statements are not allowed.\n')
+                error('Nested #IF statements are not allowed');
+            else
+                nestedIF = nestedIF+1;
+                indSt = regexp(tm_line,'^\s*#(if|IF)(\s+|\()','end');
+                skipNext = ~eval(tm_line(indSt:end));
+            end
+        elseif isempty(temp) | strcmp(tm_line(temp(1)),'%') | skipNext(end) 
             % if tm_line is empty or a comment line, do nothing
-        elseif startsWith(tm_line,'#include ','IgnoreCase',1)
+        elseif startsWith(tm_line,'#include ','IgnoreCase',true)
             % this is an #include statement. Load the new ini file.
             % First check if the include file is either in the current Matlab folder
             % or given with a full path.
@@ -274,6 +316,7 @@ try
             countTraces = countTraces+1;
             %Read the first line inside the [TRACE]->[END] block:
             tm_line = fgetl(fid);
+            tm_line = strtrim(tm_line);             % remove leading and trailing whitespace chars
             countLines = countLines + 1;
             eval_cnt = 0;
             while ~strncmp(tm_line,'[End]',5)
@@ -307,7 +350,7 @@ try
                         sngle_qt = [];
                     end
 
-                    if length(sngle_qt) == 1 & (isempty(temp_cm) | sngle_qt < temp_cm(1))
+                    if length(sngle_qt) == 1 & (isempty(temp_cm) | sngle_qt < temp_cm(1)) %#ok<*ISCL>
                         %A single quote is found, which is not within a comment string.
                         %Either an error, OR variable assignment extends over multiple lines.
                         %Get the next lines until either the last quote is found or
@@ -427,6 +470,7 @@ try
                 end
                 %Get next line:
                 tm_line = fgetl(fid);
+                tm_line = strtrim(tm_line);             % remove leading and trailing whitespace chars
                 countLines = countLines + 1;
             end
 
@@ -570,6 +614,10 @@ try
         end
         tm_line = fgetl(fid);		%get next line of ini_file
         countLines = countLines + 1;
+    end
+    if nestedIF > 0
+        fprintf(2,'Found #IF without #ENDIF.\n')
+        error('Found #IF without #ENDIF.');
     end
 catch ME
     fprintf(2,'Error while processing: \n%s\n on line:\n     %d:  (%s)\nExiting read_ini_file() ...\n\n\n',iniFileName,countLines,tm_line);
