@@ -35,7 +35,7 @@ function trace_str_out = read_ini_file(fid,yearIn,fromRootIniFile)
 % Revisions
 %
 % Oct 26, 2025 (Zoran)
-%   - New feature: #IF...#ENDIF statements can be used within a 1st stage ini file
+%   - New feature: #IF...#ENDIF statements can be used within a 1st or 2nd stage ini file
 %     to include/exclude some parts of the ini file. 
 %       Example: If EC equipment was not used in year 2014 and 2015 one could write this in the ini file:
 %           #if yearIn<2014 | yearIn > 2015
