@@ -34,6 +34,11 @@ function trace_str_out = read_ini_file(fid,yearIn,fromRootIniFile)
 
 % Revisions
 %
+% Nov 18, 2025 (Zoran)
+%   - Improvements: 
+%         - When an error in ini file is found, the function now shows the actual line that caused the error.
+%         - removed disp(ME) message - it just creates confusion by presented too much information. 
+%           The error message now prints ME.message only.
 % Oct 26, 2025 (Zoran)
 %   - New feature: #IF...#ENDIF statements can be used within a 1st or 2nd stage ini file
 %     to include/exclude some parts of the ini file. 
@@ -460,9 +465,14 @@ try
                             %eval(['temp_var.' curr_line ';']);
                         catch ME
                             %Any error's are caught in the try-catch block:
+                            fprintf(2,'============================================\n');
                             fprintf(2,'Error in trace #%d on line number: %d!\n', countTraces,countLines);
+                            fprintf(2,'Matlab message: "%s"\n',ME.message)
+                            fprintf(2,'Error in this line: "%s"\n',curr_line);
                             fprintf(2,'In file: %s\n',iniFileName)
-                            disp(ME);
+                            fprintf(2,'============================================\n');
+                            %disp(ME);
+                            %error('Program terminated.')
                             trace_str_out='';
                             return
                         end
