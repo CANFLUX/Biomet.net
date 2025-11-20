@@ -2,29 +2,25 @@ function dataOut = db_update_flags_files(yearIn,siteID,sitesPathRoot, databasePa
 % db_update_flags_files - reads an xlsx or a csv file containing data-exclusion flags and exports those flags into database format
 %                         Multiple flags can be created using one xlsx file
 %
-% dataOut = db_update_flags_files(siteID, yearIn,sitesPathRoot,databasePathRoot,timeUnit,missingPointValue)
+% dataOut = db_update_flags_files( yearIn,siteID,sitesPathRoot,databasePathRoot,timeUnit,missingPointValue)
 %
 % Example:
-%    dataOut = db_update_flags_files('DSM',2022,'p:/Sites','p:/database') 
+%    dataOut = db_update_flags_files(2022,'DSM','p:/Sites','p:/database') 
 %    reads input file p:/Sites/DSM/MET/DSM_flags_2022.xlxs and
 %    updates or creates data base files under p:/database
 %
 %
 % Inputs:
+%       yearIn          - array of years to process. Default is the current year
 %       siteID          - site ID ('DSM', 'RBM'...)
-%       yearIn          - year to process. Default current year
-%       sitesPathRoot   - path to Sites folder (usually: p:/Sites)
-%       databasePath    - path to database (usually p:/database)
-%       timeShift       - time offset to be added to the tv vector (in tv
-%                         units, 0 if datebase is in GMT)
+%       sitesPathRoot   - path to Sites folder (usually: p:/Sites or structProject.sitesPath)
+%       databasePath    - path to database (usually p:/database or structProject.databasePath)
 %       timeUnit        - minutes in the sample period (spacing between two
-%                         consecutive data points). Default 30 (hhour)
-%
+%                         consecutive data points). Default '30MIN' (half-hour)
 %
 % Notes:
 %    - the input file should be located under p:/Sites/siteID/MET folder.
-%    - program works on one year of data only. The file name for each year
-%      is named: siteID_flags_yyyy.xlsx or .csv.
+%    - The file should be named: siteID_flags*.xlsx or .csv.
 %    - use this template for the input file
 % ------------ start of the template ------------------------------------------------
 %          Header line 1
@@ -41,7 +37,7 @@ function dataOut = db_update_flags_files(yearIn,siteID,sitesPathRoot, databasePa
 %          2022-07-29 10:00	2022-08-30 13:00                    1               Bad data
 %          2022-09-09 00:00	2022-09-19 12:30                    1               Bad data
 %-------------------------------------------------------------------------------------------
-%   - The number of header lines needs to be 4
+%   - The number of header lines has to be 4
 %   - Any number of columns for flags can be used (min=1)
 %   - Flag names have to be valid Matlab variable names and valid Windows file names
 %     (suggestion: use Ameriflux convention as in the template above)
@@ -49,11 +45,20 @@ function dataOut = db_update_flags_files(yearIn,siteID,sitesPathRoot, databasePa
 %
 %
 % Zoran Nesic           File Created:      Nov 15, 2022
-%                       Last modification: Nov 25, 2022
+%                       Last modification: Nov 19, 2025
 
 %
 % Revisions:
 %
+% Nov 19, 2025 (Zoran)
+%   - Improvements:
+%       - It now reads multiple input files at the same time and it can work with multiple years 
+%         all within one or within multiple files.
+%       - csv and xlsx files can co-exist in the same (Met) folder. No need to rewrite the old flag files,
+%         one can just add new file(s) in the format (xlsx or csv) that they like
+%       - Using db_struct2database instead of the old db_new_eddy function.
+%       - timeUnit can now be the standard '30MIN' or '5MIN'... but the old style (number 30) still works.
+%       - it can now deal with time steps different than 30 minutes (hasn't been tested very well yet)
 % Nov 25, 2022 (Zoran)
 %  - Changed the values that are inserted to indicate that the points should
 %    be excluded. Instead of 1s we should be using missingPointValue to match how the flagging
@@ -62,78 +67,103 @@ function dataOut = db_update_flags_files(yearIn,siteID,sitesPathRoot, databasePa
 %  - Added comments
 %
 
-[yearNow,~,~] = datevec(now); 
+yearNow = year(datetime); 
 arg_default('time_shift',0);
-arg_default('timeUnit',30); %
+arg_default('timeUnit','30MIN'); %
 arg_default('yearIn',yearNow)
 arg_default('missingPointValue',NaN); %   % default missing point code is 0
 dataOut = [];
 
-if length(yearIn) > 1
-    error('Year has to be a single!\n')
+% Make sure timeUnit is a char. 
+if isnumeric(timeUnit)
+    % if timeUnit is a number assume it's in minutes and format it appropriatelly
+    timeUnit = sprintf('%dMIN',timeUnit);
 end
 
 % the source file is an xlxs or csv file that's under the site's MET folder.
-% Here is it's path
+% Here is its path
 filePath = fullfile(sitesPathRoot,siteID,'MET');
 
-% Check if the file exists. Quit if the file does not exist. Not all sites
-% will have such a file.
-fileName = fullfile(filePath,sprintf('%s_flags_%d.xlsx',siteID,yearIn));
-if ~exist(fileName,'file')
+% Load up the names of files that match siteID_flags*.xlsx or siteID_flags*.csv
+fileName = fullfile(filePath,sprintf('%s_flags*.xlsx',siteID));
+allFiles = dir(fileName);
+fileName = fullfile(filePath,sprintf('%s_flags*.csv',siteID));
+allFiles = [allFiles ; dir(fileName)];
+if isempty(allFiles)
+    % If there are no such files return
     return
 end
 
-tableIn = readtable(fileName,"NumHeaderLines",4);
-
-% create a time vector for the entire year
-dataOut.TimeVector = fr_round_time(datenum(yearIn,1,1,0,30,0):1/48:datenum(yearIn+1,1,1))';
-
-flagNum = 0;
-varNames = {};
-for cntVars = 1:length(tableIn.Properties.VariableNames)
-    varNameTmp = tableIn.Properties.VariableNames(cntVars);
-    % find flag columns (all columns that are not in the list below)
-    if ~ismember(varNameTmp,{'StartDate','EndDate','Notes'}) 
-        % set all values in varName to 0
-        dataOut.(char(varNameTmp)) = zeros(size(dataOut.TimeVector));
-        flagNum = flagNum + 1;
-        varNames(flagNum) = varNameTmp; %#ok<*AGROW>
+% Loop through all files and load the data
+tableIn = table([]);
+for cntFiles = 1:length(allFiles)
+    currentFileName = fullfile(allFiles(cntFiles).folder,allFiles(cntFiles).name);
+    if cntFiles == 1
+        tableIn = readtable(currentFileName,"NumHeaderLines",4);
+    else
+        tableIn = [tableIn ; readtable(currentFileName,"NumHeaderLines",4)];
     end
 end
 
-% Find periods for each variable that need to be "flagged" (set to 1)
-% and flag them
-for cntVars = 1:length(varNames)
-    currVar = char(varNames(cntVars));
-    flagVar = tableIn.(currVar);
-    indVar  = find(~isnan(flagVar));
-    for cntPeriods = 1:length(indVar)
-        % find a time period for the current flag
-        startPeriod = datenum(tableIn.StartDate(indVar(cntPeriods)));
-        endPeriod   = datenum(tableIn.EndDate(indVar(cntPeriods)));
-        % flag that period
-        indData2Flag = find(dataOut.TimeVector > startPeriod ...
-                          & dataOut.TimeVector <=fr_round_time(endPeriod,[],2) ); 
-        dataOut.(currVar)(indData2Flag) = missingPointValue; %#ok<FNDSB>
+% find all years that the data belongs to
+yearsInTable = unique(year([tableIn.StartDate;tableIn.EndDate]));
+yearsInTable = yearsInTable(:)';
+
+% Time increment:
+if strcmpi(timeUnit(end-2:end),'MIN')
+    if length(timeUnit)==3
+        numOfMin = 1;
+    else
+        numOfMin = str2double(timeUnit(1:end-3));
     end
+else
+    numOfMin = [];
 end
 
-% convert dataOut to Stats structure
-Stats = struct([]);
-N = length(dataOut.TimeVector);
-allFields = fieldnames(dataOut);
-for cntFields = 1:length(allFields)
-    fieldName = char(allFields(cntFields));
-    for cnt = 1:N
-        Stats(cnt).(fieldName) = dataOut.(fieldName)(cnt);
-    end
-end
+% cycle through each of those years
+for cntYears = yearsInTable
+
+    % Process only the cntYears that are also in yearIn
+    if ismember(cntYears,yearIn)
+       
+        % create a time vector for the entire year
+        dataOut.TimeVector = datenum(datetime(cntYears,1,1,0,numOfMin,0):minutes(numOfMin):datetime(cntYears+1,1,1))'; %#ok<*DATNM>
         
+        flagNum = 0;
+        varNames = {};
+        for cntVars = 1:length(tableIn.Properties.VariableNames)
+            varNameTmp = tableIn.Properties.VariableNames(cntVars);
+            % find flag columns (all columns that are not in the list below)
+            if ~ismember(varNameTmp,{'StartDate','EndDate','Notes'}) 
+                % set all values in varName to 0
+                dataOut.(char(varNameTmp)) = zeros(size(dataOut.TimeVector));
+                flagNum = flagNum + 1;
+                varNames(flagNum) = varNameTmp; %#ok<*AGROW>
+            end
+        end
         
-   
-% full path (Example: p:\database\2022\DSM\Flags)
-databasePath = fullfile(databasePathRoot,num2str(yearIn),siteID,'Flags');
-% save traces into database
-db_new_eddy(Stats,[],databasePath,0,[],timeUnit,missingPointValue);
-
+        % Find periods for each variable that need to be "flagged" (set to missingPointValue)
+        % and flag them
+        for cntVars = 1:length(varNames)
+            currVar = char(varNames(cntVars));
+            flagVar = tableIn.(currVar);
+            indVar  = find(~isnan(flagVar));
+            for cntPeriods = 1:length(indVar)
+                % find a time period for the current flag
+                startPeriod = datenum(tableIn.StartDate(indVar(cntPeriods)));
+                endPeriod   = datenum(tableIn.EndDate(indVar(cntPeriods)));
+                % flag that period
+                indData2Flag = find(dataOut.TimeVector > startPeriod ...
+                                  & dataOut.TimeVector <=fr_round_time(endPeriod,[],2) ); 
+                dataOut.(currVar)(indData2Flag) = missingPointValue; %#ok<FNDSB>
+            end
+        end
+           
+        % full path (Example: p:\database\2022\DSM\Flags)
+        pthOut = fullfile(databasePathRoot,num2str(cntYears),siteID,'Flags');
+        
+        % save traces into database
+        structType = 1;
+        db_struct2database(dataOut,pthOut,[],[],timeUnit,missingPointValue,structType);
+    end
+end
