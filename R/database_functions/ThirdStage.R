@@ -631,7 +631,7 @@ Run_REddyProc <- function() {
     }
   }
   time_cols <- input_data[c("DateTime","Year","DoY","Hour")] %>% filter(DateTime %in% data_REddyProc$DateTime)
-  
+
   # Run REddyProc
   # Following "https://cran.r-project.org/web/packages/REddyProc/vignettes/useCase.html" This is more up to date than the Wutzler et al. paper
   # NOTE: skipped loading in txt file since already have data in data frame
