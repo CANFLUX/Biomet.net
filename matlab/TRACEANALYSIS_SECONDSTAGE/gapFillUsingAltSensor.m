@@ -12,18 +12,18 @@ function [gapFilledMeasurement,qaqcOut] = gapFillUsingAltSensor(mainSensor,altSe
 % Inputs:
 %   mainSensor          - main trace, possibly with gaps (NaN-s)
 %   altSensor           - second trace, must have a strong linear dependance with mainSensor
-%  stdMultiplier        - the std(resudues) multiplier
-%  qaqcIn               - a structure to control the qaqc:
+%   stdMultiplier       - the std(resudues) multiplier
+%   qaqcIn              - a structure to control the qaqc:
 %                         Not all properties are requred:
-%    properties:   
-%      enable           - if true do the testing based on the other properties
-%      gapFillOverwrite - if true it will force gap filling even if the fit is not good enough (default: false)
-%      r2min            - minimum acceptable r^2
-%      minSlope         - minimum acceptable slope
-%      maxSlope         - maximum acceptable slope (Default: 1.05)
-%      maxRMSE          - maximum acceptable RMSE  (Default: Inf)
-%      flagVerbose      - ==1 when additinal function comments are requested
-%      flagForceError   - false (default): print a warning
+%                           qaqcIn properties:   
+%                             enable           - if true do the testing based on the other properties
+%                             gapFillOverwrite - if true it will force gap filling even if the fit is not good enough (default: false)
+%                             r2min            - minimum acceptable r^2
+%                             minSlope         - minimum acceptable slope
+%                             maxSlope         - maximum acceptable slope (Default: 1.05)
+%                             maxRMSE          - maximum acceptable RMSE  (Default: Inf)
+%   flagVerbose         - 0 (default), set it to ~= 0 when additinal function comments are requested
+%   flagForceError      - false (default): print a warning
 %                         true:            raise an error
 %                         outputSting:     print outputString in addition to the warning   
 %
@@ -42,10 +42,15 @@ function [gapFilledMeasurement,qaqcOut] = gapFillUsingAltSensor(mainSensor,altSe
 %
 %
 % Zoran Nesic                       File created:       Sep  2, 2025
-%                                   Last modification:  Oct 10, 2025
+%                                   Last modification:  Dec  5, 2025
 
 % Revisions
 %
+% Dec 5, 2025 (Zoran)
+%   - Bug fixes: 
+%           - qaqcIn was not being processed properly. The fields in defQAQC
+%             that were not defined in qaqcIn are now added to (combined with) qaqcIn.
+%           - QAQC testing and messages had bugs due to cutting and pasting lines. 
 % Oct 10, 2025 (Zoran)
 %   - Added a flag to force an error if the traces are not well matched or to print and
 %     additional string to provide an indication where the error occured. To be used 
@@ -60,7 +65,18 @@ defQAQC.r2min = 0.95;               % default min acceptable r2
 defQAQC.minSlope = 0.95;            % default min acceptable slope fit
 defQAQC.maxSlope = 1.05;            % default max acceptable slope fit
 defQAQC.maxRMSE = Inf;              % default: no limit for max RMSE
-arg_default('qaqcIn',defQAQC)
+if exist('qaqcIn',"var") & ~isempty(qaqcIn)
+    % if qaqcIn exists then
+    % combine defQAQC and qaqcIn
+    % bacause qaqcin may not have all the required parameters
+    fldNames = fieldnames(qaqcIn);
+    for cntF = 1:length(fldNames)
+        fN = char(fldNames(cntF));
+        defQAQC.(fN) = qaqcIn.(fN);
+    end
+end
+qaqcIn = defQAQC;
+
 arg_default('flagVerbose',false)
 arg_default('flagForceError',false)
 [~, ~, qaqcOut.poly_bf, qaqcOut.poly_af] = ta_clean_1to1_trace(altSensor,mainSensor,stdMultiplier);
@@ -111,9 +127,9 @@ if isfield(qaqcIn,'minSlope') && qaqcOut.poly_af(1) < qaqcIn.minSlope
     qaqcOut.msg = sprintf('%s     %s (%6.3f < %6.3f)\n',qaqcOut.msg,'Slope too low!',qaqcOut.poly_af(1),qaqcIn.minSlope);
 end
 % Maximum slope
-if isfield(qaqcIn,'minSlope') && qaqcOut.poly_af(1) > qaqcIn.maxSlope
+if isfield(qaqcIn,'maxSlope') && qaqcOut.poly_af(1) > qaqcIn.maxSlope
     qaqcOut.flag = false;
-    qaqcOut.msg = sprintf('%s     %s (%6.3f < %6.3f)\n',qaqcOut.msg,'Slope too high!',qaqcOut.poly_af(1),qaqcIn.minSlope);
+    qaqcOut.msg = sprintf('%s     %s (%6.3f > %6.3f)\n',qaqcOut.msg,'Slope too high!',qaqcOut.poly_af(1),qaqcIn.maxSlope);
 end
 
 % Maximum RMSE
@@ -131,9 +147,9 @@ if ~qaqcOut.flag
     % if ~gapfillOverwrite return the original data
     if ~qaqcIn.gapfillOverwrite
         gapFilledMeasurement = mainSensor;
-        fprintf(2,'      No gap-filling due to a poorly matched alternative trace. Returning the original trace.\n');
+        fprintf(2,'     No gap-filling due to a poorly matched alternative trace. Returning the original trace.\n');
     else
-        fprintf(2,'      Forcing gap-filling with a poorly matched alternative trace.\n');
+        fprintf(2,'     Forcing gap-filling with a poorly matched alternative trace.\n');
     end
 end
 if isstring(flagForceError) || ischar(flagForceError)
