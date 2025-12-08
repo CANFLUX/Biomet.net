@@ -9,10 +9,18 @@ function Biomet_Main_Scheduler
 %
 %
 % Zoran Nesic           File created:       Feb 12, 2024
-%                       Last modification:  May  9, 2025
+%                       Last modification:  Nov 27, 2025
 
 % Revisions:
 %
+% Nov 27, 2025 (Zoran)
+%   - added keeping 10 newest AB1 summary files on Biomet webpage for Pat
+% Nov 7, 2025 (Zoran)
+%   - Bug fix: added checking if any Picarro zip files exist before trying to move them.
+%     This used to case an error. Also added try/catch/end just in case.
+% Sep 11, 2025 (Zoran)
+%   - Switch from using sync.com to using \\annex001 for data transfers
+%     from Picarro 
 % May 9, 2025 (Zoran)
 %   - Added processing of AB1 site
 % Jan 15, 2025 (Zoran)
@@ -162,6 +170,27 @@ cd('d:\')
     if ismember(minuteX,[12 52])
         fprintf(fid,'======= AB1 data processing (%s) ========\n',datetime);
         fprintf(fid,'%s\n',datetime);
+        % code to keep the last nFilesToCopy days of AB EC summaries on the web site
+        webPath = 'D:\Sites\web_page_weather\AB1';
+        ecSummariesPath = 'D:\Sites\AB1\Flux';
+        allSummaries = dir(fullfile(ecSummariesPath,'*_EP-Summary.txt'));
+        
+        % From the target folder delete all *_EP-Summary.txt files
+        delete(fullfile(webPath,'*_EP-Summary.txt'));
+                
+        % Copy the newest files from EC folder to web folder
+        nFilesToCopy = 5;
+        dateStart = dateshift(datetime('now') - days(nFilesToCopy-1),'start','day');
+        for cntFiles = 1:length(allSummaries)
+            fileDate = allSummaries(cntFiles).name;
+            fileDate = fileDate(1:10);
+            if dateStart <= fileDate           
+                srcFile = fullfile(allSummaries(cntFiles).folder,allSummaries(cntFiles).name);
+                dstFile = fullfile(webPath,allSummaries(cntFiles).name);
+                copyfile(srcFile,dstFile);
+            end
+        end
+        % now run automatic processing for AB1 
         system('d:\Scripts\AB1_AutomaticProcessing.bat');
         fprintf(fid,'%s\n',datetime);
         fprintf(fid,'======= End of AB1 data processing (%s)    ========\n',datetime);
@@ -179,9 +208,15 @@ cd('d:\')
         fprintf(fid,'======= Picarro processing ========\n');
         fprintf(fid,'Moving ZIP files from Sync.com to Sites.\n');
         fprintf(fid,'%s\n',datetime);
-        [status,result] = system('"C:\Ubc_flux\Move_DailyZipFiles_from_Public_to_Sites.bat"');
-        if ~isempty(result)
-            fprintf(fid,'   Error while moving DailyZip files:\n%s\n',result);        
+        % [status,result] = system('"C:\Ubc_flux\Move_DailyZipFiles_from_Public_to_Sites.bat"');
+        % if ~isempty(result)
+        %     fprintf(fid,'   Error while moving DailyZip files:\n%s\n',result);        
+        % end
+        if ~isempty(dir('\\annex001\Picarro\*.zip'))
+            try
+                movefile('\\annex001\Picarro\*.zip','D:\Sites\Picarro_AGGP\dailyZip');
+            catch
+            end
         end
         % *** Note: UBC_ZIP.exe has a one minute wait period before it returns control to 
         %           Matlab. Use "&" to avoid waiting for it to return

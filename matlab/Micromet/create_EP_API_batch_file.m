@@ -1,4 +1,4 @@
-function create_EP_API_batch_file(siteID,startDay,endDay,EP_template,sourceDirMain,batchFileName)
+function create_EP_API_batch_file(siteID,startDay,endDay,EP_template)
 % create_EP_API_batch_file - create a batch file that processes a range of days in EddyPro API
 % create_EP_API_batch_file(siteID,startDay,endDay,EP_template,sourceDirMain,batchFileName)
 % Arguments
@@ -7,21 +7,27 @@ function create_EP_API_batch_file(siteID,startDay,endDay,EP_template,sourceDirMa
 %   startDay       - First day that is being processed 
 %   endDay         - Last day that is being processed
 %   EP_template    - EddyPro templated to be used for processing
-%   sourceDirMain  - Path to raw data: *sourceDirMain*/siteID/HighFrequencyData/raw/yyyy
-%   batchFileName  - Name of the bach file that will be called from a Python environment
 %
 %
 %
 % Zoran Nesic               File created:       Aug 14, 2025
-%                           Last modification:  Aug 26, 2025
+%                           Last modification:  Nov 24, 2025
 
 % Revisions
 %
+% Nov 24, 2025 (Zoran)
+%   - Function now creates batchFileName instead of getting it as an input
+%     parameter
 % Aug 26, 2025 (Zoran)
 %   - Improvements: moved more lines from main_EP_API_script.bat into 
 %     the batch file:batchFileName  created by this function. 
 
 structProject = get_TAB_project;
+% Name of the bach file that will be called from a Python environment
+batchFileName = fullfile(structProject.path,'Scripts','EP_API_call.bat');               % or structProjects.sites.(siteID).EP_AP_batchFile
+% Path to raw data: *sourceDirMain*/siteID/HighFrequencyData/raw/yyyy
+sourceDirMain = structProject.hfPath;
+
 ind=strfind(structProject.EPAPIpath,':');
 if isfield(structProject,'EPAPIpath') && ~isempty(ind)
     diskName = structProject.EPAPIpath(1:ind(1));
