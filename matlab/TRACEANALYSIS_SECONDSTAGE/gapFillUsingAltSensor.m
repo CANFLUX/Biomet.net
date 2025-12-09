@@ -18,10 +18,16 @@ function [gapFilledMeasurement,qaqcOut] = gapFillUsingAltSensor(mainSensor,altSe
 %                           qaqcIn properties:   
 %                             enable           - if true do the testing based on the other properties
 %                             gapFillOverwrite - if true it will force gap filling even if the fit is not good enough (default: false)
-%                             r2min            - minimum acceptable r^2
-%                             minSlope         - minimum acceptable slope
+%                             r2min            - minimum acceptable r^2   (Default: 0.95)
+%                             minSlope         - minimum acceptable slope (Default: 0.95)
 %                             maxSlope         - maximum acceptable slope (Default: 1.05)
 %                             maxRMSE          - maximum acceptable RMSE  (Default: Inf)
+%                             clamped_minMax   - if exists in the format: [minVal, maxVal], clamp the output values to these min/max values.
+%                             polyfitWithoutClamped  
+%                                             - 0 (default): use all data for polynomial fit (see comments in the code), 
+%                                             - 1 remove all points when: min(minSensor) ==mainSensor or min(altSensor)==altSensor => clampedMin
+%                                             - 2 remove all points when: max(mainSensor)==mainSensor or max(altSensor)==altSensor => clampedMax
+%                                             - >2 same as 1 & 2 together
 %   flagVerbose         - 0 (default), set it to ~= 0 when additinal function comments are requested
 %   flagForceError      - false (default): print a warning
 %                         true:            raise an error
@@ -42,10 +48,13 @@ function [gapFilledMeasurement,qaqcOut] = gapFillUsingAltSensor(mainSensor,altSe
 %
 %
 % Zoran Nesic                       File created:       Sep  2, 2025
-%                                   Last modification:  Dec  5, 2025
+%                                   Last modification:  Dec  8, 2025
 
 % Revisions
 %
+% Dec 8, 2025 (Zoran)
+%   - Added special handling of clamped_MinMax. See polyfitWihtoutClamped and clamped_minMax
+%     properties of qaqcIn
 % Dec 5, 2025 (Zoran)
 %   - Bug fixes: 
 %           - qaqcIn was not being processed properly. The fields in defQAQC
@@ -65,6 +74,7 @@ defQAQC.r2min = 0.95;               % default min acceptable r2
 defQAQC.minSlope = 0.95;            % default min acceptable slope fit
 defQAQC.maxSlope = 1.05;            % default max acceptable slope fit
 defQAQC.maxRMSE = Inf;              % default: no limit for max RMSE
+defQAQC.polyfitWithoutClamped = 0;  % when estimating polynomials do not remove clamped values
 if exist('qaqcIn',"var") & ~isempty(qaqcIn)
     % if qaqcIn exists then
     % combine defQAQC and qaqcIn
@@ -79,14 +89,25 @@ qaqcIn = defQAQC;
 
 arg_default('flagVerbose',false)
 arg_default('flagForceError',false)
-[~, ~, qaqcOut.poly_bf, qaqcOut.poly_af] = ta_clean_1to1_trace(altSensor,mainSensor,stdMultiplier);
+switch  qaqcIn.polyfitWithoutClamped 
+    case 0
+        indPointsToUse = 1:length(altSensor);
+    case 1
+        indPointsToUse = find(min(altSensor)~=altSensor & min(mainSensor)~=mainSensor);
+    case 2
+        indPointsToUse = find(max(altSensor)~=altSensor & max(mainSensor)~=mainSensor);
+    case is > 2
+        indPointsToUse = find(max(altSensor)~=altSensor & max(mainSensor)~=mainSensor | min(altSensor)==altSensor | min(mainSensor)==mainSensor);
+end
+
+[~, ~, qaqcOut.poly_bf, qaqcOut.poly_af] = ta_clean_1to1_trace(altSensor(indPointsToUse),mainSensor(indPointsToUse),stdMultiplier);
 
 qaqcOut.indGaps = find(isnan(mainSensor));
 qaqcOut.nGaps = length(qaqcOut.indGaps);
 gapFilledMeasurement = mainSensor;
 gapFilledMeasurement(qaqcOut.indGaps) = polyval(qaqcOut.poly_af,altSensor(qaqcOut.indGaps));
 
-%% Calculate some AAQC parameters and test the results:
+% Calculate some AAQC parameters and test the results:
 % - is minSlope < slope < maxSlope
 % - is minOffset < offset < maxOffset
 % - is RMSE low enough (should I use _filtered traces to test this?)
@@ -99,64 +120,79 @@ x = x(indGood);
 y = y(indGood);
 
 % return if qaqc is not enabled
-if ~qaqcIn.enable
-    return
-end
-
-% QAQC tests
-y_fit = polyval(qaqcOut.poly_af,x);
-mainSensor_res = y - y_fit;
-SSresid = sum(mainSensor_res.^2);
-SStotal = (length(mainSensor)-1) * var(y);
-qaqcOut.r2 = 1 - SSresid/SStotal;
-qaqcOut.rmse = sqrt(mean(mainSensor_res.^2));
-
-% Defaults: all good.
-qaqcOut.msg = "";
-qaqcOut.flag = true;  % good fit
-
-% tests
-% Minimum R2
-if isfield(qaqcIn,'r2min') && qaqcOut.r2 < qaqcIn.r2min
-    qaqcOut.flag = false;
-    qaqcOut.msg = sprintf('%s     %s (%6.3f < %6.3f)\n',qaqcOut.msg,'r2 too low!',qaqcOut.r2,qaqcIn.r2min);
-end
-% Minimum slope
-if isfield(qaqcIn,'minSlope') && qaqcOut.poly_af(1) < qaqcIn.minSlope
-    qaqcOut.flag = false;
-    qaqcOut.msg = sprintf('%s     %s (%6.3f < %6.3f)\n',qaqcOut.msg,'Slope too low!',qaqcOut.poly_af(1),qaqcIn.minSlope);
-end
-% Maximum slope
-if isfield(qaqcIn,'maxSlope') && qaqcOut.poly_af(1) > qaqcIn.maxSlope
-    qaqcOut.flag = false;
-    qaqcOut.msg = sprintf('%s     %s (%6.3f > %6.3f)\n',qaqcOut.msg,'Slope too high!',qaqcOut.poly_af(1),qaqcIn.maxSlope);
-end
-
-% Maximum RMSE
-if isfield(qaqcIn,'maxRMSE') && qaqcOut.rmse > qaqcIn.maxRMSE
-    qaqcOut.flag = false;
-    qaqcOut.msg = sprintf('%s     %s (%6.3f > %6.3f)\n',qaqcOut.msg,'RMSE is too high!',qaqcOut.rmse,qaqcIn.maxRMSE);
-end
-
-% verbose mode and bad fit, print a message (consider also not gap-filling!)
-if ~qaqcOut.flag
-    % print the message if requested
-    if flagVerbose
-        fprintf(2,qaqcOut.msg);
+if qaqcIn.enable
+    % QAQC tests
+    y_fit = polyval(qaqcOut.poly_af,x);
+    mainSensor_res = y - y_fit;
+    SSresid = sum(mainSensor_res.^2);
+    SStotal = (length(mainSensor)-1) * var(y);
+    qaqcOut.r2 = 1 - SSresid/SStotal;
+    qaqcOut.rmse = sqrt(mean(mainSensor_res.^2));
+    
+    % Defaults: all good.
+    qaqcOut.msg = "";
+    qaqcOut.flag = true;  % good fit
+    
+    % tests
+    % Minimum R2
+    if isfield(qaqcIn,'r2min') && qaqcOut.r2 < qaqcIn.r2min
+        qaqcOut.flag = false;
+        qaqcOut.msg = sprintf('%s     %s (%6.3f < %6.3f)\n',qaqcOut.msg,'r2 too low!',qaqcOut.r2,qaqcIn.r2min);
     end
-    % if ~gapfillOverwrite return the original data
-    if ~qaqcIn.gapfillOverwrite
+    % Minimum slope
+    if isfield(qaqcIn,'minSlope') && qaqcOut.poly_af(1) < qaqcIn.minSlope
+        qaqcOut.flag = false;
+        qaqcOut.msg = sprintf('%s     %s (%6.3f < %6.3f)\n',qaqcOut.msg,'Slope too low!',qaqcOut.poly_af(1),qaqcIn.minSlope);
+    end
+    % Maximum slope
+    if isfield(qaqcIn,'maxSlope') && qaqcOut.poly_af(1) > qaqcIn.maxSlope
+        qaqcOut.flag = false;
+        qaqcOut.msg = sprintf('%s     %s (%6.3f > %6.3f)\n',qaqcOut.msg,'Slope too high!',qaqcOut.poly_af(1),qaqcIn.maxSlope);
+    end
+    
+    % Maximum RMSE
+    if isfield(qaqcIn,'maxRMSE') && qaqcOut.rmse > qaqcIn.maxRMSE
+        qaqcOut.flag = false;
+        qaqcOut.msg = sprintf('%s     %s (%6.3f > %6.3f)\n',qaqcOut.msg,'RMSE is too high!',qaqcOut.rmse,qaqcIn.maxRMSE);
+    end
+    
+    % verbose mode and bad fit, print a message 
+    if ~qaqcOut.flag && flagVerbose
+        % print the message if requested
+        fprintf(2,qaqcOut.msg);    
+    end
+    
+    % if bad fit and the overwrite flag is FALSE return the original mainSensor data
+    if ~qaqcOut.flag && ~qaqcIn.gapfillOverwrite
         gapFilledMeasurement = mainSensor;
         fprintf(2,'     No gap-filling due to a poorly matched alternative trace. Returning the original trace.\n');
-    else
+    end
+    
+    % if the fit is bad and gapfillOverwrite == TRUE, do the gap filling with the bad fit 
+    if qaqcOut.flag && qaqcIn.gapfillOverwrite
         fprintf(2,'     Forcing gap-filling with a poorly matched alternative trace.\n');
     end
+    
+    % if clamping of the values is requested do it now.
+    if isfield(qaqcIn,"clamped_minMax") & ~isempty(qaqcIn.clamped_minMax)
+        % if clamping minMax is requested do it here
+        gapFilledMeasurement(gapFilledMeasurement<qaqcIn.clamped_minMax(1)) = qaqcIn.clamped_minMax(1);
+        gapFilledMeasurement(gapFilledMeasurement>qaqcIn.clamped_minMax(2)) = qaqcIn.clamped_minMax(2);
+    end
+    
+    % If needed either print a user specified message (usualy the trace name from 1st or 2nd stage)
+    % or force an error.
+    if isstring(flagForceError) || ischar(flagForceError)
+        fprintf(2,'     => %s\n\n',flagForceError);
+    elseif flagForceError
+        error '      Error in gapFillUsingAltSensor'
+    end
+elseif isfield(qaqcIn,"clamped_minMax") & ~isempty(qaqcIn.clamped_minMax)
+    % if qaqc is not enabled but clamping of the output is, do it now
+    gapFilledMeasurement(gapFilledMeasurement<qaqcIn.clamped_minMax(1)) = qaqcIn.clamped_minMax(1);
+    gapFilledMeasurement(gapFilledMeasurement>qaqcIn.clamped_minMax(2)) = qaqcIn.clamped_minMax(2);    
 end
-if isstring(flagForceError) || ischar(flagForceError)
-    fprintf(2,'      %s\n',flagForceError);
-elseif flagForceError
-    error '      Error in gapFillUsingAltSensor'
-end
+
 
 
 
