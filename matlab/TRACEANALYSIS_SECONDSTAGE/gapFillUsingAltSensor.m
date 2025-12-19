@@ -169,7 +169,7 @@ if qaqcIn.enable
     end
     
     % if the fit is bad and gapfillOverwrite == TRUE, do the gap filling with the bad fit 
-    if qaqcOut.flag && qaqcIn.gapfillOverwrite
+    if ~qaqcOut.flag && qaqcIn.gapfillOverwrite
         fprintf(2,'     Forcing gap-filling with a poorly matched alternative trace.\n');
     end
     
@@ -182,9 +182,9 @@ if qaqcIn.enable
     
     % If needed either print a user specified message (usualy the trace name from 1st or 2nd stage)
     % or force an error.
-    if isstring(flagForceError) || ischar(flagForceError)
+    if ~qaqcOut.flag && (isstring(flagForceError) || ischar(flagForceError))
         fprintf(2,'     => %s\n\n',flagForceError);
-    elseif flagForceError
+    elseif ~qaqcOut.flag && flagForceError
         error '      Error in gapFillUsingAltSensor'
     end
 elseif isfield(qaqcIn,"clamped_minMax") & ~isempty(qaqcIn.clamped_minMax)

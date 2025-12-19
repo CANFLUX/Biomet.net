@@ -52,7 +52,7 @@ else
     WINTER_TEMP_OFFSET = 10;
 end
 
-colordef white %#ok<COLORDEF>
+%colordef white %#ok<COLORDEF>
 arg_default('fig_num_inc',1);
 arg_default('select',1);
 arg_default('siteID','BB2');
@@ -530,13 +530,15 @@ indAxes = indAxes+1; allAxes(indAxes) = gca;
 trace_name  = sprintf('%s: %s',siteID,'Wind Direction');
 switch siteID
     case {'DSM','RBM','BB1','BB2'}
-        trace_path  = char(fullfile(pthSite,'MET','MET_Young_WS_WVc2'));
+        trace_path  = char(fullfile(pthSite,'MET','MET_Young_WS_WVc2'),fullfile(pthSite,'Flux','wind_dir'));
+        trace_legend = char('MET','Sonic');
     case {'HOGG','YOUNG','OHM'}
         trace_path  = char(fullfile(pthSite,'Flux','wind_dir'));
+        trace_legend = char('EC');
 end
-trace_legend = char('MET','ECCC');
+
 trace_units = 'deg';
-unitCorrection = [1 10];
+unitCorrection = [1 1];
 y_axis      = [];
 fig_num = fig_num + fig_num_inc;
 x = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num,unitCorrection );
@@ -742,6 +744,50 @@ x = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_
 indAxes = indAxes+1; allAxes(indAxes) = gca;
 
 %----------------------------------------------------------
+% LI700 Washer pump
+%----------------------------------------------------------
+trace_name  = sprintf('%s: %s',siteID,' LI-7700 Washer pump');
+trace_path  = char(fullfile(pthSite,'Flux','pump_on_LI_7700'));
+trace_legend = [];
+trace_units = 'Washer Pump ON (Samples)';
+y_axis      = [];
+fig_num = fig_num + fig_num_inc;
+x = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num,[],[],char('o') );
+% Add a shaded area where the trace should not exist (above 500)
+shadeBadZone(500)
+indAxes = indAxes+1; allAxes(indAxes) = gca;
+
+%----------------------------------------------------------
+% LI7700 spin motor
+%----------------------------------------------------------
+trace_name  = sprintf('%s: %s',siteID,' LI7700 spin motor');
+trace_path  = char(fullfile(pthSite,'Flux','motor_spinning_LI_7700'));
+trace_legend = [];
+trace_units = 'Spin Motor ON (Samples)';
+y_axis      = [];
+fig_num = fig_num + fig_num_inc;
+x = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num,[],[],char('o') );
+% Add a shaded area where the trace should not exist (above 500)
+shadeBadZone(700)
+indAxes = indAxes+1; allAxes(indAxes) = gca;
+
+%----------------------------------------------------------
+% LI7700 heaters
+%----------------------------------------------------------
+trace_name  = sprintf('%s: %s',siteID,' LI7700 Heaters');
+trace_path  = char(fullfile(pthSite,'Flux','top_heater_on_LI_7700'),...
+                  fullfile(pthSite,'Flux','bottom_heater_on_LI_7700')...
+                  );
+trace_legend = char('Top','Bottom');
+trace_units = 'Heaters ON (Samples)';
+y_axis      = [];
+fig_num = fig_num + fig_num_inc;
+x = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num,[],[],char('o','d') );
+% Add a shaded area where the trace should not exist (above 500)
+shadeBadZone(37000)
+indAxes = indAxes+1; allAxes(indAxes) = gca;
+
+%----------------------------------------------------------
 % Delay times
 %----------------------------------------------------------
 trace_name  = sprintf('%s: %s',siteID,' Delay Times');
@@ -753,7 +799,7 @@ trace_legend = char('h_2o','co_2','ch_4');
 trace_units = 'Delay Times (Seconds)';
 y_axis      = [];
 fig_num = fig_num + fig_num_inc;
-x = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num,[],[],char('o') );
+x = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num,[],[],char('o','d','x') );
 indAxes = indAxes+1; allAxes(indAxes) = gca;
 
 %----------------------------------------------------------
@@ -843,3 +889,13 @@ end
 end
 
 
+function shadeBadZone(maxY)
+    xl=xlim;
+    yl=ylim;    
+    if yl(2)> maxY
+        patch([xl(1) xl(2) xl(2) xl(1)],[ maxY maxY yl(2) yl(2) ],...
+              'r','facealpha',0.1,'edgecolor','none',...
+              'HandleVisibility', 'off')
+        yline(maxY,'r--','Max','HandleVisibility', 'off')
+    end
+end
