@@ -6,12 +6,15 @@ function [t,x] = BB_pl(ind, yearIn, siteID, select, fig_num_inc,flgPause)
 %   the UBC data-base formated files.
 %
 % (c) c) Nesic Zoran         File created:       May 11, 2021      
-%                            Last modification:  Jan  2, 2025
+%                            Last modification:  Dec 22, 2025
 %           
 %
 
 % Revisions:
 %
+% Dec 22, 2025 (Zoran)
+%   - added shading of the values outside of valid ranges. See: shadeBadZone()
+%   - minor code improvements
 % Jan 2, 2025 (Zoran)
 %   - Bug fix: There were some issues with the plotting of cumulative precipitation
 %     when plotting the first few days of a new yearIn. Patched it up with try-catch-end.
@@ -235,7 +238,7 @@ if ~isempty(indNans)
         'DisplayName','Missing')
 end
 indAxes = indAxes+1; allAxes(indAxes) = gca;
-
+shadeBadZone([35000 Inf])
 
 %----------------------------------------------------------
 % 24V Battery Voltage
@@ -256,6 +259,7 @@ y_axis      = [];
 fig_num = fig_num + fig_num_inc;
 x = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num );
 indAxes = indAxes+1; allAxes(indAxes) = gca;
+shadeBadZone([23.5 30.3])
 
 %----------------------------------------------------------
 % Battery Current
@@ -283,6 +287,7 @@ y_axis      = [];
 fig_num = fig_num + fig_num_inc;
 sysCurrent = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num,[1 1]*coeffSign ); 
 indAxes = indAxes+1; allAxes(indAxes) = gca;
+shadeBadZone([-5 Inf])
 
 %----------------------------------------------------------
 % Cumulative Battery Current
@@ -321,7 +326,7 @@ indAxes = indAxes+1; allAxes(indAxes) = gca;
 
 
 %----------------------------------------------------------
-% System Voltage
+% Instrument Voltage
 %----------------------------------------------------------
 trace_name  = sprintf('%s: %s',siteID,' Instrument Voltage');
 switch siteID
@@ -373,6 +378,7 @@ y_axis      = [];
 fig_num = fig_num + fig_num_inc;
 sysPower = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num );
 indAxes = indAxes+1; allAxes(indAxes) = gca;
+shadeBadZone([-100 Inf])
 
 %----------------------------------------------------------
 % System Energy
@@ -436,6 +442,7 @@ y_axis      = [];
 fig_num = fig_num + fig_num_inc;
 x = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num );
 indAxes = indAxes+1; allAxes(indAxes) = gca;
+shadeBadZone([-20 45])
 
 %----------------------------------------------------------
 % CNR4 components
@@ -486,6 +493,7 @@ trace_units = '(µmol/m2/s)';
 y_axis      = [];
 fig_num = fig_num + fig_num_inc;
 x = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num );
+shadeBadZone([-150 800])
 indAxes = indAxes+1; allAxes(indAxes) = gca;
 
 %----------------------------------------------------------
@@ -544,29 +552,24 @@ fig_num = fig_num + fig_num_inc;
 x = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num,unitCorrection );
 indAxes = indAxes+1; allAxes(indAxes) = gca;
 
-
-
 %----------------------------------------------------------
 % LI-7200 Thermocouples
 %----------------------------------------------------------
 trace_name  = sprintf('%s: %s',siteID,' LI-7200 Thermocouples');
 switch siteID
     case {'HOGG','YOUNG','OHM'}
-        trace_path = [];
-        fig_num = fig_num-1;
     otherwise
         trace_path  = char(fullfile(pthSite,'monitorSites',sprintf('%s.tempIn.avg',siteID)),...
                            fullfile(pthSite,'monitorSites',sprintf('%s.tempOut.avg',siteID)));
+    trace_legend = char('T_{in}','T_{out}');
+    trace_units = 'Temperature (\circC)'; % flowrate_min needs to be converted from m^3/sec *1000*60 (L/min)
+    y_axis      = [];
+    fig_num = fig_num + fig_num_inc;
+    x = plt_msig( trace_path, ind, trace_name, ...
+                  trace_legend, yearIn, trace_units, ...
+                  y_axis, t, fig_num );
+    indAxes = indAxes+1; allAxes(indAxes) = gca;
 end
-trace_legend = char('T_{in}','T_{out}');
-trace_units = 'Temperature (\circC)'; % flowrate_min needs to be converted from m^3/sec *1000*60 (L/min)
-y_axis      = [];
-fig_num = fig_num + fig_num_inc;
-x = plt_msig( trace_path, ind, trace_name, ...
-              trace_legend, yearIn, trace_units, ...
-              y_axis, t, fig_num );
-indAxes = indAxes+1; allAxes(indAxes) = gca;
-
 
 %----------------------------------------------------------
 % LI-7200 Flow rate
@@ -574,18 +577,17 @@ indAxes = indAxes+1; allAxes(indAxes) = gca;
 trace_name  = sprintf('%s: %s',siteID,' LI-7200 Flow Rate');
 switch siteID
     case {'HOGG','YOUNG','OHM'}
-        trace_path = [];
-        fig_num = fig_num-1;
     otherwise
         trace_path  = char(fullfile(pthSite,'monitorSites',sprintf('%s.flowRate.avg',siteID)),...
                            fullfile(pthSite,'Flux','flowrate_mean'));
+        trace_legend = char('Monitor','EddyPro');
+        trace_units = 'Flow (lpm)'; % flowrate_min needs to be converted from m^3/sec *1000*60 (L/min)
+        y_axis      = [];
+        fig_num = fig_num + fig_num_inc;
+        x = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num,[1 1000*60] );
+        indAxes = indAxes+1; allAxes(indAxes) = gca;
+        shadeBadZone([12 Inf])
 end
-trace_legend = char('Monitor','EddyPro');
-trace_units = 'Flow (lpm)'; % flowrate_min needs to be converted from m^3/sec *1000*60 (L/min)
-y_axis      = [];
-fig_num = fig_num + fig_num_inc;
-x = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num,[1 1000*60] );
-indAxes = indAxes+1; allAxes(indAxes) = gca;
 
 %----------------------------------------------------------
 % Flow Drive
@@ -593,20 +595,19 @@ indAxes = indAxes+1; allAxes(indAxes) = gca;
 trace_name  = sprintf('%s: %s',siteID,' Flow Drive');
 switch siteID
     case {'HOGG','YOUNG','OHM'}
-        trace_path = [];
-        fig_num = fig_num-1;
     otherwise
         trace_path  = char(fullfile(pthSite,'monitorSites',sprintf('%s.FlowDrive.avg',siteID)),...
                            fullfile(pthSite,'monitorSites',sprintf('%s.FlowDrive.min',siteID)),...
                            fullfile(pthSite,'monitorSites',sprintf('%s.FlowDrive.max',siteID))...
         );
         trace_legend = char('Avg','Min','Max');
+        trace_units = 'Flow Drive (%)';
+        y_axis      = [];
+        fig_num = fig_num + fig_num_inc;
+        x = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num );
+        indAxes = indAxes+1; allAxes(indAxes) = gca;
+        shadeBadZone([30 98])
 end
-trace_units = 'Flow Drive (%)';
-y_axis      = [];
-fig_num = fig_num + fig_num_inc;
-x = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num );
-indAxes = indAxes+1; allAxes(indAxes) = gca;
 
 %----------------------------------------------------------
 % Head Pressure
@@ -614,20 +615,19 @@ indAxes = indAxes+1; allAxes(indAxes) = gca;
 trace_name  = sprintf('%s: %s',siteID,'Head Pressure');
 switch siteID
     case {'HOGG','YOUNG','OHM'}
-        trace_path = [];
-        fig_num = fig_num-1;
     otherwise
         trace_path  = char(fullfile(pthSite,'monitorSites',sprintf('%s.Phead.avg',siteID)),...
                            fullfile(pthSite,'monitorSites',sprintf('%s.Phead.min',siteID)),...
                            fullfile(pthSite,'monitorSites',sprintf('%s.Phead.max',siteID))...
         );
         trace_legend = char('Avg','Min','Max');
+        trace_units = 'Phead (kPa)';
+        y_axis      = [];
+        fig_num = fig_num + fig_num_inc;
+        x = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num );
+        indAxes = indAxes+1; allAxes(indAxes) = gca;
+        shadeBadZone([-3.6 -0.8])
 end
-trace_units = 'Phead (kPa)';
-y_axis      = [];
-fig_num = fig_num + fig_num_inc;
-x = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num );
-indAxes = indAxes+1; allAxes(indAxes) = gca;
 
 %----------------------------------------------------------
 % Air pressure
@@ -659,7 +659,7 @@ y_axis      = [];
 fig_num = fig_num + fig_num_inc;
 x = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num );
 indAxes = indAxes+1; allAxes(indAxes) = gca;
-
+shadeBadZone([-Inf 4000])
 
 %----------------------------------------------------------
 % Diagnostics
@@ -742,6 +742,7 @@ y_axis      = [];
 fig_num = fig_num + fig_num_inc;
 x = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num );
 indAxes = indAxes+1; allAxes(indAxes) = gca;
+shadeBadZone([15 Inf])
 
 %----------------------------------------------------------
 % LI700 Washer pump
@@ -754,7 +755,7 @@ y_axis      = [];
 fig_num = fig_num + fig_num_inc;
 x = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num,[],[],char('o') );
 % Add a shaded area where the trace should not exist (above 500)
-shadeBadZone(500)
+shadeBadZone([-Inf 500])
 indAxes = indAxes+1; allAxes(indAxes) = gca;
 
 %----------------------------------------------------------
@@ -768,7 +769,7 @@ y_axis      = [];
 fig_num = fig_num + fig_num_inc;
 x = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num,[],[],char('o') );
 % Add a shaded area where the trace should not exist (above 500)
-shadeBadZone(700)
+shadeBadZone([-Inf 700])
 indAxes = indAxes+1; allAxes(indAxes) = gca;
 
 %----------------------------------------------------------
@@ -783,8 +784,6 @@ trace_units = 'Heaters ON (Samples)';
 y_axis      = [];
 fig_num = fig_num + fig_num_inc;
 x = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num,[],[],char('o','d') );
-% Add a shaded area where the trace should not exist (above 500)
-shadeBadZone(37000)
 indAxes = indAxes+1; allAxes(indAxes) = gca;
 
 %----------------------------------------------------------
@@ -888,14 +887,3 @@ end
 
 end
 
-
-function shadeBadZone(maxY)
-    xl=xlim;
-    yl=ylim;    
-    if yl(2)> maxY
-        patch([xl(1) xl(2) xl(2) xl(1)],[ maxY maxY yl(2) yl(2) ],...
-              'r','facealpha',0.1,'edgecolor','none',...
-              'HandleVisibility', 'off')
-        yline(maxY,'r--','Max','HandleVisibility', 'off')
-    end
-end
