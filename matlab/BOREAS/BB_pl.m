@@ -6,12 +6,14 @@ function [t,x] = BB_pl(ind, yearIn, siteID, select, fig_num_inc,flgPause)
 %   the UBC data-base formated files.
 %
 % (c) c) Nesic Zoran         File created:       May 11, 2021      
-%                            Last modification:  Dec 22, 2025
+%                            Last modification:  Dec 27, 2025
 %           
 %
 
 % Revisions:
 %
+% Dec 27, 2025 (Zoran)
+%   - Added 4m HMP Tair to RBM plots.
 % Dec 22, 2025 (Zoran)
 %   - added shading of the values outside of valid ranges. See: shadeBadZone()
 %   - minor code improvements
@@ -125,6 +127,13 @@ switch siteID
             );
         tempOffset = [ 1 1 1]*273.15;    % convert K to C
         trace_legend = char('airT','TA 1.1.1','SonicT');
+    case {'RBM'}
+        trace_path  = char(fullfile(pthSite,'MET','MET_HMP_T_4m_Avg'),...
+                           fullfile(pthSite,'Flux','air_temperature'),...
+                           fullfile(pthSite,'Flux','sonic_temperature')...
+                           );
+        tempOffset = [0 273.15 273.15];
+        trace_legend = char('T_{HMP}','airT','SonicT');
     otherwise
         trace_path  = char(fullfile(pthSite,'MET','MET_HMP_T_2m_Avg'),...
                            fullfile(pthSite,'Flux','air_temperature'),...
