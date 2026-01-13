@@ -9,20 +9,31 @@ function out = collapseSamplesWithFlattenedInnerArrays(samples)
 %   % sample(2).flux(1).ch4.exp_B(1,3).fitOut.N_optimum = 20;
 %   % out = collapseSamplesWithFlattenedInnerArrays(sample);
 %   % out.flux_1.ch4.exp_B_1_3.fitOut.N_optimum -> [10 20]
+%
+%   while flattening nested struct arrays of any dimensionality. If the nested
+%   array is effectively 1-D (exactly one non-singleton dimension), only that
+%   dimension's index is used in the suffix (e.g., a(1,2), a(1,3) -> a_2, a_3).
+%
+%   If >=2 dimensions are non-singleton, all indices are retained (exp_B_1_3).
+%   
+%   1-D numeric/logical leaf arrays are split into scalar fields with
+%   suffixes (_1, _2, ...), e.g., T = [1 10 100] -> T_1=1, T_2=10, T_3=100.
 
     if ~isstruct(samples)
         error('Input must be a struct array.');
     end
 
-    % 1) Normalize each sample: flatten inner struct arrays into suffixed fields
-    normSamples = arrayfun(@normalizeSampleMD, samples);
+    % 1) Normalize each sample: flatten inner struct arrays and split 1-D leaves
+    normSamples = arrayfun(@normalizeSampleMD_dropSingletons_andSplitLeaves, samples);
 
     % 2) Collapse across the outer sample dimension only
     out = collapseAcrossSamples(normSamples);
+
 end
 
-% --- Normalize one sample: split any nested struct arrays (multi-D) into suffixed fields
-function sOut = normalizeSampleMD(sIn)
+
+% --- Normalize one sample: handle nested structs/arrays and split 1-D leaves ---
+function sOut = normalizeSampleMD_dropSingletons_andSplitLeaves(sIn)
     sOut = struct();
     fn = fieldnames(sIn);
 
@@ -31,23 +42,48 @@ function sOut = normalizeSampleMD(sIn)
         v = sIn.(f);
 
         if isstruct(v)
-            if isscalar(v)        % scalar nested struct: recurse preserving the name
-                sOut.(f) = normalizeSampleMD(v);
+            if isscalar(v)
+                % Scalar nested struct: recurse preserving the name
+                sOut.(f) = normalizeSampleMD_dropSingletons_andSplitLeaves(v);
             else
-                % Multi-D struct array: create f_<i1>_<i2>_... for each element
+                % Multi-D struct array: create f_<indices> for each element
                 sz = size(v);
                 nd = ndims(v);
+                nonSingDims = find(sz > 1);
+
+                if isempty(nonSingDims)
+                    sOut.(f) = normalizeSampleMD_dropSingletons_andSplitLeaves(v); % safety
+                    continue;
+                end
+
+                useAllDims = numel(nonSingDims) >= 2;
                 subs = cell(1, nd);
                 for lin = 1:numel(v)
-                    [subs{:}] = ind2sub(sz, lin); % subs = {i1, i2, ...}
-                    idxStrs   = cellfun(@(x) num2str(x), subs, 'UniformOutput', false);
-                    fj        = sprintf('%s_%s', f, strjoin(idxStrs, '_'));
-                    sOut.(fj) = normalizeSampleMD(v(lin));
+                    [subs{:}] = ind2sub(sz, lin); % subs = {i1, i2, ..., i_nd}
+
+                    if useAllDims
+                        idxs = cellfun(@(x) num2str(x), subs, 'UniformOutput', false);
+                    else
+                        % Keep only the single varying dimension’s index
+                        d = nonSingDims;  % scalar index of the varying dim
+                        idxs = { num2str(subs{d}) };
+                    end
+
+                    fj = sprintf('%s_%s', f, strjoin(idxs, '_'));
+                    sOut.(fj) = normalizeSampleMD_dropSingletons_andSplitLeaves(v(lin));
                 end
             end
         else
-            % Leaf (non-struct): copy as-is
-            sOut.(f) = v;
+            % --- Leaf (non-struct): optionally split 1-D numeric/logical vectors ---
+            if (isnumeric(v) || islogical(v)) && isvector(v) && ~isscalar(v)
+                % Split into per-element scalar fields: f_1, f_2, ...
+                for i = 1:numel(v)
+                    sOut.(sprintf('%s_%d', f, i)) = v(i);
+                end
+            else
+                % Copy other leaves as-is (scalars, strings, matrices, cells, etc.)
+                sOut.(f) = v;
+            end
         end
     end
 end
@@ -80,22 +116,44 @@ function out = collapseAcrossSamples(S)
     end
 end
 
-% --- Collapse an array of struct cells (per sample) into a single nested struct
+
 function out = collapseAcrossSamplesStructCells(vals)
-    % Build union of nested fieldnames from non-empty structs only
-    nonEmpty   = vals(~cellfun(@isempty, vals));
-    if isempty(nonEmpty)
-        out = struct(); return;
+% collapseAcrossSamplesStructCells  Collapses an array of per-sample struct cells
+% into a single nested struct, safely handling missing fields and empties.
+%
+%   vals : 1xN cell array, each cell contains a struct (possibly empty []).
+
+    % Filter to non-empty struct cells
+    isStructCell = ~cellfun(@isempty, vals) & cellfun(@isstruct, vals);
+    nonEmptyStructs = vals(isStructCell);
+
+    % If no non-empty structs, return empty struct
+    if isempty(nonEmptyStructs)
+        out = struct();
+        return;
     end
-    neFnCells  = cellfun(@(v) fieldnames(v), nonEmpty, 'UniformOutput', false);
-    nestedFields = unique( vertcat(neFnCells{:}) );
+
+    % Build union of nested fieldnames from non-empty structs only
+    fnCells = cellfun(@(v) fieldnames(v), nonEmptyStructs, 'UniformOutput', false);
+    nestedFields = unique( vertcat(fnCells{:}) );
 
     out = struct();
+
     for k = 1:numel(nestedFields)
         nf = nestedFields{k};
-        % Collect nf from each sample's struct (if present)
-        subVals = cellfun(@(v) iff(~isempty(v) && isfield(v, nf), v.(nf), []), vals, 'UniformOutput', false);
 
+        % Collect nf from each sample's struct (missing -> [])
+        subVals = cell(size(vals));
+        for i = 1:numel(vals)
+            vi = vals{i};
+            if ~isempty(vi) && isstruct(vi) && isfield(vi, nf)
+                subVals{i} = vi.(nf);
+            else
+                subVals{i} = [];  % placeholder for missing
+            end
+        end
+
+        % Determine whether to recurse (struct in any non-empty sample)
         firstNonEmpty = find(~cellfun(@isempty, subVals), 1);
         if ~isempty(firstNonEmpty) && isstruct(subVals{firstNonEmpty})
             out.(nf) = collapseAcrossSamplesStructCells(subVals);
@@ -104,6 +162,7 @@ function out = collapseAcrossSamplesStructCells(vals)
         end
     end
 end
+
 
 % --- Collapse leaf cells across samples into vectors/matrices/strings/cells
 function outVal = collapseLeaf(vals)

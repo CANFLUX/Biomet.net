@@ -69,3 +69,21 @@ to
 
 t.a = [1 3];
 t.b = [2 4];
+
+%% Using current SAL HHour outputs
+load 'T:\Research_Groups\Sean_Smukler\SALdata\GHGdata\SAL Picarro All Data\met-data\hhour\260111.picACS.mat'
+% Remove fields that are not used
+%ignoreFields = {'DataHF','HhourFileName','Configuration','Chamber'};
+ignoreFields = {'DataHF','HhourFileName','Configuration','Picarro','Ambient','Logger'};
+for cntFields=1:length(ignoreFields)
+    HHour = rmfield(HHour,char(ignoreFields{cntFields}));
+end
+%%
+out = collapseSamplesWithFlattenedInnerArrays(HHour);
+% create a list of file names (results{1}.fileName)
+% and data arrays (results{1}.data) that go with the names
+%prefix = sprintf('chamber_%d',chNum);
+prefix = '';
+results = extractLeafArrays(out,prefix);
+results{1}
+
