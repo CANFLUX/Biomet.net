@@ -83,7 +83,7 @@ out = collapseSamplesWithFlattenedInnerArrays(HHour);
 % create a list of file names (results{1}.fileName)
 % and data arrays (results{1}.data) that go with the names
 %prefix = sprintf('chamber_%d',chNum);
-prefix = '';
+prefix = 'xx';
 results = extractLeafArrays(out,prefix);
 results{1}
 
