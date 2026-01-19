@@ -1,4 +1,4 @@
-function [structIn,dbFileNames, dbFieldNames,errCode] = UdeM_struct2database(structIn,pthOut,verbose_flag,excludeSubStructures,timeUnit,missingPointValue)
+function [structOut,dbFileNames, dbFieldNames,errCode] = UdeM_struct2database(structIn,pthOut,verbose_flag,excludeSubStructures,prefix, timeUnit,missingPointValue)
 % UdeM_struct2database - creates database from UdeM chamber data structures
 %
 % eg. [structIn,dbFileNames, dbFieldNames,errCode] = ...
@@ -19,11 +19,13 @@ function [structIn,dbFileNames, dbFieldNames,errCode] = UdeM_struct2database(str
 %       missingPointValue       - value to fill in for the missing data points. Default: NaN
 %
 % Outputs:
-%       structIn                - filtered and sorted input structIn
+%       structout               - ****** explain
 %       dbFileNames             - database file names
 %       dbFieldNames            - structIn field names
 %       errCode                 - error code
 %
+% Examples:
+%       excludeSubStructures = {'configIn','rawData','tv','indexes','quad_B','gof','fCO2','t0All','c0All','coeffAll','dcdtAll','rmseAll'};
 %
 %
 % (c) Zoran Nesic               File created:       Jan 10, 2026
@@ -49,21 +51,55 @@ fprintf(2,'UdeM_struct2database function is being tested. Not fully debugged yet
     % Make sure the output path has proper filesep for this OS
     pthOut = fullfile(pthOut);
 
-    % Remove any topmost fields that don't need to be converted to the data
-    % base format:
-    if ~isempty(excludeSubStructures)
-        structIn = rmfield(structIn,excludeSubStructures);
-    end
-    
-    % the number of fields in structIn
-    allFieldNames = fieldnames(structIn);
-    nFields = length(allFieldNames);
+    % Convert an UdeM structure for 1 chamber: 
+    %   structIn.sample(nSamples).TimeVector
+    %   structIn.sample(nSamples).co2_dry
+    %   ...
+    % into an array of structures:
+    %   structOut.TimeVector(1:nSamples)
+    %   structOut.EC_in.avg(1:nSamples)
+    %   structOut.EC_in.min(1:nSamples)
+    %  ...
+    structOut = collapseSamplesWithFlattenedInnerArrays(structIn);
 
+    % Convert structOut into a cell array with each element
+    % consisting of two fields:
+    %      fileName:    'chamber_1.EC_in.avg'
+    %      data:        [n1 n2 n3 ....] 1 x nSamples
+    % This cell array can then be used to store the traces (fileName)
+    % into the Biomet.net database
+    fileNamesAndData_tmp = extractLeafArrays(structOut,prefix);
+
+    fileNamesAndData = {};
+    cStr = 0;
+    for cntResults = 1:length(fileNamesAndData_tmp)
+        if ~contains(fileNamesAndData_tmp{cntResults}.fileName,excludeSubStructures)
+            cStr = cStr + 1;
+            fileNamesAndData{cStr} = fileNamesAndData_tmp{cntResults};
+        end
+    end
+    allFileNames = cellfun(@(s) s().fileName, fileNamesAndData, 'UniformOutput', false);
     %
     % extract the time vector and round it to the nearest timeUnit
     %
     tic;
-    new_tv = fr_round_time(structIn.TimeVector,timeUnit,1);
+    indTV = find(contains(allFileNames,'TimeVector'));
+    new_tv = fr_round_time(fileNamesAndData{indTV}.data,timeUnit,1);
+    indGoodTv = find(isfinite(new_tv) & new_tv~=0);
+    [tmp_new_tv,indUniqueTv]=unique(new_tv(indGoodTv),'last');
+
+    % stopped here on Jan 18, 2026
+    % To to:
+    % - Cycle through all traces
+    %   - for each trace
+    %       - grab only indGoodTv and indUniqueTv data points
+    %       - find all different years
+    %           - cycle through all years
+    %           - load existing trace
+    %           - insert new data
+    %           - save new trace
+    %           - maybe use save_bor option that saves/inserts new data directly into files
+return
 
     % Filter based on the bad new_tv data
     % Keep only tv that are numbers and not zeros
@@ -162,41 +198,41 @@ fprintf(2,'UdeM_struct2database function is being tested. Not fully debugged yet
             currentTv = fr_round_time(datetime(currentYear,1,1,0,0,0)+fr_timestep(timeUnit):fr_timestep(timeUnit):datetime(currentYear+1,1,1,0,0,0),timeUnit)';
         end   
 
-        %--------------------------------------------------------------------------------
-        % Find all field names in the structIn
-        % (search recursivly for all field names)
-        %--------------------------------------------------------------------------------
-        if structType == 0
-            dbFileNamesTmp = [];
-            for cntStruct = 1:length(structIn)
-                dbFileNamesTmp = unique([dbFileNamesTmp recursiveStrucFieldNames(structIn,cntStruct)]);
-            end
-            
-            % Remove the cells that do not contain data
-            % If there is a field .LR1 that also exists in .LR1.(another_field)
-            % than .LR1 does not contain data (it contains cells) and it should be
-            % ignored.
-            delFields = [];
-            cntDelFields = 0;
-            for cntFields = 1:length(dbFileNamesTmp)
-                currentField = [char(dbFileNamesTmp(cntFields)) '.'];
-                for cntOtherFields = cntFields+1:length(dbFileNamesTmp)
-                    % if the currentField exists as a start of any other field
-                    % that means that it does not contain data. Erase
-                    if strfind(char(dbFileNamesTmp(cntOtherFields)),currentField)==1
-                        cntDelFields = cntDelFields + 1;
-                        delFields(cntDelFields) = cntFields;
-                        break
-                    end
-                end
-            end
-            % Erase selected names
-            if cntDelFields > 0
-                dbFileNamesTmp(delFields) = [];
-            end            
-        else
-            dbFileNamesTmp = fieldnames(structIn);
-        end
+        % %--------------------------------------------------------------------------------
+        % % Find all field names in the structIn
+        % % (search recursivly for all field names)
+        % %--------------------------------------------------------------------------------
+        % if structType == 0
+        %     dbFileNamesTmp = [];
+        %     for cntStruct = 1:length(structIn)
+        %         dbFileNamesTmp = unique([dbFileNamesTmp recursiveStrucFieldNames(structIn,cntStruct)]);
+        %     end
+        % 
+        %     % Remove the cells that do not contain data
+        %     % If there is a field .LR1 that also exists in .LR1.(another_field)
+        %     % than .LR1 does not contain data (it contains cells) and it should be
+        %     % ignored.
+        %     delFields = [];
+        %     cntDelFields = 0;
+        %     for cntFields = 1:length(dbFileNamesTmp)
+        %         currentField = [char(dbFileNamesTmp(cntFields)) '.'];
+        %         for cntOtherFields = cntFields+1:length(dbFileNamesTmp)
+        %             % if the currentField exists as a start of any other field
+        %             % that means that it does not contain data. Erase
+        %             if strfind(char(dbFileNamesTmp(cntOtherFields)),currentField)==1
+        %                 cntDelFields = cntDelFields + 1;
+        %                 delFields(cntDelFields) = cntFields;
+        %                 break
+        %             end
+        %         end
+        %     end
+        %     % Erase selected names
+        %     if cntDelFields > 0
+        %         dbFileNamesTmp(delFields) = [];
+        %     end            
+        % else
+        %     dbFileNamesTmp = fieldnames(structIn);
+        % end
 
         nFiles = length(dbFileNamesTmp);
         dbFileNames = [];
