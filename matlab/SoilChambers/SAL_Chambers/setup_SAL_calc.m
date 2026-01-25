@@ -1,9 +1,8 @@
-%% Setup UdeM calculations
-%cd D:\NZ\MATLAB\CurrentProjects\UdeM
-%addpath('.\local_BIOMET.NET','-begin');
-addpath('.\UBC_PC_Setup\Site_specific','-begin');
-addpath('.\UBC_PC_Setup\PC_specific','-begin');
-%[dataPth,hhourPth,databasePth,csi_netPth] = fr_get_local_path;
+%% Setup SAL calculations
+path(pathdef)
+startup
+addpath('C:\Biomet.net\matlab\SoilChambers\SAL_Chambers','-begin');
+addpath('D:\NZ\MATLAB\CurrentProjects\SAL_Chambers','-begin');
 
 
 return

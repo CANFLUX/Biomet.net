@@ -40,6 +40,8 @@ function [fitOut,fCO2,gof] = UdeM_exponential_fit(timeIn,co2_in,optionsIn,useLic
 
 % Revisions:
 %
+% Jan 10, 2025 (Zoran)
+%   - Added fitOut.cs and fitOut.A to the output (N_optimum cs and A)
 % Aug 29, 2023 (Zoran)
 %   - converted a chunk of code that extracts t_curvefit and co2_curvefit to 
 %     a function (UdeM_findPointsToFit.m)
@@ -245,6 +247,13 @@ fitOut.dcdt = dcdt(N_optimum);
 fitOut.rmse = rmse_exp(N_optimum);
 fitOut.c0 = c0(N_optimum);
 fitOut.t0 = t0(N_optimum);
+if ~isempty(fCO2)
+    fitOut.cs = fCO2{N_optimum}.cs;
+    fitOut.A = fCO2{N_optimum}.A;
+else
+    fitOut.cs = NaN;
+    fitOut.A = NaN;
+end
 %
 %fprintf('\n ### Do not forget to calculate confidence intervals for dcdt! ###\n\n');
 %plot(fCO2{N_optimum},t_curvefit,co2_curvefit)

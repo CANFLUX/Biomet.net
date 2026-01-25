@@ -1,3 +1,2 @@
-Biomet.net
-data/old_calcs
-old
+*.mat
+*.asv

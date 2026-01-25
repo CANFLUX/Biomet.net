@@ -4,6 +4,11 @@ function UdeM_visualize_one_fit(dataOut,chNum,slopeNum,fitType,gasType,figNumIn,
     arg_default('flagVerbose',false);
     arg_default('figNumIn',99)
     
+    % Compatibility with the old saved data that does not have the "analyzer" field. 
+    % Assume LGR because only UdeM calcs before 2025 don't have that in the ini file.
+    if ~isfield(dataOut.configIn,'analyzer')
+        dataOut.configIn.analyzer = 'LGR';
+    end
     % save default font sizes
     originalAxesFontSize = get(0,'defaultAxesFontSize');
     originalTextFontSize = get(0,'defaultTextFontSize');
