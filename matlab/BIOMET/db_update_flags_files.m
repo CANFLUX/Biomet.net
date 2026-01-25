@@ -45,11 +45,14 @@ function dataOut = db_update_flags_files(yearIn,siteID,sitesPathRoot, databasePa
 %
 %
 % Zoran Nesic           File Created:      Nov 15, 2022
-%                       Last modification: Nov 19, 2025
+%                       Last modification: Jan 24, 2026
 
 %
 % Revisions:
 %
+% Jan 24, 2026 (Zoran)
+%   - Bug fix: there was a bug when attempting to concatenatinate two tables that
+%              don't have the same columns. 
 % Nov 19, 2025 (Zoran)
 %   - Improvements:
 %       - It now reads multiple input files at the same time and it can work with multiple years 
@@ -101,7 +104,8 @@ for cntFiles = 1:length(allFiles)
     if cntFiles == 1
         tableIn = readtable(currentFileName,"NumHeaderLines",4);
     else
-        tableIn = [tableIn ; readtable(currentFileName,"NumHeaderLines",4)];
+        tableTmp = readtable(currentFileName,"NumHeaderLines",4);
+        tableIn = appendTables(tableIn,tableTmp);
     end
 end
 
@@ -167,3 +171,45 @@ for cntYears = yearsInTable
         db_struct2database(dataOut,pthOut,[],[],timeUnit,missingPointValue,structType);
     end
 end
+
+
+% Function that combines two tables
+% It takes care of missing table columns and columns that are not numeric
+function tableIn = appendTables(tableIn,tableTmp)
+    varsIn = tableIn.Properties.VariableNames;
+    varsTmp = tableTmp.Properties.VariableNames;
+    
+    allVars = union(varsIn,varsTmp);
+    rowsIn = height(tableIn);
+    rowsTmp = height(tableTmp);
+
+    for cntVars = 1:length(allVars)
+        % When appending columns
+        %  - If one table is missing the column, create one with the
+        %    same height as the table, full of NaNs (NaNs get ignored
+        %    later on so they will not affect the database
+        % -  
+        varNameTmp = char(allVars(cntVars));
+        if ~ismember(varNameTmp,{'StartDate','EndDate','Notes'}) 
+            if ismember(varNameTmp,tableIn.Properties.VariableNames)
+                colIn = tableIn.(varNameTmp);
+                if ~isnumeric(colIn)
+                    colIn = NaN(size(colIn));
+                end
+                tableIn.(varNameTmp) = colIn;
+            else
+                tableIn.(varNameTmp) = NaN(rowsIn,1);
+            end
+            if ismember(varNameTmp,tableTmp.Properties.VariableNames)
+                colTmp = tableTmp.(varNameTmp);
+                if ~isnumeric(colTmp)
+                    colTmp = NaN(size(colTmp));
+                end
+                tableTmp.(varNameTmp) = colTmp;
+            else
+                tableTmp.(varNameTmp) = NaN(rowsTmp,1);
+            end
+        end
+    end
+    tableIn = [tableIn ; tableTmp];
+
