@@ -6,8 +6,6 @@ function [gapFilledMeasurement,qaqcOut] = gapFillUsingAltSensor(mainSensor,altSe
 % times further away from the linear fit line and remove them before providing the final fit: qaqcOut.poly_af). 
 % (For more information see: ta_clean_1to1_trace.m)
 %
-% NOTE: if qaqcIn is not provided the defaults below will be used. If it's provided,
-%       only its provided properties will be used. No other properties will be tested!
 %
 % Inputs:
 %   mainSensor          - main trace, possibly with gaps (NaN-s)
@@ -48,10 +46,14 @@ function [gapFilledMeasurement,qaqcOut] = gapFillUsingAltSensor(mainSensor,altSe
 %
 %
 % Zoran Nesic                       File created:       Sep  2, 2025
-%                                   Last modification:  Dec  8, 2025
+%                                   Last modification:  Jan 27, 2026
 
 % Revisions
 %
+% Jan 27, 2026 (Zoran)
+%   - Removed this comment:
+%       % NOTE: if qaqcIn is not provided the defaults below will be used. If it's provided,
+%       %       only its provided properties will be used. No other properties will be tested!
 % Dec 8, 2025 (Zoran)
 %   - Added special handling of clamped_MinMax. See polyfitWihtoutClamped and clamped_minMax
 %     properties of qaqcIn
