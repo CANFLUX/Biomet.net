@@ -1,20 +1,21 @@
 function db_ERA5_compile(siteID,deleteFile)
 
 % Inputs:
-% pathToMatlabTemp  - location where ERA5 data saved to
 % siteID            - site identifier in database
 % deleteFile        - [1] deletes .nc file after processing; [0] keep files
 
-arg_default('deleteFile',0);    % Only delete .nc files if explicitly included
+arg_default('deleteFile',0);    % Only delete .nc files if explicitly chosen
 
 % Location where ERA5 data has been saved to
 pathToMatlabTemp = fullfile(tempdir,'MatlabTemp',siteID);
 
 % Currently set to process dew point temperature (d2m - °K)), air 
-% temperature (t2m - °K), and incoming shortwave radiation (ssrd - W m^-2)
-varStr_nc = {'d2m','t2m','ssrd'};
+%   temperature (t2m - °K), incoming shortwave radiation (ssrd - J hr^-1 m^-2),
+%   surface pressure (sp - Pa), and total precipitation (tp - m).
+varStr_nc = {'d2m','t2m','ssrd','sp','tp'};
 varStr_file = {'2m_dewpoint_temperature','2m_temperature',...
-    'surface_solar_radiation_downwards'};
+    'surface_solar_radiation_downwards','surface_pressure',...
+    'total_precipitation'};
 
 dataSource = 'ERA5';
 pthOutMet = fullfile(biomet_database_default,'yyyy',dataSource,siteID);
@@ -47,7 +48,7 @@ if isfield(yml_data,'Metadata')
     end
 
     if isfield(yml_data.Metadata,'TimeZoneHour')
-        GMT_offset = yml_data.Metadata.TimeZoneHour .* 3600; % Converts from hours to minutes
+        GMT_offset = yml_data.Metadata.TimeZoneHour;
     end
 end
 
@@ -65,7 +66,17 @@ for i=1:length(varStr_file)
         ERA5_data = struct();
         
         source = fullfile(pathToMatlabTemp,files(j).name);
-    
+        
+        % Get time units
+        info = ncinfo(source);
+        varNames = {info.Variables.Name};
+        idx1 = strcmp(varNames,'valid_time');
+        ind1 = 1:length(idx1);
+        varNames = {info.Variables(ind1(idx1)).Attributes.Name};
+        idx2 = strcmp(varNames,'units');
+        ind2 = 1:length(idx2);
+        unitStr = info.Variables(ind1(idx1)).Attributes(ind2(idx2)).Value;
+        
         % Get latitude and longitude in ERA5 .nc file
         lat = ncread(source,'latitude');
         lon = ncread(source,'longitude');
@@ -74,39 +85,79 @@ for i=1:length(varStr_file)
         % lon_mat should proceed from west to east from top to bottom
         [lat_mat,lon_mat] = meshgrid(lat,lon);
         
-        % Seconds since 1970-01-01
+        if contains(unitStr,'hours')
+            % Hours since 1970-01-01
+            CF = 24;
+        else
+            % Seconds since 1970-01-01
+            GMT_offset = GMT_offset .* 3600;
+            CF = 86400; % Conversion factor
+        end
+        
         tv = ncread(source,'valid_time') + GMT_offset;
-        tv = double(tv)./86400; % Days since 1970-01-01
+        tv = double(tv)./CF; % Days since 1970-01-01
         tv = tv + datenum(1970,1,1); % Matlab format
         % tv_dt = datetime(tv,'ConvertFrom','datenum');
-    
-        raw = ncread(source,varStr_nc{i},[1,1,1],[3 3 Inf]);
-        N = size(raw,3);
-        spatial_interp = nan(N,1);
-        for k=1:N
-            tmp = squeeze(raw(:,:,k));
-            F = scatteredInterpolant(lon_mat(:),lat_mat(:),tmp(:));
-            spatial_interp(k,1) = F(lon_target,lat_target);
+        
+        % If data was downloaded using the 'spatial' option, then the data
+        %   is spatially interpolated.
+        if numel(lat_mat)==1
+            start = 1;
+            count = Inf;
+            interpStr = 'no';
+        else
+            [dim1, dim2] = size(lat_mat);
+            start = [1 1 1];
+            count = [dim1 dim2 Inf];
+            interpStr = 'yes';
+        end
+        
+        % Read variable data from .nc file
+        raw = ncread(source,varStr_nc{i},start,count);
+        
+        % Interpolate spatial data when necessary
+        if strcmp(interpStr,'yes')
+            N = size(raw,3);
+            data = nan(N,1);
+            for k=1:N
+                tmp = squeeze(raw(:,:,k));
+                idx = ~isnan(tmp);
+                if sum(idx(:))>1
+                    method = 'linear';
+                else
+                    method = 'nearst';
+                end
+                F = scatteredInterpolant(lon_mat(idx),lat_mat(idx),tmp(idx),method);
+                data(k,1) = F(lon_target,lat_target);
+            end
+        else
+            data = raw;
         end
         
         % Unit conversion
         switch varStr_nc{i}
             case {'t2m','d2m'}
-                spatial_interp = spatial_interp - 273.15; % Convert to °C
+                data = data - 273.15; % Convert to °C
 
                 % Note: to convert dew point temperature to RH, you need to
                 %   have ambient air temperature. As such, RH should be
                 %   calculated at a later point.
             case 'ssrd'
-                spatial_interp = [diff(spatial_interp); 0]; % Convert to hourly from accumulated
-                spatial_interp(spatial_interp<0) = 0;
-                spatial_interp = spatial_interp./3600; % Convert to W m^-2
+                if strcmp(interpStr,'yes')
+                    data = [diff(data); 0]; % Convert to hourly from accumulated
+                    data(data<0) = 0;
+                end
+                data = data./3600; % Convert to W m^-2
+            case 'sp'
+                data = data ./ 1000; % Converts from Pa to kPa
+            case 'tp'
+                data = data .* 1000; % Converts from m to mm
         end
 
         % Interpolate data to be half-hourly
-        x = 2.*(1:length(spatial_interp))';
-        xi = (1:(2*length(spatial_interp)))';
-        tmp_interp = interp1(x,spatial_interp,xi);
+        x = 2.*(1:length(data))';
+        xi = (1:(2*length(data)))';
+        tmp_interp = interp1(x,data,xi);
         tv_interp = interp1(x,tv,xi);
         tv_interp = fr_round_time(tv_interp,'30min');
 

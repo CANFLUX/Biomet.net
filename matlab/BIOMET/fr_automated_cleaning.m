@@ -351,7 +351,7 @@ for cntSites = 1:numOfSites
         end
         
         %------------------------------------------------------------------
-        % 8th stage is the methane-gapfill-ml python pipeline
+        % 9th stage is the methane-gapfill-ml python pipeline
         %------------------------------------------------------------------
         if ~isempty(find(stages == 9))
             stage_str = '9-th';
@@ -361,15 +361,26 @@ for cntSites = 1:numOfSites
         end
         
         %------------------------------------------------------------------
-        % 9th stage is export of clean data into AmeriFlux
+        % 8th stage is export of clean data into AmeriFlux
         % format. The output data is stored to .../siteID/Clean/Ameriflux folder
         %------------------------------------------------------------------
         if ~isempty(find(stages == 8))
             stage_str = '8-th';
             disp(['============== ' stage_str ' stage. Exporting AmeriFlux csv file for: ' siteID ' ' yy_str ' ==============']);
             pathAF = fullfile(db_pth,num2str(yy(1)),siteID,'Clean','Ameriflux');
-            saveDatabaseToAmeriFluxCSV(siteID,yy(1),pathAF);
+            saveDatabaseToAmeriFluxCSV(siteID,yy(1),pathAF);            
             fprintf('============== End of cleaning stage 8 =============\n'); 
+        end
+
+        %------------------------------------------------------------------
+        % 10th stage calls the Ameriflux QAQC scripts and outputs figures
+        %   to the .../siteID/Clean/Ameriflux/QAQC/ folder
+        %------------------------------------------------------------------
+        if ~isempty(find(stages == 10))
+            stage_str = '10-th';
+            disp(['============== ' stage_str ' stage. Running AmeriFlux QAQC for: ' siteID ' ' yy_str ' ==============']);
+            runTenthStage_AmerifluxQAQC(yy_str,siteID);
+            fprintf('============== End of stage 10 =============\n');
         end
         clear data_* ini_* pth_* mat_*
         
@@ -400,7 +411,7 @@ for cntSites = 1:numOfSites
     end
     
 end
-
+end
 
 % Notes for a curious reader.
 
