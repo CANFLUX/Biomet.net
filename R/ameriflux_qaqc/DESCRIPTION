@@ -1,0 +1,32 @@
+Package: amerifluxqaqc
+Title: Perform AmeriFlux data QAQC
+Version: 0.0.0.9000
+Authors@R: c(
+             person(
+               family = "Chu",
+               given = "Housen",
+               email = "hchu@lbl.gov",
+               role = c("aut","cre"),
+               comment = c(ORCID = "0000-0002-8131-4938")))
+Description: Programmatic interface to perform AmeriFlux data QA/QC 
+    (<https://ameriflux.lbl.gov/data/flux-data-products/data-qaqc/>) 
+    Assesses units and sign conventions, timestamp alignments, trends, step 
+    changes, outliers based on site-specific historical ranges, multivariate 
+    comparisons, diurnal/seasonal patterns, USTAR (i.e., friction velocity) 
+    filtering, and variable availability. 
+License: BSD_3_clause
+Encoding: UTF-8
+URL: https://github.com/chuhousen/amerifluxqaqc
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+Depends:
+    R (>= 4.3)
+Imports:
+    zoo,
+    httr,
+    jsonlite,
+    memoise,
+    lmodel2,
+    amerifluxr,
+    pracma
+VignetteBuilder: knitr
