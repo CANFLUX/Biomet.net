@@ -21,6 +21,8 @@ function [EngUnits,Header,tv,dataOut,structConfig] = fr_read_GHG_file(pathToGHGf
 % Feb 15, 2026 (Zoran)
 %   - deleted some old comments from the end of the function.
 %   - Added output: structConfig (LI-7200 configuration structure)
+%     This structure contains summary of all avg,min,max,std values for all traces
+%     and the configuration info from GHG files.
 % Mar 9, 2024 (Zoran)
 %   - program now automatically detects the date column instead of testing
 %     the file name which is unreliable. 
@@ -77,7 +79,11 @@ try
 catch
     fprintf(2,'Error reading: %s\n',configFileName);
 end
-structConfig.TimeVector = datenum(fileName,'yyyy-mm-ddTHHMMSS');
+% The TimeVector is based on the last point in HF data rounded up
+structConfig.TimeVector = fr_round_time(dataOut.TimeVector(end),'30MIN',2);
+% this could be an alternative option (it would need to be rounded up):
+%    structConfig.TimeVector = datenum(fileName,'yyyy-mm-ddTHHMMSS');
+
 % Read and process LI-7700 status file
 statusFileName = fullfile(fileFolder,sprintf('%s-li7700.status',fileName));
 [structConfig.Status,structConfig.structHeader] = read_LI7700_status_file(statusFileName);
