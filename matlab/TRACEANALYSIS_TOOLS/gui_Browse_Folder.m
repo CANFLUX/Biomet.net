@@ -8,10 +8,13 @@ function gui_Browse_Folder(pathIn)
 %
 %
 % Zoran Nesic                   File created:       May 26, 2023
-%                               Last modifications: Jul 28, 2025
+%                               Last modifications: Feb 17, 2026
 
 % Revisions:
 %
+% Feb 17, 2026 (Zoran)
+%   - Bug fix: when Time Vector was named "TimeVector" the program was trying to read
+%              "Time_Vector" instead.
 % Jul 28, 2025 (Zoran)
 %   - Changed the location of the pull-down window so it does not overlap with
 %     the units for y-axis.
@@ -31,7 +34,7 @@ function gui_Browse_Folder(pathIn)
     elseif exist(fullfile(pathIn,'Time_Vector'),'file')
         fileNameTv = 'Time_Vector';
     elseif exist(fullfile(pathIn,'TimeVector'),'file')
-        fileNameTv = 'Time_Vector';
+        fileNameTv = 'TimeVector';
     end
 
     tv = read_bor(fullfile(pathIn,fileNameTv),8);
