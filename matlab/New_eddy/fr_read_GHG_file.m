@@ -86,7 +86,10 @@ structConfig.TimeVector = fr_round_time(dataOut.TimeVector(end),'30MIN',2);
 
 % Read and process LI-7700 status file
 statusFileName = fullfile(fileFolder,sprintf('%s-li7700.status',fileName));
-[structConfig.Status,structConfig.structHeader] = read_LI7700_status_file(statusFileName);
+% Not all sites have LI-7700. Skip the next line if the 7700 status file is missing.
+if exist(statusFileName,'file')
+    [structConfig.Status,structConfig.structHeader] = read_LI7700_status_file(statusFileName);
+end
 % Add calculated stats for all structOut fields to structConfig
 structConfig.Data = calcStructStats([],dataOut);
 
