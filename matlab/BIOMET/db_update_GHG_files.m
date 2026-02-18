@@ -21,7 +21,7 @@ function structConfig = db_update_GHG_files(dateIn,siteID,hfPath,flagSave,dbPath
 %
 %
 % (c) Zoran Nesic                   File created:       Feb 16, 2026
-%                                   Last modification:  Feb 16, 2026
+%                                   Last modification:  Feb 17, 2026
 %
 
 % Revisions:
@@ -35,6 +35,7 @@ dateIn = round(dateIn);  % cycle trough days
 tst = 0;  % 1 - load the data instead of processing it (troubleshooting on Zoran's pc only)
 if tst~=1
     cntData = 0;
+    startTime0 = datetime;
     for currentDay = dateIn
         fPattern = sprintf('%s*.ghg',datestr(currentDay,'yyyy-mm-ddT')); %#ok<DATST>
         patternOneDay = fullfile(hfPath,siteID,'raw',num2str(year(currentDay)),sprintf('%02d',month(currentDay)),fPattern);
@@ -52,8 +53,11 @@ if tst~=1
         end
         save(['structConfig_test_' num2str(year(currentDay))] ,'structConfig')
     end
+    if flagVerbose
+        fprintf('Loaded data from %d GHG files in %4.1f seconds\n',cntData,seconds(datetime-startTime0));
+    end
 else
-    load 'structConfig_test'
+    load (['structConfig_test_' num2str(year(dateIn(end)))]);
 end
 if flagSave
     % convert structConfig from type 0 to type 1
@@ -98,7 +102,11 @@ if flagSave
         %------------------------------------
         % proceed with the database updates
         %------------------------------------
-
+        
+        % Test the existance of clean_tv. Create if needed.
+        if ~exist(fullfile(currentPath,'clean_tv'),'file')
+            save_bor(fullfile(currentPath,'clean_tv'),8,currentYearTv);
+        end
         % in case data needs to be initialized use this default trace
         allNaN = NaN(size(currentYearTv));
         % cycle through all files and either insert new data or create new files
@@ -114,23 +122,26 @@ if flagSave
                 else
                     fileType = 1; %'float32';
                 end
-                % Check if the file exist
-                if ~exist(fileName,'file')
-                    % initiate file with NaNs if it doesn't exist
-                    oldData = allNaN;
-                else
-                    % load the old data 
-                    oldData = read_bor(fileName,fileType);
+                % Do not write any fileType = 8 data
+                if fileType == 1
+                    % Check if the file exist
+                    if ~exist(fileName,'file')
+                        % initiate file with NaNs if it doesn't exist
+                        oldData = allNaN;
+                    else
+                        % load the old data 
+                        oldData = read_bor(fileName,fileType);
+                    end
+                    % insert the new data into oldData
+                    oldData(indCurrentYear) = newData(indNewData);
+                    % save new file back
+                    save_bor(fileName,fileType,oldData);
                 end
-                % insert the new data into oldData
-                oldData(indCurrentYear) = newData(indNewData);
-                % save new file back
-                save_bor(fileName,fileType,oldData);
             end
         end
 
         if flagVerbose
-            fprintf('     %i database entries for %d generated in %4.1f seconds.\n',length(indCurrentYear),currentYear,seconds(datetime-startTime));
+            fprintf('     %d database entries for %d generated in %4.1f seconds.\n',length(indCurrentYear),currentYear,seconds(datetime-startTime));
         end
     end % currentYear
 end % flagSave    

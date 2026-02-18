@@ -7,10 +7,10 @@ function structType1 = db_convert_structType_0_to_1(structType0)
 %                          Struct.Variable(ind)
 %
 % Input
-%   structType0         - original type 1 structure
+%   structType0         - original type 0 structure
 %
 % Output:
-%   structType1         - new type 0 structure
+%   structType1         - new type 1 structure
 %
 %
 % Notes:

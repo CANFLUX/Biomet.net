@@ -104,24 +104,39 @@ function [structStatus,structHeader] = read_LI7700_status_file(filePath)
     structStatus = calcStructStats(structStatus,structIn);
 
     % Open fileName again and read it line by line. Extract the values
-    % structHeader.TimeVector = structStatus.TimeVector;
+    
     fid = fopen(filePath);
 
     curLine = fgetl(fid);
     tmp = extract(curLine,digitsPattern);
-    structHeader.model = str2double(char(tmp(end)));
+    if ~isempty(tmp)
+        structHeader.model = str2double(char(tmp(end)));
+    else
+        structHeader.model = NaN;
+    end
     
     curLine = fgetl(fid);
     tmp = extract(curLine,digitsPattern);
-    structHeader.SN = str2double(char(tmp(end)));
+    if ~isempty(tmp)
+        structHeader.SN = str2double(char(tmp(end)));
+    else
+        structHeader.SN = NaN;
+    end
     
     curLine = fgetl(fid);
     curLine = fgetl(fid);
     curLine = fgetl(fid);
     tmp = extract(curLine,digitsPattern);
-    structHeader.version.main = str2double(char(tmp(1)));
-    structHeader.version.rev = str2double(char(tmp(2)));
-    structHeader.version.subrev = str2double(char(tmp(3)));
+    if ~isempty(tmp)
+        structHeader.version.main = str2double(char(tmp(1)));
+        structHeader.version.rev = str2double(char(tmp(2)));
+        structHeader.version.subrev = str2double(char(tmp(3)));
+    else
+        structHeader.version.main = NaN;
+        structHeader.version.rev = NaN;
+        structHeader.version.subrev = NaN;
+    end
+        
     fclose(fid);
 
     
