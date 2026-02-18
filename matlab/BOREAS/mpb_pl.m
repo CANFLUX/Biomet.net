@@ -6,6 +6,8 @@ function [t,x] = mpb_pl(ind, year, SiteID, select, fig_num_inc,pause_flag)
 
 % Revisions
 %
+% Dec 18, 2025 (Zoran)
+%   - small adjustement of the 24V axes.
 % Dec 31, 2022 (Zoran)
 %   - It now uses 'yyyy' when creating paths instad of year. 
 %   - Prevented program from trying to plot data past "now". 
@@ -172,7 +174,7 @@ try
     trace_path  = char(fullfile(pthClim,'BattVolt_24V_Avg'),fullfile(pthClim,'BattVolt_24V_Min'),fullfile(pthClim,'BattVolt_24V_Max'));
     trace_legend= char('BattVolt_{Avg}','BattVolt_{Min}','BattVolt_{Max}');
     trace_units = '(V)';
-    y_axis      = [24 30];
+    y_axis      = [23 30];
     fig_num = fig_num + fig_num_inc;
     BattVolt_24V = plt_msig( trace_path, ind, trace_name, trace_legend, year, trace_units, y_axis, t, fig_num );
     indAxes = indAxes+1; allAxes(indAxes) = gca;
