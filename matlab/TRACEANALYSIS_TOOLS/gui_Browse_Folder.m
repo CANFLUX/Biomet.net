@@ -1,4 +1,4 @@
-function gui_Browse_Folder(pathIn)
+function gui_Browse_Folder(pathIn,wildcard)
 %  gui_Browse_Folder - browse UBC database folder
 %
 % This function is used to browse a Biomet database folder
@@ -15,6 +15,7 @@ function gui_Browse_Folder(pathIn)
 % Feb 17, 2026 (Zoran)
 %   - Bug fix: when Time Vector was named "TimeVector" the program was trying to read
 %              "Time_Vector" instead.
+%   - Added an option to view only a selected group of traces (wildcard: "flux*")
 % Jul 28, 2025 (Zoran)
 %   - Changed the location of the pull-down window so it does not overlap with
 %     the units for y-axis.
@@ -27,6 +28,11 @@ function gui_Browse_Folder(pathIn)
 % July 31, 2023 (Zoran)
 %   - added "TimeVector" to the list of varibles that should not be
 %   plotted.
+
+    arguments
+        pathIn (1,:) char
+        wildcard (1,:) char = ''
+    end
 
     % Find a time vector first
     if exist(fullfile(pathIn,'clean_tv'),'file')
@@ -45,8 +51,8 @@ function gui_Browse_Folder(pathIn)
 
     figNum = [];
 
-    % find all the files in the current folder
-    s_all = dir(pathIn);                    % find all files in the old folder
+    % find all the files in the current folder that match wildcard
+    s_all = dir(fullfile(pathIn,wildcard));  
     if isempty(s_all) 
         error ('0 files found in %s. Program stopped.',filePath_old);
     end
