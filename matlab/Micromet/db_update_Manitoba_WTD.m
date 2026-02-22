@@ -35,7 +35,7 @@ function db_update_Manitoba_WTD(yearIn,sitesIn)
             fprintf('\n**** Processing WTD for year: %d, Site: %s   *************\n',yearIn(cntYear),siteID);
        
             % Path to Flux Database
-            outputPath = fullfile(pth_db,'yyyy',siteID,'Met','WTD');                     
+            outputPath = fullfile(pth_db,'yyyy',siteID,'Met');                     
             % Path to the source files
             inputFileName = fullfile(sitePath,siteID,'Met',['WTD_' siteID '_' num2str(yearIn(cntYear)) '.csv']);
             % Process the new files
