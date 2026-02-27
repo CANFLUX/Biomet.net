@@ -12,11 +12,13 @@ function [plotY,plotX] = read_sig( pth, indTimeGMT,year, t, RemoveZeros )
 %                      0 - keeps the original signal.
 %                      
 % (c) Zoran Nesic               File created:       Jul  8, 1997
-%                               Last modification:  Dec 31, 2022
+%                               Last modification:  Dec 31, 2025
 %
 
 
 % Revisions:
+%   Dec 31, 2025 (Zoran)
+%     - Bug fix: fixed wrong detection if the current date was Dec 31.
 %   Dec 31, 2022 (Zoran)
 %     - Sorted out better the main try-catch-end structure. The function 
 %       now returns a proper length of NaNs as an output if something 
@@ -43,14 +45,11 @@ function [plotY,plotX] = read_sig( pth, indTimeGMT,year, t, RemoveZeros )
         startDate = dateshift(startDateIn,'start','day');
         [startYear,~,~,~,~,~] = datevec(startDate);
 
+        endDate = dateshift(endDateIn,'end','day');
+        [endYear,~,~,~,~,~] = datevec(endDate);
         % make sure endDateIn does not fall on Dec 31, yyyy
-        [endYear,~,~,~,~,~] = datevec(endDateIn);
-        if endDateIn == datetime(endYear,1,1)
-            endDate = endDateIn;
+        if month(endDateIn)==12 && day(endDateIn)==31
             endYear = endYear-1;
-        else
-            endDate = dateshift(endDateIn,'end','day');
-            [endYear,~,~,~,~,~] = datevec(endDate);
         end
 
         % in case that this is a multiyear trace

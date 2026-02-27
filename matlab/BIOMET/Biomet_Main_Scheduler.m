@@ -179,7 +179,7 @@ cd('d:\')
         delete(fullfile(webPath,'*_EP-Summary.txt'));
                 
         % Copy the newest files from EC folder to web folder
-        nFilesToCopy = 5;
+        nFilesToCopy = 10;
         dateStart = dateshift(datetime('now') - days(nFilesToCopy-1),'start','day');
         for cntFiles = 1:length(allSummaries)
             fileDate = allSummaries(cntFiles).name;
@@ -191,7 +191,7 @@ cd('d:\')
             end
         end
         % now run automatic processing for AB1 
-        system('d:\Scripts\AB1_AutomaticProcessing.bat');
+        [status,result] = system('d:\Scripts\AB1_AutomaticProcessing.bat');
         fprintf(fid,'%s\n',datetime);
         fprintf(fid,'======= End of AB1 data processing (%s)    ========\n',datetime);
     end
