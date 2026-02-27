@@ -13,11 +13,13 @@ function [EngUnits,Header,tv,dataOut,structConfig] = fr_read_GHG_file(pathToGHGf
 %
 %
 % (c) Zoran Nesic                   File created:       Jan 20, 2022
-%                                   Last modification:  Feb 15, 2026
+%                                   Last modification:  Feb 27, 2026
 %
 
 % Revisions (last one first):
 %
+% Feb 27, 2026 (Zoran)
+%   - Randomized pathToHF names to enable using this function with parallel computing toolbox. 
 % Feb 15, 2026 (Zoran)
 %   - deleted some old comments from the end of the function.
 %   - Added output: structConfig (LI-7200 configuration structure)
@@ -40,7 +42,7 @@ if ~ispc
     error('This function supports only Windows OS! For MacOS we need to replace 7z.exe with a MacOS version.')
 end
 
-pathToHF = fullfile(tempdir,'MatlabTemp');
+pathToHF = tempname(fullfile(tempdir,'MatlabTemp'));
 if ~exist(pathToHF,'dir')
     mkdir(pathToHF);
 end

@@ -21,11 +21,15 @@ function structConfig = db_update_GHG_files(dateIn,siteID,hfPath,flagSave,dbPath
 %
 %
 % (c) Zoran Nesic                   File created:       Feb 16, 2026
-%                                   Last modification:  Feb 17, 2026
+%                                   Last modification:  Feb 24, 2026
 %
 
 % Revisions:
 %
+% Feb 24, 2026 (Zoran)
+%   - added message logging in GHG_processing.log
+%
+
 
 arg_default('flagSave',1)
 arg_default('flagVerbose',0)
@@ -37,24 +41,29 @@ if tst~=1
     cntData = 0;
     startTime0 = datetime;
     for currentDay = dateIn
-        fPattern = sprintf('%s*.ghg',datestr(currentDay,'yyyy-mm-ddT')); %#ok<DATST>
-        patternOneDay = fullfile(hfPath,num2str(year(currentDay)),sprintf('%02d',month(currentDay)),fPattern);
-        allFiles = dir(patternOneDay);
-        for cntFile=1:length(allFiles)
-            startTime = datetime;
-            pathToGHGfile = fullfile(allFiles(cntFile).folder,allFiles(cntFile).name);
-            [~,~,~,~,structConfigTmp] = fr_read_GHG_file(pathToGHGfile);
-            %dataOut(cntFile) = dataOutTmp;
-            cntData = cntData + 1;
-            structConfig(cntData) = structConfigTmp; %#ok<AGROW>
-            if flagVerbose
-                fprintf('Done: %s (%4.1f sec )\n',pathToGHGfile,seconds(datetime-startTime));
+        try
+            fPattern = sprintf('%s*.ghg',datestr(currentDay,'yyyy-mm-ddT')); %#ok<DATST>
+            patternOneDay = fullfile(hfPath,num2str(year(currentDay)),sprintf('%02d',month(currentDay)),fPattern);
+            allFiles = dir(patternOneDay);
+            for cntFile=1:length(allFiles)
+                startTime = datetime;
+                pathToGHGfile = fullfile(allFiles(cntFile).folder,allFiles(cntFile).name);
+                [~,~,~,~,structConfigTmp] = fr_read_GHG_file(pathToGHGfile);
+                %dataOut(cntFile) = dataOutTmp;
+                cntData = cntData + 1;
+                structConfig(cntData) = structConfigTmp; %#ok<AGROW>
+                if flagVerbose
+                    fprintf('     Done: %s (%4.1f sec )\n',pathToGHGfile,seconds(datetime-startTime));
+                end
             end
+%            save(['structConfig_' siteID '_' num2str(year(currentDay))] ,'structConfig')
+        catch ME
+            msgLog = sprintf('%s  *** Error processing %s (%s)\n ',datetime,siteID,pathToGHGfile);
+            logString(msgLog)
         end
-        save(['structConfig_test_' num2str(year(currentDay))] ,'structConfig')
     end
     if flagVerbose
-        fprintf('Loaded data from %d GHG files in %4.1f seconds\n',cntData,seconds(datetime-startTime0));
+        fprintf('  Loaded data from %d GHG files in %4.1f seconds\n',cntData,seconds(datetime-startTime0));
     end
 else
     load (['structConfig_test_' num2str(year(dateIn(end)))]);
@@ -141,7 +150,12 @@ if flagSave
         end
 
         if flagVerbose
-            fprintf('     %d database entries for %d generated in %4.1f seconds.\n',length(indCurrentYear),currentYear,seconds(datetime-startTime));
+            msgLog = sprintf('%s Done: %s (%s) ',datetime,siteID,pathToGHGfile);
+            fprintf('%s\n',msgLog);
+            logString(msgLog)
+            msgLog = sprintf('     %d database entries for %d generated in %4.1f seconds.',length(indCurrentYear),currentYear,seconds(datetime-startTime));
+            fprintf('%s\n',msgLog);
+            logString(msgLog)
         end
     end % currentYear
 end % flagSave    
@@ -164,3 +178,10 @@ function currentPath = confirmOrCreate(currentPath)
         else
             currentPath = pth_tmp;
         end
+
+function logString (msgIn)
+    fid = fopen('GHG_processing.log','a');
+    if fid >0
+        fprintf(fid,'%s\n',msgIn);
+        fclose(fid);
+    end
