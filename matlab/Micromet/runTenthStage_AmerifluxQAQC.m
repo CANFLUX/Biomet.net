@@ -12,6 +12,32 @@ rootDatabasePath = findDatabasePath;
 % Path where Ameriflux formatted csv is stored
 pthDatabase = fullfile(rootDatabasePath,yy_str,siteID,'Clean','Ameriflux');
 
+% Temporary path used by "sw_in_pot_[]_multi"
+if ~ispc
+    tmpPath = pthDatabase;
+else
+    if length(pthDatabase)<64
+        tmpPath = pthDatabase;
+    else
+        tmpDrive = availableDriveLetter;
+        
+        %====== This might be required for mapping to network drives =====%
+        % driveInfo = System.IO.DriveInfo(System.IO.Path.GetPathRoot(pthDatabase));
+        % isNetwork = strcmp(driveInfo.DriveType, 'Network');
+        % 
+        % % Map temporary drive to the pthDatabase directory
+        % if isNetwork
+        %     system(sprintf('net use %s "%s"',tmpDrive,pthDatabase));
+        % else
+        %     system(sprintf('subst %s "%s"',tmpDrive,pthDatabase));
+        % end
+
+        system(sprintf('subst %s "%s"',tmpDrive,pthDatabase));
+
+        tmpPath = tmpDrive;
+    end
+end
+
 % Path for siteID_config.yml
 path_yml = fullfile(biomet_database_default,'Calculation_Procedures',...
     'TraceAnalysis_ini',siteID,char([siteID '_config.yml']));
@@ -40,7 +66,7 @@ CLI_args = sprintf('"%s" --vanilla "%s" "%s" "%s" "%s" "%s" %2.4f %2.4f %i',...
     strrep(fullfile(biometRpath,'ameriflux_qaqc'),'\','/'),...
     strrep(pthDatabase,'\','/'),...
     char(['CA-' siteID]), ...
-    strrep(pthDatabase,'\','/'),...
+    strrep(tmpPath,'\','/'),...
     yml_data.Metadata.lat,...
     yml_data.Metadata.long,...
     yml_data.Metadata.TimeZoneHour);
@@ -59,7 +85,11 @@ end
 fprintf('%s\n',cmdOutput)
 
 % Delete temporary directory created by amerifluxqaqc.R
-rmdir(fullfile(pthDatabase,'temp'),'s')
+rmdir(fullfile(tmpPath,'temp'),'s')
+
+if exist("tmpDrive","var")
+    system(sprintf('subst %s /d',tmpDrive));
+end
 
 end
 
