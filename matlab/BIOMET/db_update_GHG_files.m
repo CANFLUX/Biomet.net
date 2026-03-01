@@ -21,11 +21,13 @@ function structConfig = db_update_GHG_files(dateIn,siteID,hfPath,flagSave,dbPath
 %
 %
 % (c) Zoran Nesic                   File created:       Feb 16, 2026
-%                                   Last modification:  Feb 24, 2026
+%                                   Last modification:  Mar  1, 2026
 %
 
 % Revisions:
 %
+% Mar 1, 2026 (Zoran)
+%   - BugFix: Stopped the function from trying to save the database when 0 GHG files are found
 % Feb 24, 2026 (Zoran)
 %   - added message logging in GHG_processing.log
 %
@@ -68,7 +70,7 @@ if tst~=1
 else
     load (['structConfig_test_' num2str(year(dateIn(end)))]);
 end
-if flagSave
+if flagSave && cntData > 0
     % convert structConfig from type 0 to type 1
     structConfigType1 = db_convert_structType_0_to_1(structConfig);
     % convert all elements of structConfigType1 to set of
