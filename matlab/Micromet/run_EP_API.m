@@ -34,9 +34,9 @@ if isempty(EP_template)
     % from get_TAB_project_configuration file
     % if it exists.
     if structProject.ismain
-        structProject.sites.(siteID).EP_template;
+        EP_template = structProject.sites.(siteID).EP_template;
     else
-        structProject.server.sites.(siteID).EP_template;
+        EP_template = structProject.server.sites.(siteID).EP_template;
     end
 end
 
