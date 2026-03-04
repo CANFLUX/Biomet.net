@@ -41,15 +41,19 @@ function [gapFilledMeasurement,qaqcOut] = gapFillUsingAltSensor(mainSensor,altSe
 %                          msg      - output message
 %                          poly_bf  - polynomial coefficients of the fit *before* outliers are removed
 %                          poly_af  - polynomial coefficients of the fit *after* outliers are removed
+%                          x_filtered - point used for the poly_af calculations
+%                          y_filtered - point used for the poly_af calculations
 %                          nGaps    - the number of gap-filled points
 %                          indGaps  - index of the points that were gap-filled
 %
 %
 % Zoran Nesic                       File created:       Sep  2, 2025
-%                                   Last modification:  Jan 27, 2026
+%                                   Last modification:  Mar  3, 2026
 
 % Revisions
 %
+% Mar 3, 2026 (Zoran)
+%    - Added x_filtered and y_filtered outputs from ta_clean_1to1_trace to qaqcOut
 % Jan 27, 2026 (Zoran)
 %   - Removed this comment:
 %       % NOTE: if qaqcIn is not provided the defaults below will be used. If it's provided,
@@ -102,7 +106,7 @@ switch  qaqcIn.polyfitWithoutClamped
         indPointsToUse = find(max(altSensor)~=altSensor & max(mainSensor)~=mainSensor | min(altSensor)==altSensor | min(mainSensor)==mainSensor);
 end
 
-[~, ~, qaqcOut.poly_bf, qaqcOut.poly_af] = ta_clean_1to1_trace(altSensor(indPointsToUse),mainSensor(indPointsToUse),stdMultiplier);
+[qaqcOut.x_filtered,qaqcOut.y_filtered, qaqcOut.poly_bf, qaqcOut.poly_af] = ta_clean_1to1_trace(altSensor(indPointsToUse),mainSensor(indPointsToUse),stdMultiplier);
 
 qaqcOut.indGaps = find(isnan(mainSensor));
 qaqcOut.nGaps = length(qaqcOut.indGaps);
