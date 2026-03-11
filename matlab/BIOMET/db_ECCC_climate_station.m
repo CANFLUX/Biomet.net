@@ -11,11 +11,13 @@ function db_ECCC_climate_station(yearRange,monthRange,stationID,dbPath,timeUnit)
 %
 %
 % Zoran Nesic               File created:       Apr  3, 2022
-%                           Last modification:  Nov 21, 2024
+%                           Last modification:  Mar 11, 2026
 %
 
 % Revisions:
-%
+% 
+% Mar 11, 2026 (Zoran)
+%   - added option for daily downloads (timeUnit == 'DAY'). Currently supports only snow_depth (cm)
 % Nov 21, 2024 (Zoran)
 %   - renamed timeperiod to timeUnit and switched it from a number to a string
 %     to match all the other db_ programs. Default changed from 60 to '60MIN' 
@@ -40,6 +42,13 @@ arg_default('monthRange',monthNow-1:monthNow)   % default month is previous:curr
 arg_default('stationID',49088);                 % default station is Burns Bog
 arg_default('timeUnit','60MIN');                % data is hourly (60 minutes)
 
+% The data from ECCC stations is currently daily (timeFrame 2) or hourly (timeFrame 1)
+if strcmpi(timeUnit,'60MIN')
+    timeFrame = 1;
+else
+    timeFrame = 2;
+end
+
 pathToMatlabTemp = fullfile(tempdir,'MatlabTemp');
 if ~exist(pathToMatlabTemp,'dir')
     mkdir(pathToMatlabTemp);
@@ -57,11 +66,15 @@ for yearNow = yearRange
             monthIn = currentMonth;
         end
         %fprintf('Processing: StationID = %d, Year = %d, Month = %d\n',stationID,yearIn,monthIn);
-        urlDataSource = sprintf('https://climate.weather.gc.ca/climate_data/bulk_data_e.html?format=csv&stationID=%d&Year=%d&Month=%d&Day=14&timeframe=1&submit=%20Download+Data',...
-                                stationID,yearIn,monthIn);
+        urlDataSource = sprintf('https://climate.weather.gc.ca/climate_data/bulk_data_e.html?format=csv&stationID=%d&Year=%d&Month=%d&Day=14&timeframe=%d&submit=%20Download+Data',...
+                                stationID,yearIn,monthIn,timeFrame);
         options = weboptions('Timeout',20);             % set timeout for websave to 15seconds (default is 5)
         websave(tempFileName,urlDataSource,options);
-        [Stats,~,~] = fr_read_EnvCanada_file(tempFileName,[],[],1);
+        if timeFrame == 1
+            [Stats,~,~] = fr_read_EnvCanada_file(tempFileName,[],[],1);
+        else
+            [Stats,~,~] = fr_read_EnvCanada_file(tempFileName,{'Snow on Grnd ('},{'snow_depth'});
+        end
         delete(tempFileName);
         % extract time 
         % Note: the time stamp in the ECCC files is set to the middle of the period
@@ -69,12 +82,16 @@ for yearNow = yearRange
         %       This issue will be dealt with in the post processing
         TimeVector = get_stats_field(Stats,'TimeVector');
         for cnt = 1:length(TimeVector)
-            Stats(cnt).TimeVector = fr_round_time(TimeVector(cnt));
+            if strcmpi(timeUnit,'DAY')
+                Stats(cnt).TimeVector = fr_round_time(TimeVector(cnt),timeUnit);
+            else
+                Stats(cnt).TimeVector = fr_round_time(TimeVector(cnt));
+            end
         end
 
-        datetimeTV = datetime(TimeVector,'convertfrom','datenum');
-        years = unique(year(datetimeTV));
-        for currentYear = years(1):years(end)
+   %     datetimeTV = datetime(TimeVector,'convertfrom','datenum');
+        allYears = unique(year(TimeVector));
+        for currentYear = allYears(1):allYears(end)
             fprintf('Processing: StationID = %d, Year = %d, Month = %d   ',stationID,currentYear,monthIn);
             fprintf('   ');
             fprintf('Saving 60-min data to %s folder.\n',dbPath);
@@ -84,7 +101,7 @@ for yearNow = yearRange
             % and shift it by 30 min forward.
             % generic TimeVector for GMT time
             TimeVector30min = fr_round_time(datenum(currentYear,1,1,0,30,0):1/48:datenum(currentYear+1,1,1));
-            Stats30min = interp_Struct(Stats,TimeVector30min);
+            Stats30min = interp_Struct(Stats,TimeVector30min,timeUnit);
             db30minPath = fullfile(dbPath,'30min');
                         
             fprintf('Saving 30-min data to %s folder.\n',db30minPath);
@@ -94,9 +111,13 @@ for yearNow = yearRange
     end
 end
 
-function Stats_interp = interp_Struct(Stats,TimeVector30min)
-    % time-shifted ECCC time vector
-    tv_ECCC60min = get_stats_field(Stats,'TimeVector')+1/48;  % 1/48 is the 30-min forward shift of ECCC data
+function Stats_interp = interp_Struct(Stats,TimeVector30min,timeUnit)
+    if strcmpi(timeUnit,'DAY')
+        tv_ECCC60min = get_stats_field(Stats,'TimeVector')+1/2;
+    else
+        % time-shifted ECCC time vector to convert the start time to end time
+        tv_ECCC60min = get_stats_field(Stats,'TimeVector')+1/48;  % 1/48 is the 30-min forward shift of ECCC data
+    end
     % find the time period
     TimeVector30min = TimeVector30min(TimeVector30min >= tv_ECCC60min(1) & TimeVector30min <= tv_ECCC60min(end)); 
     
@@ -123,4 +144,4 @@ function Stats_interp = interp_Struct(Stats,TimeVector30min)
             end
         end
     end
-        
+           
