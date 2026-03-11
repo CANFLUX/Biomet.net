@@ -27,16 +27,32 @@ function db_ERA5_data_retrieval(siteID,dateStart,dateEnd,biometPath,type)
 %
 %==========================================================================
 
-if ispc
-    pth_sep = '\';
-elseif ismac
-    pth_sep = '/';
-end
+biomet_folder = 'Biomet.net';
 
 % Folder where current function is located
-file_path = fileparts(which('db_ERA5_data_retrieval'));
-path_parts = regexp(file_path,pth_sep,'split');
-root_pth = sprintf("%s%s%s",path_parts{1},pth_sep,path_parts{2});
+if ispc
+    pth_sep = '\';
+    file_path = fileparts(which('db_ERA5_data_retrieval'));
+    path_parts = regexp(file_path,pth_sep,'split');
+    root_pth = sprintf("%s%s%s",path_parts{1},pth_sep,path_parts{2});
+elseif ismac
+    pth_sep = '/';
+    file_path = fileparts(which('db_ERA5_data_retrieval'));
+    path_parts = regexp(file_path,pth_sep,'split');
+    idx = find(contains(path_parts,biomet_folder));
+    root_pth = fullfile(pth_sep,path_parts{1:idx});
+end
+
+%if ispc
+%    pth_sep = '\';
+%elseif ismac
+%    pth_sep = '/';
+%end
+
+% Folder where current function is located
+%file_path = fileparts(which('db_ERA5_data_retrieval'));
+%path_parts = regexp(file_path,pth_sep,'split');
+%root_pth = sprintf("%s%s%s",path_parts{1},pth_sep,path_parts{2});
 
 % Default is to pull the past year of data
 tmp = today; %#ok<TTDAY1>
@@ -115,7 +131,7 @@ elseif strcmp(type,'spatial')
     [yearStart,mnthStart,~] = datevec(dateStart);
     [yearEnd,mnthEnd,~] = datevec(dateStart);
 
-    if yearStart~=YearEnd
+    if yearStart~=yearEnd
         mnthStart = 1;
         mnthEnd = 12;
     end
