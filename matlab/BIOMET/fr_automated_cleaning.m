@@ -382,7 +382,7 @@ for cntSites = 1:numOfSites
             runTenthStage_AmerifluxQAQC(yy_str,siteID);
             fprintf('============== End of stage 10 =============\n');
         end
-        clear data_* ini_* pth_* mat_*
+        %clear data_* ini_* pth_* mat_*
         
 
     end
