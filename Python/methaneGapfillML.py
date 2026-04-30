@@ -31,7 +31,7 @@ def main(args):
 
     # added at the request of Haley
     timestamp_filename = 'clean_tv'
-    copy_timestamp_to_trace_dirs(args.db_path, args.site, timestamp_filename)
+    copy_timestamp_to_trace_dirs(args.db_path, args.site, args.year, timestamp_filename)
 
     for flux_name, flux_config in config['fluxes'].items():
         # to overwrite the default by ignoring some fluxes, leave the flux config empty
@@ -97,11 +97,11 @@ def import_pyyaml():
         import yaml
 
 
-def copy_timestamp_to_trace_dirs(db_path, site, timestamp_filename):
+def copy_timestamp_to_trace_dirs(db_path, site, year, timestamp_filename):
     # if this is related to the dbase_metadata inside the ML_Gapfill_default.yaml file
     # then a better way would be `timestamp_filename = config['dbase_metadata]['timestamp']['name']`
-    timestamp_source_path = Path(db_path) / site / 'Clean' / 'ThirdStage' / timestamp_filename
-    timestamp_dest_dir = Path(db_path) / site / 'Clean' / 'ThirdStage_ML'
+    timestamp_source_path = Path(db_path) / year / site / 'Clean' / 'ThirdStage' / timestamp_filename
+    timestamp_dest_dir = Path(db_path) / year / site / 'Clean' / 'ThirdStage_ML'
     for trace_dir in os.listdir(timestamp_dest_dir):
         trace_dest_path = timestamp_dest_dir / trace_dir
         try:
