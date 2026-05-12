@@ -5,7 +5,7 @@ function db_MB_climate_station(fileName,stationName,provinceName,inFileNum)
 % Zoran Nesic               File created:       Sep  7, 2022
 %                           Last modification:  May 7, 2026
 
-% Usage: e.g. db_MB_climate_station('Newdale-Stonewall-2025-Hourly-RosieH.xlsx','Newdale','Young',2025,6)
+% Usage: e.g. db_MB_climate_station('Newdale-Stonewall-2025-Hourly-RosieH.xlsx','Newdale','MB',6)
 %           fileName: input filename to process (string)
 %           stationName: met station from within that file you wish to
 %                        load into database (string)
