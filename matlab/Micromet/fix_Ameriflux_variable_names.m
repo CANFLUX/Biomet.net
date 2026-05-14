@@ -15,12 +15,14 @@ function fix_Ameriflux_variable_names(fileName)
 %
 %
 % Zoran Nesic               File created:       May  6, 2026
-%                           Last modification:  May  6, 2026
+%                           Last modification:  May 14, 2026
 %
 
 %
 % Revisions:
 %
+% May 14, 2026 (Zoran)
+%   - added replacing VWC_ with SWC_
 
     % Read entire file
     fid = fopen(fileName, 'r');
@@ -57,8 +59,15 @@ function fix_Ameriflux_variable_names(fileName)
         replacement = '_F_$1_$2_$3';
         
         line = regexprep(line, pattern, replacement);
-        
-        lines{i} = line;
+
+        % Regex pattern:
+        % Match: VWC_ and replace with SWC_
+        % Capture the numbers
+        pattern = 'VWC_';
+        replacement = 'SWC_';       
+        line = regexprep(line, pattern, replacement);
+
+        lines{i} = line; %#ok<AGROW>
     end
 
     % Build new filename
