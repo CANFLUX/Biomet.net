@@ -9,10 +9,14 @@ function Biomet_Main_Scheduler
 %
 %
 % Zoran Nesic           File created:       Feb 12, 2024
-%                       Last modification:  Nov 27, 2025
+%                       Last modification:  May 17, 2026
 
 % Revisions:
 %
+% May 17, 2026 (Zoran)
+%   - changed data drive name back to T:\
+% Apr 21, 2026 (Zoran)
+%   - changed Picarro storage from Teamshare folder to S:\ drive (New NAS drive)
 % Nov 27, 2025 (Zoran)
 %   - added keeping 10 newest AB1 summary files on Biomet webpage for Pat
 % Nov 7, 2025 (Zoran)
@@ -120,41 +124,6 @@ cd('d:\')
         fprintf(fid,'======= End of Moving Sites-TEMP data (%s)========\n',datetime);
     end
     
-    % %------------------------
-    % % YF site: File unzipping
-    % if ismember(hourX,14:17) && minuteX == 2
-    %     fprintf(fid,'======= Moving and Unzipping YF DailyZip files (%s) ========\n',datetime);
-    %     fprintf(fid,'%s\n',datetime);
-    %     fprintf(fid,'Moving ZIP files from Sync.com to Sites.\n');
-    %     [status,result] = system('"C:\Ubc_flux\Move_DailyZipFiles_from_Public_to_Sites.bat"');
-    %     if ~isempty(result)
-    %         fprintf(fid,'   Error while moving ZIP files:\n%s\n',result);        
-    %     end        
-    %     fprintf(fid,'------- Unzipping ... (%s) -------\n',datetime);
-    %     % *** Note: UBC_ZIP.exe has a one minute wait period before it returns control to 
-    %     %           Matlab. Use "&" to avoid waiting for it to return
-    %     %           control to Matlab but be aware that the unzipping may
-    %     %           not be finshed yet. Alternatively, bypass this program
-    %     %           by writing a Matlab native version of UBC_ZIP.
-    %     % ***           
-    %     [status,result] = system('C:\Ubc_flux\UBC_ZIP.exe C:\Ubc_flux\ubc_unzip.ini &');
-    %     if ~isempty(result)
-    %         fprintf(fid,'   Error while unzipping files:\n%s\n',result);        
-    %     end        
-    %     fprintf(fid,'%s\n',datetime);
-    %     fprintf(fid,'======= End of Moving and Unzipping (%s)    ========\n',datetime);
-    % end
-    % 
-    % %------------------------
-    % % YF site: MET data processing
-    % if ismember(hourX,14:17) && minuteX == 12
-    %     fprintf(fid,'======= YF MET data processing (%s) ========\n',datetime);
-    %     fprintf(fid,'%s\n',datetime);
-    %     run_YF_met_db_update;
-    %     fprintf(fid,'%s\n',datetime);
-    %     fprintf(fid,'======= End of YF MET data processing (%s)    ========\n',datetime);
-    % end
-
     %------------------------
     %  MBP1 site: data processing
     if ismember(hourX,[15 19]) && minuteX == 22
@@ -231,7 +200,7 @@ cd('d:\')
             fprintf(fid,'   Error while unzipping files:\n%s\n',result);        
         end
         fprintf(fid,'Moving Picarro files to files.ubc.ca\\team.\n');
-[status,result] = system('robocopy D:\Sites\Picarro_AGGP\DataLog_User        "\\files.ubc.ca\Team\LFS\Research_Groups\Sean_Smukler\SALdata\GHGdata\SAL Picarro All Data\UBC Farm Continous Data" /MOVE /E /NDL /NFL "');
+[status,result] = system('robocopy D:\Sites\Picarro_AGGP\DataLog_User        "T:\GHG\SAL Picarro All Data\UBC Farm Continous Data" /MOVE /E /NDL /NFL "');
         if ~isempty(result)
             fprintf(fid,'   Error while robocopying DataLog_User files:\n%s\n',result);        
         end
@@ -240,11 +209,11 @@ cd('d:\')
         if ~isempty(result)
             fprintf(fid,'   Error while removing DataLog_User folder:\n%s\n',result);        
         end
-[status,result] = system('robocopy D:\Sites\Picarro_AGGP\UBC_folder\csi_net  "\\files.ubc.ca\Team\LFS\Research_Groups\Sean_Smukler\SALdata\GHGdata\SAL Picarro All Data\met-data\csi_net"                  /E /NDL /NFL         "');
+[status,result] = system('robocopy D:\Sites\Picarro_AGGP\UBC_folder\csi_net  "T:\GHG\SAL Picarro All Data\met-data\csi_net"                  /E /NDL /NFL         "');
         if ~isempty(result)
             fprintf(fid,'   Error while robocopying UBC_folder:CSI_NET :\n%s\n',result);        
         end
-[status,result] = system('robocopy D:\Sites\Picarro_AGGP\UBC_folder          "\\files.ubc.ca\Team\LFS\Research_Groups\Sean_Smukler\SALdata\GHGdata\SAL Picarro All Data\UBC Farm Continous Data\UBC_folder"  /MOVE /E /NDL /NFL "');
+[status,result] = system('robocopy D:\Sites\Picarro_AGGP\UBC_folder          "T:\GHG\SAL Picarro All Data\UBC Farm Continous Data\UBC_folder"  /MOVE /E /NDL /NFL "');
         if ~isempty(result)
             fprintf(fid,'   Error while robocopying UBC_folder:\n%s\n',result);        
         end
@@ -255,10 +224,10 @@ cd('d:\')
 
         %[status,result] = system('"C:\Ubc_flux\PicarroMove.bat"');
         % fprintf(fid,'%s\n',result);
-    [status,result] = system('dir \\files.ubc.ca\team\LFS\Research_Groups\');
+    [status,result] = system('dir T:\GHG\');
     fprintf(fid,'%s\n',result);
         fprintf(fid,'Processing Picarro data.\n');
-        cd('\\files.ubc.ca\team\LFS\Research_Groups\Sean_Smukler\SALdata\matlab\Zoran_Picarro');
+        cd('T:\GHG\matlab\Zoran_Picarro');
     fprintf(fid,'%s\n',pwd);
         process_Picarro_AGGP_data;
         fprintf(fid,'%s\n',datetime);
