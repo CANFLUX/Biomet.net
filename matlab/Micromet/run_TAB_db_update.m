@@ -9,6 +9,9 @@ function run_TAB_db_update(yearIn,sitesIn)
 %
 % Revisions:
 %
+% June 4, 2026 (Zoran)
+%   - It now uses parallel processing toolbox if available. It will revert to regular processing
+%     if PP toolbox is not available or the processing does not require it (single site + single year).
 % Aug 21, 2025 (Zoran)
 %   - Added renaming CSI files and ECCC station processing to this function
 %     so we don't have to schedule the other tasks separately. 
@@ -27,8 +30,28 @@ fprintf('===============================\n');
 fprintf('***** run_TAB_db_update ******\n');
 fprintf('===============================\n');
 fprintf('%s\n',datetime);
+
+
+% Check if Parallel Processing toolbox exists
+allToolboxes = ver;
+toolboxON = contains([allToolboxes(:).Name],'Parallel Computing');
+
 % Run database updates for on-line data
-db_update_TAB_site(yearIn,sitesIn);
+if toolboxON
+    if length(sitesIn) > 1
+        parfor cntSites = 1:length(sitesIn)
+            db_update_TAB_site(yearIn,sitesIn(cntSites));
+        end
+    elseif length(yearIn)>1
+        parfor cntYears = 1:length(yearIn)
+            db_update_TAB_site(yearIn(cntSites),sitesIn);
+        end
+    else    
+        db_update_TAB_site(yearIn,sitesIn);
+    end
+else
+    db_update_TAB_site(yearIn,sitesIn);
+end
 
 % Cycle through all the sites and do site specific chores
 % (netCam picture taking, ...)
@@ -50,13 +73,11 @@ for currentSiteID = sitesIn
         take_Phenocam_picture(siteID,netCam_Link,hourIn);  
         fprintf('Finished. (Duration: %s)\n',datetime-dtStart);
     end
-    % Run cleaning stage 1 and 2
-    try
-        fr_automated_cleaning(yearIn,siteID,[1 2]);
-    catch
-        fprintf(2,'fr_automated_cleaning failed when running %s site!\n', siteID);
-    end
+
 end
+
+% Run cleaning stage 1 and 2 (use parallel processing toolbox if avaliable)
+pp_automated_cleaning(yearIn,sitesIn,[1 2]);
 
 % --- rename all Met files once per day ----
 if hour(datetime) == 0 && minute(datetime) < 30
@@ -79,4 +100,3 @@ end
 fprintf('\n\n%s\n',datetime);
 fprintf('**** run_TAB_db_update finished in %6.1f sec.******\n',seconds(datetime-startTime));
 fprintf('=====================================================\n\n\n');
-
