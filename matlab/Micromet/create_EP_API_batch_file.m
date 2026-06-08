@@ -6,15 +6,17 @@ function create_EP_API_batch_file(siteID,startDay,endDay,EP_template)
 %   siteID         - site ID
 %   startDay       - First day that is being processed 
 %   endDay         - Last day that is being processed
-%   EP_template    - EddyPro templated to be used for processing
+%   EP_template    - EddyPro template to be used for processing
 %
 %
 %
 % Zoran Nesic               File created:       Aug 14, 2025
-%                           Last modification:  Nov 24, 2025
+%                           Last modification:  Jun  7, 2026
 
 % Revisions
 %
+% Jun 7, 2026 (Zoran)
+%   - Added code to handle the missing HighFrequencyData folder for vinimet sites 
 % Nov 24, 2025 (Zoran)
 %   - Function now creates batchFileName instead of getting it as an input
 %     parameter
@@ -23,7 +25,7 @@ function create_EP_API_batch_file(siteID,startDay,endDay,EP_template)
 %     the batch file:batchFileName  created by this function. 
 
 structProject = get_TAB_project;
-% Name of the bach file that will be called from a Python environment
+% Name of the batch file that will be called from a Python environment
 batchFileName = fullfile(structProject.path,'Scripts','EP_API_call.bat');               % or structProjects.sites.(siteID).EP_AP_batchFile
 % Path to raw data: *sourceDirMain*/siteID/HighFrequencyData/raw/yyyy
 sourceDirMain = structProject.hfPath;
@@ -44,11 +46,18 @@ end
 startDay = datetime(startDay,"Format","uuuu-M-d");
 endDay   = datetime(endDay  ,"Format","uuuu-M-d");
 
-%fid=1;
-sourceDirStart = fullfile(sourceDirMain,siteID,'HighFrequencyData','raw',string(year(datetime(startDay))));
+% vinimet Sites (old UBC server, are missing folder HighFrequencyData)
+% The code below sorts that out.
+vinimetSites = {'BB','BB1','BB2','BBS','DSM','RBM','YOUNG','HOGG','OHM'};
+if ismember(siteID,vinimetSites)
+    hfFolder = '';
+else
+    hfFolder = 'HighFrequencyData';
+end
+sourceDirStart = fullfile(sourceDirMain,siteID,hfFolder,'raw',string(year(datetime(startDay))));
 sourceDirStart = regexprep(sourceDirStart,'\','/');
 
-sourceDirEnd   = fullfile(sourceDirMain,siteID,'HighFrequencyData','raw',string(year(datetime(endDay))));
+sourceDirEnd   = fullfile(sourceDirMain,siteID,hfFolder,'raw',string(year(datetime(endDay))));
 sourceDirEnd   = regexprep(sourceDirEnd,'\','/');
 
 fprintf(fid,'ECHO Running Matlab-generated Python call \n');
