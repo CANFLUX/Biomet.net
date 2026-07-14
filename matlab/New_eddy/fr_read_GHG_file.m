@@ -13,11 +13,13 @@ function [EngUnits,Header,tv,dataOut,structConfig] = fr_read_GHG_file(pathToGHGf
 %
 %
 % (c) Zoran Nesic                   File created:       Jan 20, 2022
-%                                   Last modification:  Feb 27, 2026
+%                                   Last modification:  Jul 14, 2026
 %
 
 % Revisions (last one first):
 %
+% July 14, 2026 (Zoran)
+%   - Added extractin of the instrument serial numbers. Works with 7200, 7700 and SmartFlux
 % Feb 27, 2026 (Zoran)
 %   - Randomized pathToHF names to enable using this function with parallel computing toolbox. 
 % Feb 15, 2026 (Zoran)
@@ -78,6 +80,28 @@ try
     strConfig = char(fread(fid,'char'))';
     fclose(fid);
     structConfig = li7200_str_to_struct(strConfig);
+    % Extract all serial numbers. 
+    % Some of them will not be available (skip)
+    % 7200 SN:
+    tok = regexp(strConfig, '72H-(\d+)', 'tokens'); 
+    if ~isempty(tok)
+        structConfig.SN.LI7200 = str2double(tok{1}{1});
+    end
+    % 7700 SN:
+    tok = regexp(strConfig, 'TG1-(\d+)', 'tokens'); 
+    if ~isempty(tok)
+        structConfig.SN.LI7700 = str2double(tok{1}{1});
+    end
+    % SmartFlux SN:
+    tok = regexp(strConfig, 'smart\d-(\d+)', 'tokens'); 
+    if ~isempty(tok)
+        structConfig.SN.SmartFlux= str2double(tok{1}{1});
+    end    
+    % SmartFlux model:
+    tok = regexp(strConfig, 'smart(\d+)', 'tokens'); 
+    if ~isempty(tok)
+        structConfig.SmartFluxModel= str2double(tok{1}{1});
+    end       
 catch
     fprintf(2,'Error reading: %s\n',configFileName);
 end
