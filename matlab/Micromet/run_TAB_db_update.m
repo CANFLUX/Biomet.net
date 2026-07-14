@@ -4,11 +4,14 @@ function run_TAB_db_update(yearIn,sitesIn)
 % This program is based on run_UQAM_db_update (CARBONIQUE project)
 %
 % Zoran Nesic           File created:       Aug 20, 2025
-%                       Last modification:  Jun  5, 2026
+%                       Last modification:  Jul 13, 2026
 
 %
 % Revisions:
 %
+% July 13, 2026 (Zoran)
+%   - added protection in case the Metadata field does not exist
+%   - if netCam_Link = {} skip Phenocam picture taking
 % Jun 5, 2026 (Zoran)
 %   - Bug fix: used cntSites instead of cntYears in parfor
 % June 4, 2026 (Zoran)
@@ -59,23 +62,32 @@ end
 % (netCam picture taking, ...)
 for currentSiteID = sitesIn
     siteID = char(currentSiteID);
-    % Extract site info
-    latIn = structProject.sites.(siteID).Metadata.lat;
-    longIn = structProject.sites.(siteID).Metadata.long;    
-    % Take time-lapse photos only once per hour (min<30) and
-    % during "daytime" (globalradiation > 50W)
-    % NOTE: potential_radiation() needs West to have positive longIn, hence
-    %       the change of sign below! It also needs GMT time 
-    siteUTCtime = convert_PCtime2UTC;   
-    if potential_radiation(siteUTCtime,latIn,-longIn) > 50 && minute(datetime)<30
-        dtStart = datetime;
-        fprintf('  Taking %s Phenocam picture. %s\n',siteID,dtStart);
-        hourIn = hour(datetime);
-        netCam_Link = structProject.sites.(siteID).netCam_Link;
-        take_Phenocam_picture(siteID,netCam_Link,hourIn);  
-        fprintf('Finished. (Duration: %s)\n',datetime-dtStart);
+    % Extract site info if Metadata field exists
+    if isfield(structProject.sites.(siteID),'Metadata')
+        latIn = structProject.sites.(siteID).Metadata.lat;
+        longIn = structProject.sites.(siteID).Metadata.long;    
+    else
+        latIn = 0;
+        longIn = 0;
     end
 
+    % Take time-lapse photos only if there is ~isempty(netCam_link)
+    netCam_Link = structProject.sites.(siteID).netCam_Link;
+    if ~isempty(netCam_Link)
+        % Take time-lapse photos only once per hour (min<30) and
+        % during "daytime" (globalradiation > 50W)
+        % NOTE: potential_radiation() needs West to have positive longIn, hence
+        %       the change of sign below! It also needs GMT time 
+        siteUTCtime = convert_PCtime2UTC;   
+        if potential_radiation(siteUTCtime,latIn,-longIn) > 50 && minute(datetime)<30
+            dtStart = datetime;
+            fprintf('  Taking %s Phenocam picture. %s\n',siteID,dtStart);
+            hourIn = hour(datetime);
+            
+            take_Phenocam_picture(siteID,netCam_Link,hourIn);  
+            fprintf('Finished. (Duration: %s)\n',datetime-dtStart);
+        end
+    end
 end
 
 % Run cleaning stage 1 and 2 (use parallel processing toolbox if avaliable)
