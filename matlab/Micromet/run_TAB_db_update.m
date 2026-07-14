@@ -12,6 +12,8 @@ function run_TAB_db_update(yearIn,sitesIn)
 % July 13, 2026 (Zoran)
 %   - added protection in case the Metadata field does not exist
 %   - if netCam_Link = {} skip Phenocam picture taking
+% Jun 5, 2026 (Zoran)
+%   - Bug fix: used cntSites instead of cntYears in parfor
 % June 4, 2026 (Zoran)
 %   - It now uses parallel processing toolbox if available. It will revert to regular processing
 %     if PP toolbox is not available or the processing does not require it (single site + single year).
@@ -47,7 +49,7 @@ if toolboxON
         end
     elseif length(yearIn)>1
         parfor cntYears = 1:length(yearIn)
-            db_update_TAB_site(yearIn(cntSites),sitesIn);
+            db_update_TAB_site(yearIn(cntYears),sitesIn);
         end
     else    
         db_update_TAB_site(yearIn,sitesIn);

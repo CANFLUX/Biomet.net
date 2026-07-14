@@ -9,6 +9,9 @@ import fluxgapfill
 import numpy as np
 import pandas as pd
 from pathlib import Path
+import warnings
+warnings.filterwarnings('ignore', category=UserWarning, module='sklearn')
+import pickle
 
 os.chdir(os.path.split(__file__)[0])
 DEFAULT_CONFIG_FILE = Path('./config_files/ML_Gapfill_default.yml')
@@ -28,10 +31,6 @@ def main(args):
 
     db_path = Path(args.db_path)
     config = create_config(args)
-
-    # added at the request of Haley
-    timestamp_filename = 'clean_tv'
-    copy_timestamp_to_trace_dirs(args.db_path, args.site, args.year, timestamp_filename)
 
     for flux_name, flux_config in config['fluxes'].items():
         # to overwrite the default by ignoring some fluxes, leave the flux config empty
@@ -60,7 +59,7 @@ def main(args):
 
         if PREPROCESS in stages_to_run:
             setup_and_preprocess(site_path, dfs_by_year, flux_config, flux_label)
-        
+
         if TRAIN in stages_to_run:
             predictors = [str(Path(p).stem) for p in flux_config['preds_trace']]
             fluxgapfill.train(
@@ -70,9 +69,17 @@ def main(args):
 
         if TEST in stages_to_run:
             fluxgapfill.test(site_path, df_all, flux_config['models'], target=flux_label)
-        
+
         ml_dir = db_path / args.year / args.site / 'Clean' / 'ThirdStage_ML' / flux_name
         os.makedirs(ml_dir, exist_ok=True)
+
+        # Copy timestamp into this flux's output directory
+        timestamp_source = db_path / args.year / args.site / 'Clean' / 'ThirdStage' / config['dbase_metadata']['timestamp']['name']
+        try:
+            shutil.copy(timestamp_source, ml_dir)
+        except FileNotFoundError as e:
+            print(f"Could not copy timestamp file: {e}")
+
         for model in flux_config['models']:
             df_gapfilled = fluxgapfill.gapfill(
                 site_path, dfs_by_year[args.year], [model],
@@ -97,23 +104,12 @@ def import_pyyaml():
         import yaml
 
 
-def copy_timestamp_to_trace_dirs(db_path, site, year, timestamp_filename):
-    # if this is related to the dbase_metadata inside the ML_Gapfill_default.yaml file
-    # then a better way would be `timestamp_filename = config['dbase_metadata]['timestamp']['name']`
-    timestamp_source_path = Path(db_path) / year / site / 'Clean' / 'ThirdStage' / timestamp_filename
-    timestamp_dest_dir = Path(db_path) / year / site / 'Clean' / 'ThirdStage_ML'
-    for trace_dir in os.listdir(timestamp_dest_dir):
-        trace_dest_path = timestamp_dest_dir / trace_dir
-        try:
-            shutil.copy(timestamp_source_path, trace_dest_path)
-        except FileNotFoundError as e:
-            print(f"Could not copy timestamp `{timestamp_filename}` file: {e}")
-
-
 def deep_merge(base, override):
     """Recursively merges override into base and returns base."""
     for key, value in override.items():
-        if isinstance(value, dict) and isinstance(base.get(key), dict):
+        if value is None:
+            base[key] = None  # explicit NULL override kills the key
+        elif isinstance(value, dict) and isinstance(base.get(key), dict):
             deep_merge(base[key], value)
         else:
             base[key] = value
@@ -165,35 +161,28 @@ def has_complete_indices(site_path, num_splits):
 
 
 def create_config(args) -> dict:
-    '''Creates a configuration dictionary for the pipeline.
-       Reads in the default config, then updates using a custom config in TraceAnalysis_ini / ML_Gapfill.yml
-       Then updates with a site-specific config if it exists - in TraceAnalysis_ini / {site} / <siteID>_ML_Gapfill.yml
-    '''
     trace_analysis_ini_path = Path(args.db_path) / 'Calculation_Procedures' / 'TraceAnalysis_ini'
     with open(DEFAULT_CONFIG_FILE, 'r') as f:
         config = yaml.safe_load(f)
-    site = args.site
-    config['site'] = site
-    
-    custom_config_path = trace_analysis_ini_path  / 'ML_Gapfill.yml'
-    if os.path.exists(custom_config_path):
-        with open(custom_config_path, 'r') as custom_ml_comfig_file:
-            custom_config = yaml.safe_load(custom_ml_comfig_file)
-            deep_merge(config, custom_config)
-    
-    site_config_path = trace_analysis_ini_path / site / f"{site}_ML_Gapfill.yml"
-    if os.path.exists(site_config_path):
-        with open(site_config_path, 'r') as site_ml_config_file:
-            site_config = yaml.safe_load(site_ml_config_file)
-            deep_merge(config, site_config)
+    config['site'] = args.site
+
+    site_config_path = trace_analysis_ini_path / args.site / f"{args.site}_ML_Gapfill.yml"
+    if site_config_path.exists():
+        with open(site_config_path, 'r') as f:
+            site_config = yaml.safe_load(f)
+        # remap 'traces' key to 'fluxes' to match internal structure
+        if 'traces' in site_config:
+            site_config['fluxes'] = site_config.pop('traces')
+        deep_merge(config, site_config)
 
     config['mode'] = args.mode
-    
     return config
-    
+
 
 def setup_and_preprocess(site_path, dfs_by_year, flux_config, flux_label):
     '''Creates the run directory and caches the config as JSON, then runs preprocess'''
+    if os.path.exists(site_path):
+        shutil.rmtree(site_path)
     os.makedirs(site_path / 'indices')
     write_run_info(site_path, build_run_info(dfs_by_year, flux_config, flux_label))
 
@@ -218,6 +207,24 @@ def get_stages_to_run(site_path, dfs_by_year, flux_config, flux_label, mode) -> 
                 f'Gapfill mode requested, but trained/tested models are missing for flux "{flux_label}" '
                 f'(models: {missing_models_str}). Use train_ML_gapfill.m to train the model.'
             )
+
+        # Check predictors match trained model
+        current_predictors = [str(Path(p).stem) for p in flux_config['preds_trace']]
+        for model in flux_config['models']:
+            pkl_path = site_path / 'models' / model / f'{model}0.pkl'
+            if pkl_path.exists():
+                with open(pkl_path, 'rb') as f:
+                    trained_model = pickle.load(f)
+                saved_predictors = list(trained_model.predictors)
+                if saved_predictors != current_predictors:
+                    raise RuntimeError(
+                        f'Gapfill mode requested, but predictors have changed for "{flux_label}" '
+                        f'(model: {model}).\n'
+                        f'  Saved:   {saved_predictors}\n'
+                        f'  Current: {current_predictors}\n'
+                        f'Run train_ML_gapfill to retrain.'
+                    )
+
         return [GAPFILL]
 
     elif mode == 'full': 
@@ -235,7 +242,7 @@ def get_stages_to_run(site_path, dfs_by_year, flux_config, flux_label, mode) -> 
                 shutil.rmtree(site_path)
             print('Running pipeline from preprocess')
             return valid_stages
-        
+
         # --- Train ---
         try:
             for model in flux_config['models']:
@@ -243,11 +250,24 @@ def get_stages_to_run(site_path, dfs_by_year, flux_config, flux_label, mode) -> 
                 for i in range(flux_config['num_splits']):
                     assert os.path.exists(model_dir / f'{model}{i}.pkl')
                 assert os.path.exists(model_dir / 'val_metrics.csv')
+
+                # Check predictors match by reading directly from the trained model
+                pkl_path = model_dir / f'{model}0.pkl'
+                if pkl_path.exists():
+                    with open(pkl_path, 'rb') as f:
+                        trained_model = pickle.load(f)
+                    saved_predictors = list(trained_model.predictors)
+                    current_predictors = [str(Path(p).stem) for p in flux_config['preds_trace']]
+                    assert saved_predictors == current_predictors, \
+                        f'Predictors changed for {model}: {saved_predictors} → {current_predictors}'
+
             valid_stages.remove(TRAIN)
-        except Exception as _:
-            print('Running pipeline from train')
-            return valid_stages
-        
+        except Exception:
+            if os.path.exists(site_path):
+                shutil.rmtree(site_path)
+            print('Running pipeline from preprocess due to predictor/model mismatch')
+            return [PREPROCESS, TRAIN, TEST, GAPFILL]
+
         # --- Test ---
         try:
             for model in flux_config['models']:
@@ -259,7 +279,7 @@ def get_stages_to_run(site_path, dfs_by_year, flux_config, flux_label, mode) -> 
             return valid_stages
 
         return valid_stages
-    
+
     else:
         raise ValueError(f"The mode {mode} is invalid. Please use either 'full' or 'gapfill'.")
 
@@ -307,7 +327,7 @@ def read_database_trace_by_year(db_path, year, config, flux_name, flux_config) -
         year (int): The year read in the Database
         config (dict): Configuration dictionary (contains the site)
     """
-    
+
     # Timestamps
     ts_cfg = config['dbase_metadata']['timestamp'] # for brevity
     timestamp_raw = np.fromfile(db_path / year / config['site'] / 'Clean' / 'SecondStage' / ts_cfg['name'], dtype=ts_cfg['dtype'])
@@ -340,3 +360,5 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     main(args)
+
+ 

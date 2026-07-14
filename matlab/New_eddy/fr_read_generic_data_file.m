@@ -185,6 +185,11 @@ function [EngUnits,Header,tv,outStruct] = fr_read_generic_data_file(fileName,ass
                 opts.VariableOptions(dateColumnNum(2)).InputFormat = char(timeInputFormat{2});
             end
         end
+
+        % Force delimiter to be a comma for CSVs
+        if contains(fileName,'.csv')
+            opts.Delimiter = {','};
+        end
         
         % Set all the rows of interest to data type "double"
         % If colToKeep has two elements assume that those are indexes
