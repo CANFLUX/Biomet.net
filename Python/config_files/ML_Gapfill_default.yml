@@ -14,9 +14,6 @@ fluxes:
   fch4:
     trace: ThirdStage/FCH4_PI_SC_JSZ_MAD_RP_uStar_orig
     preds_trace:
-      - ThirdStage/TS_1_1_1
-      - ThirdStage/TA_1_1_1
-      - ThirdStage/SWC_1_1_1
     models:
       - rf
       - ann
@@ -28,11 +25,6 @@ fluxes:
   nee:
     trace: ThirdStage/NEE_PI_SC_JSZ_MAD_RP_uStar_orig
     preds_trace:
-      - ThirdStage/SW_IN_1_1_1
-      - ThirdStage/TA_1_1_1
-      - ThirdStage/VPD_1_1_1_F
-      - ThirdStage/TS_1_1_1
-      - ThirdStage/SWC_1_1_1
     models:
       - rf
       - ann
@@ -44,11 +36,6 @@ fluxes:
   le:
     trace: ThirdStage/LE_PI_SC_JSZ_MAD_RP_uStar_orig
     preds_trace:
-      - ThirdStage/SW_IN_1_1_1
-      - ThirdStage/TA_1_1_1
-      - ThirdStage/VPD_1_1_1_F
-      - ThirdStage/TS_1_1_1
-      - ThirdStage/SWC_1_1_1
     models:
       - rf
       - ann
@@ -60,11 +47,6 @@ fluxes:
   h:
     trace: ThirdStage/H_PI_SC_JSZ_MAD_RP_uStar_orig
     preds_trace:
-      - ThirdStage/SW_IN_1_1_1
-      - ThirdStage/NETRAD_1_1_1
-      - ThirdStage/WS_1_1_1
-      - ThirdStage/TA_1_1_1
-      - ThirdStage/TS_1_1_1
     models:
       - rf
       - ann
@@ -76,10 +58,6 @@ fluxes:
   fno2:
     trace: ThirdStage/H_PI_SC_JSZ_MAD_RP_uStar_orig
     preds_trace:
-      - ThirdStage/H_PI_SC_JSZ_MAD_RP_uStar_f
-      - ThirdStage/LE_PI_SC_JSZ_MAD_RP_uStar_f
-      - ThirdStage/TA_1_1_1
-      - ThirdStage/SW_IN_1_1_1
     models:
       - rf
       - ann
