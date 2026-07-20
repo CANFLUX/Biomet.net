@@ -81,6 +81,7 @@ def main(args):
             print(f"Could not copy timestamp file: {e}")
 
         for model in flux_config['models']:
+            dtype = config['dbase_metadata']['traces']['dtype']
             df_gapfilled = fluxgapfill.gapfill(
                 site_path, dfs_by_year[args.year], [model],
                 target=flux_label, output_prefix=flux_label
@@ -88,8 +89,18 @@ def main(args):
             flux_f = df_gapfilled[f'{flux_label}_F'].values.astype(config['dbase_metadata']['traces']['dtype'])
             flux_f_u = df_gapfilled[f'{flux_label}_F_UNCERTAINTY'].values.astype(config['dbase_metadata']['traces']['dtype'])
 
-            flux_f.tofile(ml_dir / f'{flux_label}_F_ML_{model.upper()}')
-            flux_f_u.tofile(ml_dir / f'{flux_label}_F_ML_{model.upper()}_UNCERTAINTY')
+            # Pure model output (all timesteps, model-predicted) - no _F_ in the name
+            flux_f.tofile(ml_dir / f'{flux_label}_ML_{model.upper()}')
+            flux_f_u.tofile(ml_dir / f'{flux_label}_ML_{model.upper()}_UNCERTAINTY')
+
+            # Gapfilled output: measured values with gaps filled by the model prediction
+            
+            raw_df = dfs_by_year[args.year]
+            flux_measured = raw_df[flux_label].values.astype(dtype)
+            is_gap = np.isnan(flux_measured)
+            flux_filled = np.where(is_gap, flux_f, flux_measured)
+
+            flux_filled.tofile(ml_dir / f'{flux_label}_F_ML_{model.upper()}')
 
         print(f"{'-'*(len(flux_name)+12)}")
 
@@ -175,6 +186,15 @@ def create_config(args) -> dict:
             site_config['fluxes'] = site_config.pop('traces')
         deep_merge(config, site_config)
 
+        for flux_name, flux_config in config['fluxes'].items():
+            if flux_config is None:
+                continue
+            if not flux_config.get('preds_trace'):
+                raise ValueError(
+                    f'No predictors listed in {site_config_path.name} file '
+                    f'(flux: "{flux_name}").'
+                )
+                
     config['mode'] = args.mode
     return config
 
