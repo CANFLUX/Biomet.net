@@ -13,11 +13,16 @@ function [EngUnits,Header,tv,dataOut,structConfig] = fr_read_GHG_file(pathToGHGf
 %
 %
 % (c) Zoran Nesic                   File created:       Jan 20, 2022
-%                                   Last modification:  Sep 10, 2026
+%                                   Last modification:  Sep 21, 2026
 %
 
 % Revisions (last one first):
 %
+% Sep 21, 2026 (Zoran)
+%   - Bug fix: gracefully ends if the 7zip finds errors in the archive.
+% Sep 15, 2026 (Zoran)
+%   - Bug fix: Removed the bug where the function would fail when reading
+%     GHG files without configuration folder (system_config).
 % Sep 10, 2026 (Zoran)
 %   - Added variable structConfig.numOfRecords that represents the number of records
 %     in the GHG data file.
@@ -52,7 +57,7 @@ if ~exist(pathToHF,'dir')
     mkdir(pathToHF);
 end
 
-% create filePath that points to the extraced *.data file
+% create filePath that points to the extracted *.data file
 pathToGHGfile = fullfile(pathToGHGfile);                    % make sure the file separator is set properly
 [~,fileName,~] = fileparts(pathToGHGfile);
 filePath = fullfile(pathToHF,[fileName '.data']);
@@ -64,7 +69,15 @@ if isempty(exeFile)
     error('Cannot find 7z.exe');
 end
 sCMD = [exeFile ' x ' pathToGHGfile ' -o' pathToHF  ' -r -y'];
-[~,~] = dos(sCMD);
+[~,sReport] = dos(sCMD);
+if ~contains(sReport,'Everything is Ok')
+    % If the return string does not contain an OK line
+    % return with error. First delete the temp folder
+    if exist(pathToHF,'dir')
+        rmdir(pathToHF,'s');
+    end
+    error 'Error while unzipping GHG file';
+end
 
 % Detect the options to figure out where the date column is
 opts = detectImportOptions(filePath,'FileType','delimitedtext');

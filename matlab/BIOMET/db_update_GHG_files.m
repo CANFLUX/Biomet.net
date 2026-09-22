@@ -21,11 +21,14 @@ function structConfig = db_update_GHG_files(dateIn,siteID,hfPath,flagSave,dbPath
 %
 %
 % (c) Zoran Nesic                   File created:       Feb 16, 2026
-%                                   Last modification:  Mar  1, 2026
+%                                   Last modification:  Sep 21, 2026
 %
 
 % Revisions:
 %
+% Sep 21, 2026 (Zoran)
+%   - Added try-catch when reading GHG files to avoid one bad GHG file
+%     interrupting the run.
 % Mar 1, 2026 (Zoran)
 %   - BugFix: Stopped the function from trying to save the database when 0 GHG files are found
 % Feb 24, 2026 (Zoran)
@@ -50,12 +53,18 @@ if tst~=1
             for cntFile=1:length(allFiles)
                 startTime = datetime;
                 pathToGHGfile = fullfile(allFiles(cntFile).folder,allFiles(cntFile).name);
-                [~,~,~,~,structConfigTmp] = fr_read_GHG_file(pathToGHGfile);
-                %dataOut(cntFile) = dataOutTmp;
-                cntData = cntData + 1;
-                structConfig(cntData) = structConfigTmp; %#ok<AGROW>
-                if flagVerbose
-                    fprintf('     Done: %s (%4.1f sec )\n',pathToGHGfile,seconds(datetime-startTime));
+                try
+                    [~,~,~,~,structConfigTmp] = fr_read_GHG_file(pathToGHGfile);
+                    %dataOut(cntFile) = dataOutTmp;
+                    cntData = cntData + 1;
+                    structConfig(cntData) = structConfigTmp; %#ok<AGROW>
+                    if flagVerbose
+                        fprintf('     Done: %s (%4.1f sec )\n',pathToGHGfile,seconds(datetime-startTime));
+                    end
+                catch ME
+                    if flagVerbose
+                        fprintf(2,'     *** Error while processing: %s\n',pathToGHGfile);
+                    end
                 end
             end
 %            save(['structConfig_' siteID '_' num2str(year(currentDay))] ,'structConfig')
