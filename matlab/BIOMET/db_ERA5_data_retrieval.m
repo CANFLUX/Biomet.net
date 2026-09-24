@@ -31,7 +31,7 @@ if ispc
     root_pth = fullfile(path_parts{1:idx});
     % root_pth = sprintf("%s%s%s",path_parts{1},pth_sep,path_parts{2});
 elseif ismac
-    root_pth = fullfile(pth_sep,path_parts{1:idx});
+    root_pth = fullfile(filesep,path_parts{1:idx});
 end
 
 % Default is to pull the past year of data
