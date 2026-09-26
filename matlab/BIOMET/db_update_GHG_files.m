@@ -21,11 +21,14 @@ function structConfig = db_update_GHG_files(dateIn,siteID,hfPath,flagSave,dbPath
 %
 %
 % (c) Zoran Nesic                   File created:       Feb 16, 2026
-%                                   Last modification:  Sep 21, 2026
+%                                   Last modification:  Sep 25, 2026
 %
 
 % Revisions:
 %
+% Sep 25, 2026 (Zoran)
+%   - Bug fix: the function can now join two dissimilart GHG structures.
+%              This happens when SmartFlux changes the way it saves data.
 % Sep 21, 2026 (Zoran)
 %   - Added try-catch when reading GHG files to avoid one bad GHG file
 %     interrupting the run.

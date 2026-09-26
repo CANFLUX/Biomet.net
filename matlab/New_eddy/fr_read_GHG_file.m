@@ -13,11 +13,13 @@ function [EngUnits,Header,tv,dataOut,structConfig] = fr_read_GHG_file(pathToGHGf
 %
 %
 % (c) Zoran Nesic                   File created:       Jan 20, 2022
-%                                   Last modification:  Sep 21, 2026
+%                                   Last modification:  Sep 25, 2026
 %
 
 % Revisions (last one first):
 %
+% Sep 25, 2026 (Zoran)
+%   - Bug fix: Function will now skip trying to read a non-existant configFileName.
 % Sep 21, 2026 (Zoran)
 %   - Bug fix: gracefully ends if the 7zip finds errors in the archive.
 % Sep 15, 2026 (Zoran)
@@ -91,36 +93,40 @@ timeInputFormat = {[],'HH:mm:ss:SSS'};
 % Read and process LI-7200 config file
 [fileFolder,fileName] = fileparts(filePath);
 configFileName = fullfile(fileFolder,'system_config','co2app.conf');
-try
-    fid = fopen(configFileName);
-    strConfig = char(fread(fid,'char'))';
-    fclose(fid);
-    structConfig = li7200_str_to_struct(strConfig);
-    % Extract all serial numbers. 
-    % Some of them will not be available (skip)
-    % 7200 SN:
-    tok = regexp(strConfig, '72H-(\d+)', 'tokens'); 
-    if ~isempty(tok)
-        structConfig.SN.LI7200 = str2double(tok{1}{1});
+% only read config file if it exists (some older versions of GHG didn't have it)
+if exist("configFileName","file")
+    try
+        fid = fopen(configFileName);
+        strConfig = char(fread(fid,'char'))';
+        fclose(fid);
+        structConfig = li7200_str_to_struct(strConfig);
+        % Extract all serial numbers. 
+        % Some of them will not be available (skip)
+        % 7200 SN:
+        tok = regexp(strConfig, '72H-(\d+)', 'tokens'); 
+        if ~isempty(tok)
+            structConfig.SN.LI7200 = str2double(tok{1}{1});
+        end
+        % 7700 SN:
+        tok = regexp(strConfig, 'TG1-(\d+)', 'tokens'); 
+        if ~isempty(tok)
+            structConfig.SN.LI7700 = str2double(tok{1}{1});
+        end
+        % SmartFlux SN:
+        tok = regexp(strConfig, 'smart\d-(\d+)', 'tokens'); 
+        if ~isempty(tok)
+            structConfig.SN.SmartFlux= str2double(tok{1}{1});
+        end    
+        % SmartFlux model:
+        tok = regexp(strConfig, 'smart(\d+)', 'tokens'); 
+        if ~isempty(tok)
+            structConfig.SmartFluxModel= str2double(tok{1}{1});
+        end       
+    catch
+        fprintf(2,'Error reading: %s\n',configFileName);
     end
-    % 7700 SN:
-    tok = regexp(strConfig, 'TG1-(\d+)', 'tokens'); 
-    if ~isempty(tok)
-        structConfig.SN.LI7700 = str2double(tok{1}{1});
-    end
-    % SmartFlux SN:
-    tok = regexp(strConfig, 'smart\d-(\d+)', 'tokens'); 
-    if ~isempty(tok)
-        structConfig.SN.SmartFlux= str2double(tok{1}{1});
-    end    
-    % SmartFlux model:
-    tok = regexp(strConfig, 'smart(\d+)', 'tokens'); 
-    if ~isempty(tok)
-        structConfig.SmartFluxModel= str2double(tok{1}{1});
-    end       
-catch
-    fprintf(2,'Error reading: %s\n',configFileName);
 end
+
 % Add the number of records collected
 structConfig.numOfRecords = length(dataOut.TimeVector);
 % The TimeVector is based on the last point in HF data rounded up
