@@ -94,7 +94,7 @@ timeInputFormat = {[],'HH:mm:ss:SSS'};
 [fileFolder,fileName] = fileparts(filePath);
 configFileName = fullfile(fileFolder,'system_config','co2app.conf');
 % only read config file if it exists (some older versions of GHG didn't have it)
-if exist("configFileName","file")
+if exist(configFileName,"file")
     try
         fid = fopen(configFileName);
         strConfig = char(fread(fid,'char'))';
