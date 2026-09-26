@@ -61,7 +61,11 @@ if tst~=1
                     %dataOut(cntFile) = dataOutTmp;
                     %cntData = cntData + 1;
                     %structConfig(cntData) = structConfigTmp; %#ok<AGROW>
-                    structConfig = incrementStructArray(structConfig,structConfigTmp);
+                    if cntData == 0
+                        structConfig = structConfigTmp;
+                    else
+                        structConfig = incrementStructArray(structConfig,structConfigTmp);
+                    end
                     cntData = length(structConfig);
                     if flagVerbose
                         fprintf('     Done: %s (%4.1f sec )\n',pathToGHGfile,seconds(datetime-startTime));
