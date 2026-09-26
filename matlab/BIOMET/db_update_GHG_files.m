@@ -56,8 +56,10 @@ if tst~=1
                 try
                     [~,~,~,~,structConfigTmp] = fr_read_GHG_file(pathToGHGfile);
                     %dataOut(cntFile) = dataOutTmp;
-                    cntData = cntData + 1;
-                    structConfig(cntData) = structConfigTmp; %#ok<AGROW>
+                    %cntData = cntData + 1;
+                    %structConfig(cntData) = structConfigTmp; %#ok<AGROW>
+                    structConfig = incrementStructArray(structConfig,structConfigTmp);
+                    cntData = length(structConfig);
                     if flagVerbose
                         fprintf('     Done: %s (%4.1f sec )\n',pathToGHGfile,seconds(datetime-startTime));
                     end
@@ -77,7 +79,7 @@ if tst~=1
         fprintf('  Loaded data from %d GHG files in %4.1f seconds\n',cntData,seconds(datetime-startTime0));
     end
 else
-    load (['structConfig_test_' num2str(year(dateIn(end)))]);
+    load (['structConfig_test_' num2str(year(dateIn(end)))]); %#ok<LOAD>
 end
 if flagSave && cntData > 0
     % convert structConfig from type 0 to type 1
@@ -195,4 +197,27 @@ function logString (msgIn)
     if fid >0
         fprintf(fid,'%s\n',msgIn);
         fclose(fid);
+    end
+
+function z = incrementStructArray(x,y)
+   
+    N = length(x);
+    z = x;
+    try
+        fn = union(fieldnames(x), fieldnames(y));
+        
+        for k = 1:numel(fn)
+            f = fn{k};
+            
+            if ~isfield(x, f)
+                [x.(f)] = deal([]);
+            end
+            
+            if ~isfield(y, f)
+                [y.(f)] = deal([]);
+            end
+        end
+        z(N+1) = y;
+    catch ME
+        fprintf(2,'  The current GHG structure could not be added. Dissimilar GHG structures.\n')
     end
