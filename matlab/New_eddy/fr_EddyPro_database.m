@@ -32,14 +32,16 @@ function [numOfFilesProcessed,numOfDataPointsProcessed] = fr_EddyPro_database(wi
 %                                 fr_read_EddyPro_file. See that file for
 %                                 more info. Default = [];
 %
-% Zoran Nesic                   File Created:      Feb  16, 2024
-%                               Last modification: Mar  22, 2025
+% Zoran Nesic                   File Created:      Feb 16, 2024
+%                               Last modification: Sep 23, 2026
 
 % Created based on fr_SmartFlux_database.m
 
 %
 % Revisions:
 %
+% Sep 23, 2026 (Zoran)
+%   - Bug fix: the "timeShift" option is now implemented properly - it shifts Stats.TimeVector instead of tv.
 % Mar 22, 2025 (Zoran)
 %   - Now using sort_EdduPro_files instead of simple dir(). This call returnes a list
 %     of files that match the wildCardPath in the ascending order of their time stamps.
@@ -113,7 +115,7 @@ for cntFiles=1:length(allFiles)
                 fprintf(2,'Empty file: %s. Skipping... \n', fileName);
             else            
                 [~, ~,tv,Stats] = fr_read_EddyPro_file(fileName,[],[],optionsFileRead);
-                tv = tv + time_shift;
+                Stats.TimeVector = Stats.TimeVector + time_shift;
                 structType = 1;
                 db_struct2database(Stats,databasePath,0,[],timeUnit,missingPointValue,structType,1);         
             end
