@@ -211,13 +211,13 @@ function z = incrementStructArray(x,y)
     N = length(x);
     z = x;
     try
-        fn = union(fieldnames(x), fieldnames(y));
+        fn = union(fieldnames(z), fieldnames(y));
         
         for k = 1:numel(fn)
             f = fn{k};
             
-            if ~isfield(x, f)
-                [x.(f)] = deal([]);
+            if ~isfield(z, f)
+                [z.(f)] = deal([]);
             end
             
             if ~isfield(y, f)
