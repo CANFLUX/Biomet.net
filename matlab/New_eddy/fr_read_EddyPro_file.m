@@ -20,11 +20,17 @@ function [EngUnits, Header,tv,outStruct] = fr_read_EddyPro_file(fileName,assign_
 %
 %
 % (c) Zoran Nesic                   File created:       Aug 25, 2022
-%                                   Last modification:  Jan  4, 2025
+%                                   Last modification:  Oct  1, 2026
 %
 
 % Revisions (last one first):
 %
+% Oct 1, 2026 (Zoran)
+%   - New feature: added a new standard field: recalcTime for all input files 
+%     that contain the usual '_full_output_' string in their names. The recalc time
+%     is created by extracting the time-stamp value that follows the "_full_output_" string.
+%     This field can later be used during qaqc to be able to recover when each half-hour period was
+%     last calculated by EddyPro.
 % Jan 4, 2025 (Zoran)
 %   - Improvement: Added "rowsToRead = [3 Inf];" when reading EP summary files.
 % Sep 10, 2024 (Zoran)
@@ -103,12 +109,24 @@ function [EngUnits, Header,tv,outStruct] = fr_read_EddyPro_file(fileName,assign_
                 end
             end
 
-            % [EngUnits, Header,tv,outStruct] = fr_read_generic_data_file(fileName,...
-            %                                                '',...
-            %                                                 [], [2 3],timeInputFormat,[4 Inf],1,'delimitedtext',0,2);           
             [EngUnits,Header,tv,outStruct] = fr_read_generic_data_file(fileName,...
                                                              [],[], dateColumnNum, timeInputFormat,colToKeep,structType,...
                                                              inputFileType,modifyVarNames,VariableNamesLine);            
+            % For fulloutput files, extract the recalcTime (time when the EP last ran on the data set)
+            % return 2000-01-01 in case of any error
+            try
+                stToFind = '_full_output_';
+                ind1=strfind(fileName,stToFind);
+                stToFind2 = "_adv.";
+                ind2 = strfind(fileName,stToFind2);
+                strTime = fileName(ind1+length(stToFind):ind2-3);
+                recalcTime = datenum(datetime(strTime,'inputformat','yyyy-MM-dd''T''HHmm'));
+                outStruct.recalcTime = ones(length(outStruct.TimeVector),1) * recalcTime;
+            catch ME
+                %disp(ME);
+                % in case of an error fill recalcTime with 2000-01-01 so qaqc can catch that
+                outStruct.recalcTime = ones(length(outStruct.TimeVector),1) * datenum(2000,1,1);
+            end
         elseif strcmpi(flagFileType,'biomet')
             timeInputFormat = {[],'HH:mm'}; 
             dateColumnNum = [1 2];
