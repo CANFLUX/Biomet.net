@@ -24,4 +24,4 @@ function result = isTimeVectorType(strName)
 
 
 cellDefaultTimeVectors = {'clean_tv','TimeVector','sample_tv','recalcTime','Time_vector'};
-result = matches(strName,cellDefaultTimeVectors,IgnoreCase=true);
+result = contains(strName,cellDefaultTimeVectors,IgnoreCase=true);
