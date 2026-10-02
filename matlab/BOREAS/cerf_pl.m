@@ -12,6 +12,8 @@ function [t,x] = cerf_pl(ind, yearIn, siteID, select, fig_num_inc,flgPause)
 
 % Revisions:
 %
+% Oct 2, 2026 (Zoran)
+%   - Bug fix: Fixed plotting of the pump voltage and cell pressure
 
 arg_default('fig_num_inc',1);
 arg_default('select',1);
@@ -221,14 +223,14 @@ end
 indAxes = indAxes+1; allAxes(indAxes) = gca;
 
 %----------------------------------------------------------
-% 24V Battery Voltage
+% 12V Battery Voltage
 %----------------------------------------------------------
 trace_name  = sprintf('%s: %s',siteID,' Battery Voltage');
 trace_path  = char( fullfile(pthSite,'Met','LI710D_7')...
                    );
 trace_legend = '';%char('hit-vin-mean','vin_sf_mean');
 trace_units = 'Battery Voltage (V)';
-y_axis      = [];
+y_axis      = [10 15];
 fig_num = fig_num + fig_num_inc;
 x = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num );
 indAxes = indAxes+1; allAxes(indAxes) = gca;
@@ -243,7 +245,7 @@ trace_path  = char( fullfile(pthSite,'Met','LI710D_1')...
 fig_num = fig_num + fig_num_inc;
 trace_units = 'Pump Voltage (V)';
 y_axis      = [];
-sysCurrent = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num,[1 1]*coeffSign ); 
+x = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num ); 
 indAxes = indAxes+1; allAxes(indAxes) = gca;
 
 %----------------------------------------------------------
@@ -256,7 +258,7 @@ trace_path  = char( fullfile(pthSite,'Met','LI710D_2')...
 trace_units = 'Cell Pressure (kPa)';
 y_axis      = [];
 fig_num = fig_num + fig_num_inc;
-sysCurrent = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num,[1 1]*coeffSign ); 
+x = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num ); 
 indAxes = indAxes+1; allAxes(indAxes) = gca;
 
 yetToDo = false;
