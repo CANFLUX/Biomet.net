@@ -8,10 +8,12 @@ function gui_Browse_Folder(pathIn,wildcard)
 %
 %
 % Zoran Nesic                   File created:       May 26, 2023
-%                               Last modifications: Feb 17, 2026
+%                               Last modifications: Oct  1, 2026
 
 % Revisions:
 %
+% Oct  1, 2026 (Zoran)
+%   - Improvement: now using isTimeVectorType to avoid trying to plot datanum/(read_bor type 8) files
 % Feb 17, 2026 (Zoran)
 %   - Bug fix: when Time Vector was named "TimeVector" the program was trying to read
 %              "Time_Vector" instead.
@@ -61,10 +63,7 @@ function gui_Browse_Folder(pathIn,wildcard)
     for cntS = 1:length(s_all)
         currentFile = fullfile(pathIn,s_all(cntS).name);
         if ~exist(currentFile,'dir') ...
-            && ~contains(currentFile,'Time_vector')...
-            && ~contains(currentFile,'TimeVector')...     
-            && ~contains(currentFile,'sample_tv')...
-            && ~contains(currentFile,'clean_tv')...
+            && ~isTimeVectorType(currentFile)...
             && ~startsWith(s_all(cntS).name,'.')
             cntTmp = cntTmp+1;
             if cntTmp == 1
@@ -168,13 +167,6 @@ function gui_Browse_Folder(pathIn,wildcard)
 
     end
 end
-
-% Ymax limit changed
-function hMaxChanged(hYmax,fig)
-    oldLim = ylim;
-    ylim([oldLim(1) hYmax.value])
-end
-
 
 % Create ValueChangedFcn callback
 function optionSelected(hDropDown,fig)
