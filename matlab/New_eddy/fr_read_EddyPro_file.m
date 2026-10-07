@@ -20,11 +20,14 @@ function [EngUnits, Header,tv,outStruct] = fr_read_EddyPro_file(fileName,assign_
 %
 %
 % (c) Zoran Nesic                   File created:       Aug 25, 2022
-%                                   Last modification:  Oct  1, 2026
+%                                   Last modification:  Oct  7, 2026
 %
 
 % Revisions (last one first):
 %
+% Oct 7, 2026 (Zoran)
+%   - changed the default date for recalcTime when/if an error happens. It's now 1990 instead of 2000
+%     (a bit more "unrealistic", there was no EP in 1990)
 % Oct 1, 2026 (Zoran)
 %   - New feature: added a new standard field: recalcTime for all input files 
 %     that contain the usual '_full_output_' string in their names. The recalc time
@@ -124,8 +127,8 @@ function [EngUnits, Header,tv,outStruct] = fr_read_EddyPro_file(fileName,assign_
                 outStruct.recalcTime = ones(length(outStruct.TimeVector),1) * recalcTime;
             catch ME
                 %disp(ME);
-                % in case of an error fill recalcTime with 2000-01-01 so qaqc can catch that
-                outStruct.recalcTime = ones(length(outStruct.TimeVector),1) * datenum(2000,1,1);
+                % in case of an error fill recalcTime with 1990-01-01 so qaqc can catch that
+                outStruct.recalcTime = ones(length(outStruct.TimeVector),1) * datenum(1990,1,1);
             end
         elseif strcmpi(flagFileType,'biomet')
             timeInputFormat = {[],'HH:mm'}; 

@@ -33,13 +33,15 @@ function [numOfFilesProcessed,numOfDataPointsProcessed] = fr_EddyPro_database(wi
 %                                 more info. Default = [];
 %
 % Zoran Nesic                   File Created:      Feb 16, 2024
-%                               Last modification: Sep 23, 2026
+%                               Last modification: Oct  7, 2026
 
 % Created based on fr_SmartFlux_database.m
 
 %
 % Revisions:
 %
+% Oct 7, 2026 (Zoran)
+%   - started working on overwriteOnlyOlderRecalcTimes. Not using it yet. Will do it on a separate branch.
 % Sep 23, 2026 (Zoran)
 %   - Bug fix: the "timeShift" option is now implemented properly - it shifts Stats.TimeVector instead of tv.
 % Mar 22, 2025 (Zoran)
@@ -117,6 +119,8 @@ for cntFiles=1:length(allFiles)
                 [~, ~,tv,Stats] = fr_read_EddyPro_file(fileName,[],[],optionsFileRead);
                 Stats.TimeVector = Stats.TimeVector + time_shift;
                 structType = 1;
+                % 
+                %Stats = overwriteOnlyOlderRecalcTimes(Stats,databasePath,timeUnit);
                 db_struct2database(Stats,databasePath,0,[],timeUnit,missingPointValue,structType,1);         
             end
             % if there is no errors update records
@@ -157,3 +161,35 @@ function ind = findFileInProgressList(fileName, filesProcessProgressList)
     if isempty(ind)
         ind = length(filesProcessProgressList)+1;
     end 
+
+% This function is supposed to provide a safe way to 
+% for each data point in Stats, find if there is already the same point 
+% saved in the database that had been recalculated more recently 
+function StatsOut = overwriteOnlyOlderRecalcTimes(Stats,databasePath,timeUnit)
+    StatsOut = struct([]);
+    % run it only on the data files that contain recalcTime field 
+    % (only _full_output_ files have those)
+    if isfield(Stats,'recalcTime')
+        allYears = unique(year(Stats.TimeVector)); % need all years in Stats to be able to create paths
+        for currentYear = allYears
+            dbP = strrep(databasePath,'yyyy',num2str(currentYear));
+            recalcPath = fullfile(dbP,'recalcTime');
+            if exist(recalcPath,'file')
+                % create a full TimeVector for this year
+                tmp = unique(fr_round_time(datenum(2026,1,1,1,1:60*48,0),timeUnit));
+                timeStep = tmp(2)-tmp(1);
+                fullTimeVector = fr_round_time(datenum(currentYear,1,1,0,30,0):timeStep:datenum(currentYear+1,1,1,0,0,1),timeUnit);
+                % load current recalcTime vector
+                oldRecalcTime = read_bor(recalcPath,8);
+                % extract index of rows that belong to currentYear
+                [oldRecalcInd,newRecalcInd] = ismember(fullTimeVector,Stats.TimeVector);
+                % Remove Stats rows that contain data that is already in the database
+                % and that was recalculated *before* the current data set.
+                % (in short, don't put in the database the data from an old(er) _full_output_ file)
+                pointsInStatsNewOrNotNaN = oldRecalcTime(oldRecalcInd(:)) > Stats.TimeVector(newRecalcInd(:));
+
+                %indCurrYear = find(Stats.TimeVector > datenum(currentYear,1,1) & Stats.TimeVector <= datenum(currentYear+1,1,1));
+            end
+        end
+    end
+
