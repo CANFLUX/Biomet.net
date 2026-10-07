@@ -240,8 +240,8 @@ for (i1 in 1:length(target.site)) {
   print(paste("######  ", target.site[i1], "  ##############################"))
 
   # ## locate the latest Combined file
-  comb.list.tmp <-
-     comb.list.in#[which(substr(comb.list.in, start = 1, stop = 6) ==
+  # comb.list.tmp <-
+     # comb.list.in#[which(substr(comb.list.in, start = 1, stop = 6) ==
   #                        target.site[i1])]
   # #comb.list.tmp <- comb.list.tmp[nchar(comb.list.tmp) - 4 == 48]
   #
@@ -251,12 +251,17 @@ for (i1 in 1:length(target.site)) {
   #     which(as.numeric(substr(comb.list.tmp, start = 37, stop = 48)) ==
   #             max(as.numeric(substr(comb.list.tmp, start = 37, stop = 48))))]
 
-  comb.list <-
-    comb.list.tmp
+  csv_list <- comb.list.in
 
+  # If for some reason there is another 'non-standard' csv in the folder, it will be ignored
+  csv_list <- grep(paste0(site,"_H[HR]_\\d{12}_\\d{12}.csv"),csv_list,value=TRUE)
+  # If there is still more than one, keep the last one (assumes it's most recent)
+  csv_filename = csv_list[length(csv_list)]
+  
   ## parse time resolution from filename
-  # NOTE: consider updating to use ameriflux site ID argument args[3] to parse file name instead of fixed position (P.Moore 2026-09-08)
-  target.res <- substr(comb.list, 8, 9)
+  # Using ameriflux site ID to parse file name instead of fixed position (P.Moore 2026-10-07)
+  tmp <- gsub(paste0(site,"_"),"",csv_filename)
+  target.res <- substr(tmp, 1, 2)
   if(!target.res %in% c("HH", "HR")){
     target.res <- "HH"
     print(paste0(
@@ -265,10 +270,10 @@ for (i1 in 1:length(target.site)) {
   }
   d.hr <- ifelse(target.res == "HR", 24, 48)
   hr <- ifelse(d.hr == 48, 30, 60)
-
+  
   ## read in latest combined QAQC file
   data1 <- read.csv(
-    file.path(args[2], comb.list[1]),
+    file.path(args[2], csv_filename),
     na.string = amf_cfg$na.alias,
     header = T,
     skip = 0,
