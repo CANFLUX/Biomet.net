@@ -9,11 +9,13 @@ function run_EP_API(siteID,startDay,endDay,EP_template)
 %
 %
 % Zoran Nesic               File created:             , 2025
-%                           Last modification:  Mar  3, 2026
+%                           Last modification:  Oct  7, 2026
 
 % 
 % Revisions
 %
+% Oct 7, 2026 (Zoran)
+%   - This function now saves the log file after EP_API run
 
 % confirm that all input arguments are correct
 if ~ischar(siteID)
@@ -77,6 +79,20 @@ flagCreate = true;
 flagOverwrite = [];
 fprintf(1,'Processing EP_API fulloutput files... \n');
 process_EP_API_fulloutput({siteID},pthEPAPI_main,pthEP_main,flagCreate,flagOverwrite)
+
+% Write the log file
+logFileFolder = fullfile(pthEPAPI_main,siteID,'log');
+if ~exist(logFileFolder,"dir")
+    mkdir(logFileFolder);
+end
+logFileName = fullfile(logFileFolder,sprintf('EP_API_%s.log',datestr(datetime,30))); %#ok<DATST>
+fprintf(1,'Writing the log file: %s\n',logFileName);
+fid = fopen(logFileName,'Wt');
+if fid>0
+    fprintf(fid,'%s',cmdout);
+    fclose(fid);
+end
+
 fprintf(1,'Done.\n');
 
 fprintf(1,'Finished at: %s (run time: %s)\n\n',datetime,datetime-stTime);
