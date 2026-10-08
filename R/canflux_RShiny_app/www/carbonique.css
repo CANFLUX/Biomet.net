@@ -1,0 +1,201 @@
+/* CARBONIQUE data explorer: visual identity
+   Colours from the CARBONIQUE logo; Roboto served locally from www/fonts. */
+
+@font-face { font-family: "Roboto"; font-style: normal; font-weight: 300; font-display: swap;
+  src: url("fonts/roboto-latin-300-normal.woff2") format("woff2"); }
+@font-face { font-family: "Roboto"; font-style: normal; font-weight: 400; font-display: swap;
+  src: url("fonts/roboto-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "Roboto"; font-style: italic; font-weight: 400; font-display: swap;
+  src: url("fonts/roboto-latin-400-italic.woff2") format("woff2"); }
+@font-face { font-family: "Roboto"; font-style: normal; font-weight: 500; font-display: swap;
+  src: url("fonts/roboto-latin-500-normal.woff2") format("woff2"); }
+@font-face { font-family: "Roboto"; font-style: normal; font-weight: 700; font-display: swap;
+  src: url("fonts/roboto-latin-700-normal.woff2") format("woff2"); }
+
+:root {
+  --cq-green: #8EC161;
+  --cq-yellow: #F7C200;
+  --cq-teal: #54B4CC;
+  --cq-brown: #77633C;
+  --cq-brown-dark: #5B4B2C;
+  --cq-ink: #2B2A27;
+  --cq-muted: #6B675E;
+  --cq-line: #E6E2D8;
+  --cq-page: #F7F6F2;
+  --cq-surface: #FFFFFF;
+  --cq-warn: #8A6400;
+  --cq-stripe: linear-gradient(90deg, var(--cq-green) 0 33.33%, var(--cq-yellow) 33.33% 66.66%, var(--cq-teal) 66.66% 100%);
+  --cq-shadow: 0 1px 2px rgba(43, 42, 39, .04), 0 2px 8px rgba(43, 42, 39, .04);
+}
+
+html, body { background: var(--cq-page); }
+body { color: var(--cq-ink); font-family: Roboto, system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased; }
+
+/* Bilingual long-form blocks (About page) */
+html[lang="fr"] .lang-en, html:not([lang="fr"]) .lang-fr { display: none !important; }
+
+/* ---------- Navbar ---------- */
+.navbar {
+  background: var(--cq-surface) !important;
+  border-bottom: 0;
+  box-shadow: none;
+  padding-top: .55rem; padding-bottom: .8rem;
+  position: relative;
+}
+.navbar::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: var(--cq-stripe); }
+.navbar .navbar-brand { padding: 0; margin-right: 2rem; }
+.cq-brand { display: inline-flex; align-items: center; gap: .9rem; text-decoration: none; }
+.cq-logo { height: 30px; width: auto; display: block; }
+.cq-brand-sub { color: var(--cq-brown); font-weight: 500; font-size: 1.02rem; letter-spacing: .01em;
+  padding-left: .9rem; border-left: 1px solid var(--cq-line); line-height: 1.6; white-space: nowrap; }
+.navbar .nav-link { color: var(--cq-muted); font-weight: 500; padding-left: .9rem !important; padding-right: .9rem !important;
+  border-radius: .5rem; border-bottom: 0 !important; }
+.navbar .nav-link:hover { color: var(--cq-brown-dark); background: rgba(119, 99, 60, .06); }
+.navbar .nav-link.active, .navbar .nav-link.show { color: var(--cq-brown-dark) !important; background: rgba(119, 99, 60, .1);
+  border-bottom: 0 !important; box-shadow: none !important; }
+
+.cq-lang-toggle { display: inline-flex; border: 1px solid var(--cq-line); border-radius: 999px; padding: 3px; background: var(--cq-page); }
+.cq-lang-toggle button { border: 0; background: transparent; color: var(--cq-muted); font: 500 .8rem/1 Roboto, sans-serif;
+  letter-spacing: .06em; padding: .42rem .7rem; border-radius: 999px; cursor: pointer; }
+.cq-lang-toggle button:hover { color: var(--cq-brown-dark); }
+.cq-lang-toggle button.active { background: var(--cq-brown); color: #fff; }
+.cq-lang-toggle button:focus-visible { outline: 2px solid var(--cq-teal); outline-offset: 2px; }
+
+/* ---------- Layout ---------- */
+.bslib-page-navbar > .container-fluid, .navbar + .container-fluid { padding-top: 1.25rem; }
+.bslib-sidebar-layout { border: 1px solid var(--cq-line) !important; border-radius: .9rem; background: var(--cq-surface);
+  box-shadow: var(--cq-shadow); overflow: visible; }
+.bslib-sidebar-layout > .sidebar { background: #FBFAF7 !important; border-right: 1px solid var(--cq-line) !important; }
+.bslib-sidebar-layout > .main { background: var(--cq-page); }
+.cq-sidebar .form-label, .cq-sidebar .control-label, .cq-controls .control-label {
+  font-weight: 500; font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; color: var(--cq-muted); margin-bottom: .35rem; }
+.cq-help { font-size: .8rem; color: var(--cq-muted); line-height: 1.45; margin-top: .25rem; }
+
+.cq-meta { border-top: 1px solid var(--cq-line); padding-top: .9rem; margin-top: .25rem; font-size: .82rem; }
+.cq-meta-row { display: flex; flex-direction: column; margin-bottom: .6rem; }
+.cq-meta-label { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--cq-muted); font-weight: 500; }
+
+/* Inputs */
+.form-check-input:checked { background-color: var(--cq-brown); border-color: var(--cq-brown); }
+.form-check-input:focus, .form-control:focus, .selectize-input.focus { border-color: var(--cq-teal) !important;
+  box-shadow: 0 0 0 .2rem rgba(84, 180, 204, .25) !important; }
+.selectize-input { border-radius: .5rem !important; border-color: var(--cq-line) !important; min-height: 38px;
+  padding: .45rem .7rem !important; box-shadow: none !important; }
+.selectize-dropdown { border-radius: .5rem; border-color: var(--cq-line); box-shadow: 0 8px 24px rgba(43, 42, 39, .12); }
+.selectize-dropdown .active { background: rgba(84, 180, 204, .14) !important; color: var(--cq-ink) !important; }
+.shiny-input-radiogroup .shiny-options-group { font-size: .9rem; }
+.shiny-input-radiogroup .form-check, .shiny-input-checkboxgroup .form-check { margin-bottom: .2rem; }
+.shiny-input-radiogroup .form-check-inline { margin-right: 1.1rem; }
+.shiny-input-container input[type="radio"], .shiny-input-container input[type="checkbox"] { margin-right: .5rem; }
+.shiny-input-container .radio-inline, .shiny-input-container .checkbox-inline { margin-right: 1.1rem; padding-left: 0; }
+.shiny-input-container .radio label, .shiny-input-container .checkbox label { padding-left: 0; }
+.cq-icon { vertical-align: -2px; margin-right: .35rem; }
+.btn-outline-primary { --bs-btn-color: var(--cq-brown-dark); --bs-btn-border-color: var(--cq-brown);
+  --bs-btn-hover-bg: var(--cq-brown); --bs-btn-hover-border-color: var(--cq-brown); --bs-btn-hover-color: #fff; }
+
+/* ---------- Overview tiles ---------- */
+.cq-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .9rem; margin-bottom: 1rem; }
+.cq-stat { background: var(--cq-surface); border: 1px solid var(--cq-line); border-radius: .8rem; padding: .85rem 1rem .8rem;
+  box-shadow: var(--cq-shadow); position: relative; overflow: hidden; min-width: 0; }
+.cq-stat::before { content: ""; position: absolute; left: 0; top: 0; right: 0; height: 3px; }
+.cq-stat.t1::before { background: var(--cq-teal); }
+.cq-stat.t2::before { background: var(--cq-green); }
+.cq-stat.t3::before { background: var(--cq-yellow); }
+.cq-stat.t4::before { background: var(--cq-brown); }
+.cq-stat-label { font-size: .72rem; text-transform: uppercase; letter-spacing: .07em; color: var(--cq-muted); font-weight: 500;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cq-stat-value { font-size: 1.45rem; font-weight: 500; color: var(--cq-ink); margin-top: .15rem; font-variant-numeric: tabular-nums;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cq-stat-sub { font-size: .8rem; color: var(--cq-muted); margin-top: .1rem; }
+.cq-stat-time { font-size: .95rem; color: var(--cq-muted); font-weight: 400; margin-left: .45rem; }
+.cq-warn { color: var(--cq-warn); font-weight: 500; }
+.cq-bar { height: 5px; background: #EEEBE3; border-radius: 99px; margin-top: .5rem; overflow: hidden; }
+.cq-bar-fill { height: 100%; background: #5A9E2F; border-radius: 99px; }
+
+/* ---------- Cards and tabs ---------- */
+.card { border-color: var(--cq-line); border-radius: .9rem; box-shadow: var(--cq-shadow); }
+.card-header { background: var(--cq-surface); border-bottom-color: var(--cq-line); }
+.nav-underline { --bs-nav-underline-link-active-color: var(--cq-brown-dark); }
+.card-header .nav-underline { gap: 1.4rem; }
+.navbar .navbar-nav { gap: .25rem; }
+.nav-underline .nav-link { color: var(--cq-muted); font-weight: 500; font-size: .92rem; padding-top: .7rem; padding-bottom: .7rem; }
+.nav-underline .nav-link.active { border-bottom-color: var(--cq-brown) !important; color: var(--cq-brown-dark); }
+.nav-underline .nav-link:hover { color: var(--cq-brown-dark); }
+
+.cq-controls { display: flex; flex-wrap: wrap; gap: .25rem 1.25rem; align-items: flex-end; margin-bottom: .25rem; }
+.cq-controls .form-group, .cq-controls .shiny-input-container { margin-bottom: .6rem; }
+.cq-controls .shiny-input-container:not(.shiny-input-container-inline) { max-width: 100%; }
+.cq-control-end { margin-left: auto; margin-bottom: .75rem; }
+.cq-control-check { margin-bottom: .45rem; }
+.cq-control-check .checkbox { margin: 0; }
+
+.cq-var-desc { font-size: .85rem; color: var(--cq-muted); margin: -.1rem 0 .4rem; }
+.cq-var-desc b { color: var(--cq-ink); font-weight: 500; }
+.cq-fit { font-size: .9rem; color: var(--cq-ink); margin: 0 0 .25rem; font-variant-numeric: tabular-nums; }
+.cq-caption { font-size: .8rem; color: var(--cq-muted); margin: .35rem 0 .9rem; line-height: 1.45; max-width: 75ch; }
+.cq-subhead { font-size: .78rem; text-transform: uppercase; letter-spacing: .07em; color: var(--cq-muted); font-weight: 500;
+  margin: 1.1rem 0 .1rem; padding-top: 1rem; border-top: 1px solid var(--cq-line); }
+
+/* ---------- Busy state ---------- */
+.cq-plot-wrap { position: relative; }
+.cq-plot-wrap .recalculating { opacity: .3; transition: opacity .15s ease; }
+.cq-plot-wrap:has(.recalculating)::after,
+.cq-plot-wrap:has(.html-widget-output:empty)::after {
+  content: ""; position: absolute; top: 50%; left: 50%; width: 34px; height: 34px; margin: -17px 0 0 -17px;
+  border-radius: 50%; border: 3px solid rgba(84, 180, 204, .25); border-top-color: var(--cq-teal);
+  animation: cq-spin .8s linear infinite; pointer-events: none;
+}
+@keyframes cq-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .cq-plot-wrap:has(.recalculating)::after, .cq-plot-wrap:has(.html-widget-output:empty)::after { animation-duration: 2.4s; }
+}
+
+/* Errors: show a quiet message rather than hiding everything */
+.shiny-output-error { color: var(--cq-muted); font-size: .9rem; }
+.shiny-output-error-validation { color: var(--cq-muted); font-size: .95rem; padding: 2rem 0; text-align: center; }
+
+/* ---------- About ---------- */
+.cq-about { max-width: 820px; margin: 0 auto; }
+.cq-about .card-body { padding: 2rem 2.4rem; }
+.cq-about-logo { width: 200px; height: auto; margin: 0 0 1.25rem -6px; }
+.cq-about h3 { font-size: 1.15rem; color: var(--cq-brown-dark); margin-top: 1.5rem; }
+.cq-about p, .cq-about li { line-height: 1.65; max-width: 70ch; }
+
+/* ---------- Footer ---------- */
+.cq-footer { text-align: center; color: var(--cq-muted); font-size: .8rem; padding: 1.5rem 0 1.25rem; display: flex; gap: .75rem;
+  justify-content: center; flex-wrap: wrap; }
+.cq-footer a { color: var(--cq-brown-dark); }
+
+.cq-fatal { max-width: 640px; margin: 4rem auto; text-align: center; }
+.cq-fatal .cq-logo { height: 40px; margin-bottom: 1.5rem; }
+
+/* ---------- Small screens ---------- */
+@media (max-width: 1100px) {
+  .cq-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 991.98px) {
+  .cq-brand-sub { display: none; }
+  .navbar .navbar-collapse { padding-top: .5rem; }
+  .navbar .navbar-nav > li > a, .navbar .nav-link { padding-top: .55rem !important; padding-bottom: .55rem !important; margin: .1rem 0; }
+  .cq-lang-toggle { margin: .5rem 0; }
+}
+@media (max-width: 767.98px) {
+  /* tabs scroll sideways instead of stacking */
+  .card-header .nav-underline { flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; gap: 1rem;
+    scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .card-header .nav-underline::-webkit-scrollbar { display: none; }
+  .card-header .nav-underline .nav-link { white-space: nowrap; }
+  .cq-stat-label { white-space: normal; }
+}
+@media (max-width: 575.98px) {
+  .bslib-page-navbar > .container-fluid { padding-left: 16px; padding-right: 16px; }
+  .cq-stats { gap: .6rem; }
+  .cq-stat { padding: .7rem .75rem; }
+  .cq-stat-time { display: block; margin-left: 0; font-size: .8rem; }
+  .cq-logo { height: 24px; }
+  .cq-stat-value { font-size: 1.15rem; }
+  .cq-control-end { margin-left: 0; }
+  .cq-controls .shiny-input-container { width: 100% !important; }
+  .cq-about .card-body { padding: 1.25rem; }
+}
