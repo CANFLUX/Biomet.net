@@ -11,10 +11,13 @@ function create_EP_API_batch_file(siteID,startDay,endDay,EP_template)
 %
 %
 % Zoran Nesic               File created:       Aug 14, 2025
-%                           Last modification:  Jun  7, 2026
+%                           Last modification:  Oct 12, 2026
 
 % Revisions
 %
+% Oct 12, 2026 (Zoran)
+%   - Added an option for the function to apply siteID_metaDataUpdates.csv
+%     (changes SmartFlux Metadata with user entered metadata)
 % Jun 7, 2026 (Zoran)
 %   - Added code to handle the missing HighFrequencyData folder for vinimet sites 
 % Nov 24, 2025 (Zoran)
