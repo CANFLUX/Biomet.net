@@ -135,7 +135,7 @@ for yearIn = allYears
     
     % Plottting
     figure(1)
-    if ~isnan(lastDate)
+    if isdatetime(lastDate)
         plot(tv_dt,isnan(x)+0.2,'.',tv_dt,isnan(x1)+0.1,'.',tv_dt,isnan(x2),'.',tv_dt,isnan(x_recalcTime)+0.3,'.', [lastDate lastDate],[-0.5 0.5],'-');
         legend('SF','EP','GHG - averages','recalcTime','GHG - last file')
     else
