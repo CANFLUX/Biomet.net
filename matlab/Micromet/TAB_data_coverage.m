@@ -8,7 +8,10 @@ function TAB_data_coverage(siteID,allYears,hfPath)
 %                     this is the path to this folder. Most of the time 
 %                     this is not used.
 % 
-%
+% Examples:
+%       TAB_data_coverage('UQAM_1',2024:2026)
+%       TAB_data_coverage('UQAM_1',2025,'Z:\uqam-site\Sites')
+%       TAB_data_coverage('DSM',2021:2026,'\\137.82.55.154')
 %
 %
 % Zoran Nesic           File created        Oct 18, 2026
@@ -17,7 +20,11 @@ function TAB_data_coverage(siteID,allYears,hfPath)
 
 % Revisions:
 %
- 
+% Oct 19, 2026 (Zoran)
+%   - Bug fix: Fixed an issue when the program runs on the data set
+%     that hasn't have a good gap-filling run - the file:
+%     fullfile(pathClean,'ThirdStage_Default_Ustar','USTAR_uStar_Thres')
+%     does not exist. 
 
 arg_default('hfPath','')
 % If this function is used at the server, pick the hfPath info from
@@ -35,6 +42,10 @@ fprintf('Processing: %s\n',siteID);
 for yearIn = allYears
     fprintf('Year : %d\n',yearIn);    
     pathIn = biomet_path(yearIn,siteID,'Flux');
+    if ~exist(fullfile(pathIn,'clean_tv'),'file')
+        fprintf(2,'No data for %d!\n',yearIn);
+        continue
+    end
     tv = read_bor(fullfile(pathIn,'clean_tv'),8,[],yearIn);
     tv_dt = datetime(tv,'ConvertFrom','datenum');
     x = read_bor(fullfile(pathIn,'air_p_mean'),[],[],yearIn);
@@ -62,7 +73,8 @@ for yearIn = allYears
     
     % Find how much raw HF (GHG) data there is:
     if ~isempty(hfPath)
-        if any(contains(get_TAB_site_names,'BB'))
+        % reorder pathHF for vinimet sites. All new sites follow the proper folder setup
+        if any(contains({'BB','BB2','DSM','RBM','YOUNG','HOGG','OHM'},siteID,'IgnoreCase',true))
             pathHF = fullfile(hfPath,'highfreq',siteID,'raw',num2str(yearIn));
         else
             pathHF = fullfile(hfPath,siteID,'HighFrequencyData','raw',num2str(yearIn));
@@ -109,6 +121,12 @@ for yearIn = allYears
     end    
     fprintf(flagC,'Last second stage cleaning on: %s (ini file date :%s)\n',lastRun_2.date,iniInfo_2.date);
     lastRun_3 = dir(fullfile(pathClean,'ThirdStage_Default_Ustar','USTAR_uStar_Thres'));
+    if isempty(lastRun_3)
+        % set a very old date here just so the program prints all the errors later
+        clear lastRun_3
+        lastRun_3.datenum = datenum(1900,1,1,0,0,0);
+        lastRun_3.date = datestr(lastRun_3.datenum);
+    end
     iniInfo_3 = dir(path3rdStage);
     if lastRun_3.datenum < iniInfo_3.datenum
         flagC = 2;
