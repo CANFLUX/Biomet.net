@@ -160,6 +160,7 @@ for yearIn = allYears
         plot(tv_dt,isnan(x)+0.2,'.',tv_dt,isnan(x1)+0.1,'.',tv_dt,isnan(x2),'.',tv_dt,isnan(x_recalcTime)+0.3,'.');
         legend('SF','EP','GHG - averages','recalcTime')
     end
+    xlim([datetime(yearIn,1,1) datetime(yearIn+1,1,1)]);
     title(sprintf('%s (%s) \n',siteID,char(datetime)))
     ylim([-0.1 0.5])   
     zoom on
