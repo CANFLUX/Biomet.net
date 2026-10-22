@@ -6,12 +6,14 @@ function [t,x] = cerf_pl(ind, yearIn, siteID, select, fig_num_inc,flgPause)
 %   the UBC data-base formated files.
 %
 % (c) Nesic Zoran         File created:       Sep  8, 2026      
-%                         Last modification:  Sep  8, 2026
+%                         Last modification:  Oct 22, 2026
 %           
 %
 
 % Revisions:
 %
+% Oct 22, 2026 (Zoran & Inbar)
+%   - Added air pressure plot, pressure drop
 % Oct 2, 2026 (Zoran)
 %   - Bug fix: Fixed plotting of the pump voltage and cell pressure
 
@@ -249,17 +251,33 @@ x = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_
 indAxes = indAxes+1; allAxes(indAxes) = gca;
 
 %----------------------------------------------------------
-% Cell Pressure
+% Pressures
 %----------------------------------------------------------
-trace_name  = sprintf('%s: %s',siteID,'Cell Pressure');
+trace_name  = sprintf('%s: %s',siteID,'Pressures');
 coeffSign = 0;
-trace_path  = char( fullfile(pthSite,'Met','LI710D_2')...
+trace_path  = char( fullfile(pthSite,'Met','LI710D_2'),...
+                    fullfile(pthSite,'Met','pa_l')...
                    );
-trace_units = 'Cell Pressure (kPa)';
+trace_units = 'Pressure (kPa)';
+trace_legend = char('Cell Pressure','Air Pressure');
 y_axis      = [];
 fig_num = fig_num + fig_num_inc;
 x = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num ); 
 indAxes = indAxes+1; allAxes(indAxes) = gca;
+
+%----------------------------------------------------------
+% Pressure drop
+%----------------------------------------------------------
+trace_name  = sprintf('%s: %s',siteID,'Pressure drop');
+coeffSign = 0;
+trace_path  = x(:,2) - x(:,1);
+trace_units = 'Pressure (kPa)';
+trace_legend = [];
+y_axis      = [];
+fig_num = fig_num + fig_num_inc;
+x = plt_msig( trace_path, ind, trace_name, trace_legend, yearIn, trace_units, y_axis, t, fig_num ); 
+indAxes = indAxes+1; allAxes(indAxes) = gca;
+shadeBadZone([0.3 1.55])
 
 yetToDo = false;
 if yetToDo 
@@ -288,7 +306,7 @@ if yetToDo
     trace_name  = sprintf('%s: %s',siteID,'Logger Voltage');
     
     trace_path  = char(fullfile(pthSite,'flux','Voltage_12V_Avg'),...
-        fullfile(pthSite,'met','SYS_Logger_Batt_Min'));
+                       fullfile(pthSite,'met','SYS_Logger_Batt_Min'));
     trace_legend = char('Voltage 12V Avg','SYS Logger Batt Min');      
     trace_units = 'Instrument Voltage (V)';
     y_axis      = [];
