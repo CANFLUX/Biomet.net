@@ -1,4 +1,4 @@
-function [numOfFilesProcessed,numOfDataPointsProcessed] = fr_LI7x0_cloud_database(wildCardPath,processProgressListPath,databasePath,time_shift,timeUnit,missingPointValue,optionsFileRead)
+function [numOfFilesProcessed,numOfDataPointsProcessed] = fr_LI7x0_cloud_database(wildCardPath,processProgressListPath,databasePath,time_shift,timeUnit,missingPointValue,optionsFileRead) %#ok<INUSD>
 % fr_LI7x0_cloud_database - reads LI-710 and LI-720 files downloaded from LI-COR cloud and puts data into data base
 % 
 % fr_LI7x0_cloud_database(wildCardPath,processProgressListPath,databasePath,time_shift,timeUnit,missingPointValue)
@@ -13,11 +13,6 @@ function [numOfFilesProcessed,numOfDataPointsProcessed] = fr_LI7x0_cloud_databas
 % NOTE1:
 %       databasePath needs to include "\yyyy\" string if multiple years of
 %       data are going to be found in the wildCardPath folder!
-% NOTE2:
-%       To speed up reprocessing of multipe EddyPro files that are found in wildCardPath,
-%       see if it can be changed to load up all the data first and 
-%       only then run db_struct2database. Some careful error handling when appending Structures
-%       to each other will be needed. Some fields may appear or disapear,...
 %
 % Inputs:
 %       wildCardPath            - full SmartFlux summary file name, including path. Wild cards accepted
@@ -84,7 +79,7 @@ for cntFiles=1:length(allFiles)
     end
     % if the file modification data change since the last processing then
     % reprocess it
-    if filesProcessProgressList(indProgressList).Modified < datenum(allFiles(cntFiles).date)
+    if filesProcessProgressList(indProgressList).Modified < datenum(allFiles(cntFiles).date) %#ok<*DATNM>
         try
             % when a file is found that hasn't been processed try
             % to load it. fr_read_EddyPro_file is able to read
