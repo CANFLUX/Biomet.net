@@ -11,10 +11,13 @@ function create_EP_API_batch_file(siteID,startDay,endDay,EP_template)
 %
 %
 % Zoran Nesic               File created:       Aug 14, 2025
-%                           Last modification:  Jun  7, 2026
+%                           Last modification:  Oct 12, 2026
 
 % Revisions
 %
+% Oct 12, 2026 (Zoran)
+%   - Added an option for the function to apply siteID_metaDataUpdates.csv
+%     (changes SmartFlux Metadata with user entered metadata)
 % Jun 7, 2026 (Zoran)
 %   - Added code to handle the missing HighFrequencyData folder for vinimet sites 
 % Nov 24, 2025 (Zoran)
@@ -60,13 +63,20 @@ sourceDirStart = regexprep(sourceDirStart,'\','/');
 sourceDirEnd   = fullfile(sourceDirMain,siteID,hfFolder,'raw',string(year(datetime(endDay))));
 sourceDirEnd   = regexprep(sourceDirEnd,'\','/');
 
+metaDataUpdatesPath = fullfile(structProject.hfPath,siteID,'HighFrequencyData',[siteID '_metaDataUpdates.csv']);
+metaDataUpdatesPath   = regexprep(metaDataUpdatesPath,'\','/');
+
 fprintf(fid,'ECHO Running Matlab-generated Python call \n');
 fprintf(fid,'@%s \n',diskName);
 fwrite(fid,['@cd ' structProject.EPAPIpath newline],"uchar");
 fprintf(fid, '@CALL .venv\\Scripts\\activate \n');
-%@CALL C:\Projects\Scripts\EP_API_call.bat
-% python eddyProAPI.py --siteID UQAM_3 --biometUser True --eddyProStaticConfig Templates/ClosedPathStandard.eddypro --dateRange 2025-4-10 2025-7-21 --sourceDir U:/Sites/UQAM_3/HighFrequencyData/raw/2025 --runMode 2
-fprintf(fid,'python eddyProAPI.py --siteID %s --biometUser True --eddyProStaticConfig %s --dateRange %s %s --sourceDir %s %s --runMode 2\n',siteID,EP_template,startDay,endDay,sourceDirStart,sourceDirEnd);
+
+% If file metaDataUpdatesPath exists add it to the python command line
+if exist(metaDataUpdatesPath,"file")
+    fprintf(fid,'python eddyProAPI.py --siteID %s --biometUser True --eddyProStaticConfig %s --metaDataUpdates %s --dateRange %s %s --sourceDir %s %s --runMode 2\n',siteID,EP_template,metaDataUpdatesPath,startDay,endDay,sourceDirStart,sourceDirEnd);
+else  
+    fprintf(fid,'python eddyProAPI.py --siteID %s --biometUser True --eddyProStaticConfig %s --dateRange %s %s --sourceDir %s %s --runMode 2\n',siteID,EP_template,startDay,endDay,sourceDirStart,sourceDirEnd);
+end
 fprintf(fid,'@CALL .venv\\Scripts\\deactivate \n'); 
 fprintf(fid,'ECHO Finished with Python \n');
 fclose(fid);
