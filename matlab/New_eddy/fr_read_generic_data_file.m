@@ -45,11 +45,15 @@ function [EngUnits,Header,tv,outStruct] = fr_read_generic_data_file(fileName,ass
 %                          
 %
 % (c) Zoran Nesic                   File created:       Dec 20, 2023
-%                                   Last modification:  Aug 28, 2025
+%                                   Last modification:  Nov  4, 2026
 %
 
 % Revisions (last one first):
 %
+% Nov 4, 2026 (Zoran)
+%   - Bug fix: LI-COR in their wisdom made one column name in the header be a number.
+%              A new feature is added that renames column names that start with a digit by
+%              adding a prefix "x" in the front ('159' -> 'x159').
 % Aug 28, 2025 (Zoran)
 %   - Had to address another issue that was caused by the previous fix:
 %       - Added testing the existance of and setting the datetime format:
@@ -363,6 +367,7 @@ function renFields = renameFields(fieldsIn)
     renFields  = strrep(renFields,'''','_');
     renFields  = strrep(renFields,'?','Q');
     renFields  = strrep(renFields,'µ','u');
+    renFields  = regexprep(renFields, '^\d', 'x$0'); % Add prefix "x" to leading numbers
 
     % At this point it's important to check if the renFields contains only
     % valid Matlab variable names (digits, letters and underscores).
@@ -404,6 +409,7 @@ function renFields = renameFields(fieldsIn)
     renFieldsNew  = replace(renFieldsNew,'²','2');
     renFieldsNew  = replace(renFieldsNew,'?','Q');
     renFieldsNew  = replace(renFieldsNew,'µ','u');
+    renFieldsNew  = regexprep(renFieldsNew, '^\d', 'x$0'); % Add prefix "x" to leading numbers
 
     %Remove all '_' that a field starts with
     % do this only for cells

@@ -139,8 +139,8 @@ function structOut = read_LI7x0_file(fileName)
     % removing all the characters from the column name that 
     % follow ther first "_".
     % Note: the user should make sure that they know if 
-    %       this abriviated some variable name too much.
-    %       Example of one abriviated variable is "Monin"
+    %       this abbreviated  some variable name too much.
+    %       Example of one abbreviated  variable is "Monin"
     %       It should be "Monin-Obukhov length".
     %       In such a case the user should rename this trace 
     %       in the 1st stage ini file to something 
