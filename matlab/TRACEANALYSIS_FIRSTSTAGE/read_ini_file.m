@@ -34,6 +34,12 @@ function trace_str_out = read_ini_file(fid,yearIn,fromRootIniFile)
 
 % Revisions
 %
+% Nov 24, 2026 (Zoran)
+%   - All TAB_include_ini files were moved to Biomet.net/TAB_include_files. This 
+%     makes it easier to keep the include files up to date. 
+%     The old include files from the
+%     Database/Calculation_Procedures/TraceAnalisys_ini folder are not used anymore.
+%   - this version of the function reads the include files from TAB_include_files folder.
 % Sep 4, 2026 (Zoran)
 %   - Bug fix: The pipeline did not work properly when Timezone parameter was not set
 %     in the ini file. The program assumed that the Timezone = 0 which only worked for
@@ -265,16 +271,10 @@ try
                 end
             else
                 % 
-                % Then assume that the include file is in directly under TraceAnalysis_ini folder
+                % Then assume that the include file is in directly under 
+                % Biomet.net/TAB_include_files
                 % and it's common for all sites
-                indSep = find(iniFilePath==filesep);
-                if indSep(end) == length(iniFilePath)
-                    % There is an extra filesep at the end of the path. Remove
-                    iniFilePath = iniFilePath(1:end-1);
-                    newPath = iniFilePath(1:indSep(end-1)-1);
-                else
-                    newPath = iniFilePath(1:indSep(end)-1);
-                end
+                newPath = fullfile(findBiometNetPath,'TAB_include_files');
                 if exist(fullfile(newPath,includeFileName),'file')
                     fidInclude = fopen(fullfile(newPath,includeFileName),'r');
                     if fidInclude < 1
