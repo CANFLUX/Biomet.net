@@ -18,10 +18,13 @@ function create_TAB_ProjectFolders(projectPath,siteID,flagAddingSiteOnly)
 %
 %
 % Zoran Nesic           File created:       Aug 23, 2024
-%                       Last modification:  Mar  9, 2025
+%                       Last modification:  Nov 24, 2026
 
 % Revisions
 %
+% Nov 24, 2026 (Zoran)
+%   - The program does not clone TAB_include_files repo anymore. Those files are
+%     now part of the Biomet.net repo.
 % Mar 9, 2025 (Zoran)
 %   - Added the option: flagAddinSiteOnly. If TRUE, it means that the call is just
 %     adding a new site to an existing project. Proceed with a "quiet" siteID creation.
@@ -107,8 +110,8 @@ end
 tmpPath = fullfile(projectPath,'Database','Calculation_Procedures','TraceAnalysis_ini');
 if ~exist(tmpPath,'dir')
     mkdir(tmpPath);
-    url1 = 'https://github.com/CANFLUX/TAB_include_files.git';
-    gitclone(url1,tmpPath,Depth=1);
+    % url1 = 'https://github.com/CANFLUX/TAB_include_files.git';
+    % gitclone(url1,tmpPath,Depth=1);
 else
     if ~flagAddingSiteOnly
         % For repo to be downloaded the folder needs to be empty so first remove it
@@ -123,13 +126,13 @@ else
                 fprintf('Overwriting TraceAnalisis_ini folder.\n\n')
                 rmdir(tmpPath,"s");
                 mkdir(tmpPath);
-                url1 = 'https://github.com/CANFLUX/TAB_include_files.git';
-                gitclone(url1,tmpPath,Depth=1);           
+                % url1 = 'https://github.com/CANFLUX/TAB_include_files.git';
+                % gitclone(url1,tmpPath,Depth=1);           
             else
-                fprintf('Skipping TraceAnalisis_ini folder repo cloning.\n\n')
+                fprintf('Skipping creating TraceAnalisis_ini folder.\n\n')
             end
         else
-            fprintf('Skipping TraceAnalisis_ini folder repo cloning.\n\n')
+            fprintf('Skipping creating TraceAnalisis_ini folder.\n\n')
         end
     end
 end
