@@ -26,7 +26,7 @@ function db_update_Micromet_EddyPro_Recalcs(yearIn,sitesIn,flagProcessBiometEddy
 
 
 arg_default('yearIn',year(datetime));
-arg_default('sites',{'BB'});
+arg_default('sitesIn',{'BB'});
 arg_default('flagProcessBiometEddyProFiles',0);
 
 if exist('biomet_sites_default.m','file')
@@ -53,24 +53,24 @@ for cntYear=1:length(yearIn)
         progressListPath = fullfile(pth_db,sprintf('%s_EddyPro_progressList_%d.mat',siteID,yearIn(cntYear)));
 
         % Path to Flux Database
-        outputPath = fullfile(pth_db,'yyyy',siteID,'Flux');                     
+        outputPath = fullfile(pth_db,'yyyy',siteID,'Flux');
         % Path to the source files
         inputPath = fullfile(sites_pth,...
                            sprintf('%s/Flux/eddypro_%s_%d*_full_output*_adv.csv',siteID,siteID,yearIn(cntYear)));
         % Process the new files
-        [numOfFilesProcessed,numOfDataPointsProcessed]= fr_EddyPro_database(inputPath,progressListPath,outputPath,[],[],missingPointValue);           
+        [numOfFilesProcessed,numOfDataPointsProcessed]= fr_EddyPro_database(inputPath,progressListPath,outputPath,[],[],missingPointValue);
         fprintf('%s  EddyPro_full_output:  Number of files processed = %d, Number of HHours = %d\n',siteID,numOfFilesProcessed,numOfDataPointsProcessed);
         
         % Check if processing of Biomet EddyPro output files is requested
         if flagProcessBiometEddyProFiles ~= 0
             % Data goes to Met folder in the database
             % Path to Met Database
-            outputPath = fullfile(pth_db,'yyyy',siteID,'Met');                     
+            outputPath = fullfile(pth_db,'yyyy',siteID,'Met');
             % Path to the source files
             inputPath = fullfile(sites_pth,...
                                sprintf('%s/Flux/eddypro_%s_%d*_biomet*_adv.csv',siteID,siteID,yearIn(cntYear)));
             % Process the new files
-            [numOfFilesProcessed,numOfDataPointsProcessed]= fr_EddyPro_database(inputPath,progressListPath,outputPath,[],[],missingPointValue);           
+            [numOfFilesProcessed,numOfDataPointsProcessed]= fr_EddyPro_database(inputPath,progressListPath,outputPath,[],[],missingPointValue);
             fprintf('%s  EddyPro_biomet:  Number of files processed = %d, Number of HHours = %d\n',siteID,numOfFilesProcessed,numOfDataPointsProcessed);
         end
     end %j  site counter
