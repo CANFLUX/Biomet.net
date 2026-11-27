@@ -110,25 +110,27 @@ for i in range(len(var_str)):
             month = list(range(1,13))
             month = [str(x) for x in month]
         
-        #month = str(mnth_rng[k])
-        filename = "{v}_{y}.nc".format(v=variable, y=year)
-        out_pth = Path(str(sys.argv[7]))
-        target = os.path.join(out_pth, filename)
-        request["variable"] = variable
-        request["month"] = month
-        request["year"] = year
+        for k in range(len(month)):
         
-        fileExists = os.path.isfile(target)
-        
-        if not fileExists:
-            print(f"\nStarting download for {filename} -> {target}")
-            result = client.retrieve(dataset, request)
+            month_str = str(month[k])
+            filename = "{v}_{y}_{m}.nc".format(v=variable, y=year, m=month_str)
+            out_pth = Path(str(sys.argv[7]))
+            target = os.path.join(out_pth, filename)
+            request["variable"] = variable
+            request["month"] = month_str
+            request["year"] = year
             
-            try:
-                result.download(target)
-                print(f"\nFinished download for {filename}")
-                time.sleep(1)
-            except:
-                print(f"\nNo data found for {filename} or API error")
-        else:
-            print(f"\n{target} already exits.")
+            fileExists = os.path.isfile(target)
+            
+            if not fileExists:
+                print(f"\nStarting download for {filename} -> {target}")
+                result = client.retrieve(dataset, request)
+                
+                try:
+                    result.download(target)
+                    print(f"\nFinished download for {filename}")
+                    time.sleep(1)
+                except:
+                    print(f"\nNo data found for {filename} or API error")
+            else:
+                print(f"\n{target} already exits.")
