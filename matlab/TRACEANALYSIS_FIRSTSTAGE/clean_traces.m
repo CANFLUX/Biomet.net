@@ -13,6 +13,10 @@ function data_out = clean_traces(trace_str,interp_flag)
 
 % Revisions:
 %
+% Nov 27, 2026 (Zoran)
+%   - Bug fix: The function is now able to clean up the current year up to the
+%              current day. Before it would only clean the first few hours of the 
+%              current day.
 % Mar 31, 2026 (Zoran)
 %   - New feature: minMax can now have month-specific values for min and max. 
 %     For more information see findOutOfRangePoints().
@@ -120,7 +124,7 @@ clean_flags = [];
 
 %Replace any points beyond the current date with NaNs:
 if isfield(trace_in, 'Year') & trace_in.Year == year(datetime) %#ok<*AND2>
-   curr_day = day(datetime,"dayofyear");
+   curr_day = day(datetime,"dayofyear")+1;
    indtimeAfter = find(trace_in.DOY >= curr_day);
   
   %*********************************************************************
