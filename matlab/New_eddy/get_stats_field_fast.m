@@ -9,11 +9,15 @@ function [x, tv] = get_stats_field_fast(Stats,fieldIn)
 %
 %
 % Zoran Nesic               File created:              2023
-%                           Last modification: Jan 19, 2024
+%                           Last modification: Nov 15, 2026
 
 
 % Revisions:
 %
+% Nov 25, 2026 (Zoran)
+%   - bug fix: the function used to report an error if any of the elements
+%     of field were missing in one of Stats(i). Now it just sets the
+%     missing element to NaN
 % Jan 18, 2024 (Zoran)
 %   - bug fixes
 %  Nov 16, 2023 (Zoran)
@@ -50,10 +54,11 @@ for cntStats = 1:length(Stats)
                    try                    
                        newStats = newStats.(mainField);
                    catch
-                       fprintf('Field "%s" does not exist in the structure. (Input field: "%s")\n',mainField,fieldIn);
-                       return
+                       newStats = NaN;
+                       % fprintf('Field "%s" does not exist in the structure. (Input field: "%s")\n',mainField,fieldIn);
+                       % return
                    end               
-                   if length(matDim) == 1
+                   if isscalar(matDim)
                         newStats = newStats(matDim);
                    elseif length(matDim) == 2
                         newStats = newStats(matDim(1),matDim(2));
@@ -65,8 +70,9 @@ for cntStats = 1:length(Stats)
                    try                    
                        newStats = newStats.(currentPart);
                    catch ME
-                       fprintf('Field "%s" does not exist in the structure. (Input field: "%s")\n',currentPart,fieldIn);
-                       return
+                       newStats = NaN;
+                       % fprintf('Field "%s" does not exist in the structure. (Input field: "%s")\n',currentPart,fieldIn);
+                       % return
                    end               
                end
             end

@@ -9,10 +9,13 @@ function Biomet_Main_Scheduler
 %
 %
 % Zoran Nesic           File created:       Feb 12, 2024
-%                       Last modification:  May 17, 2026
+%                       Last modification:  Oct xx, 2026
 
 % Revisions:
 %
+% Oct xx, 2026 (Zoran)
+%   - Changed the time of Picarro downloads from hourX=1 to hourX=10
+%   - after Picarro processing program now goes to cd "d:\Matlab" not to "d:\"
 % May 17, 2026 (Zoran)
 %   - changed data drive name back to T:\
 % Apr 21, 2026 (Zoran)
@@ -173,7 +176,7 @@ cd('d:\')
     % (I tested it and it works. Don't like using tasks for this
     % so I'll try converting C:\Ubc_flux\PicarroMove.bat to Matlab code)
     %
-    if (hourX == 1 && ismember(minuteX,[52]) ) || (hourX == 2 && ismember(minuteX,[22 52]))  %#ok<*NBRAK>
+    if (hourX == 10 && ismember(minuteX,[52]) ) || (hourX == 11 && ismember(minuteX,[22 52]))  %#ok<*NBRAK>
         fprintf(fid,'======= Picarro processing ========\n');
         fprintf(fid,'Moving ZIP files from Sync.com to Sites.\n');
         fprintf(fid,'%s\n',datetime);
@@ -233,7 +236,7 @@ cd('d:\')
         fprintf(fid,'%s\n',datetime);
         fprintf(fid,'======= End of Picarro processing (%s) ========\n',datetime);
         % Make sure that the default folder is back to d:\
-        cd('d:\')        
+        cd('d:\Matlab')        
     end
     
     % ---------------------------
